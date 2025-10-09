@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Download, Package, TestTube, Monitor, Globe } from 'lucide-react';
+import { Download, Package, TestTube, Monitor, Globe, Smartphone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ProjectDownloaderProps {
@@ -14,12 +14,13 @@ interface ProjectDownloaderProps {
 }
 
 export const ProjectDownloader: React.FC<ProjectDownloaderProps> = ({ isVisible, onClose }) => {
-  const [projectType, setProjectType] = useState<'react' | 'pc'>('react');
+  const [projectType, setProjectType] = useState<'react' | 'pc' | 'mobile'>('react');
   const [projectName, setProjectName] = useState('MyApp');
   const [version, setVersion] = useState('1.0.0');
   const [offlineCapable, setOfflineCapable] = useState(true);
   const [includeTests, setIncludeTests] = useState(true);
-  const [installerType, setInstallerType] = useState<'msi' | 'exe' | 'dmg' | 'deb'>('exe');
+  const [installerType, setInstallerType] = useState<'msi' | 'exe' | 'dmg' | 'deb' | 'apk' | 'ipa' | 'wap'>('exe');
+  const [mobileType, setMobileType] = useState<'android' | 'ios' | 'wap'>('wap');
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
@@ -38,7 +39,12 @@ export const ProjectDownloader: React.FC<ProjectDownloaderProps> = ({ isVisible,
         version,
         offlineCapable,
         includeTests,
-        installerType: projectType === 'pc' ? installerType : 'zip'
+        installerType: projectType === 'pc' ? installerType : projectType === 'mobile' ? mobileType : 'zip',
+        capacitor: projectType === 'mobile' ? {
+          appId: 'app.lovable.7634a36513934f41921227f505acceca',
+          appName: projectName,
+          platforms: mobileType === 'wap' ? ['web'] : [mobileType === 'android' ? 'android' : 'ios']
+        } : undefined
       };
 
       // Create download blob
@@ -87,7 +93,7 @@ export const ProjectDownloader: React.FC<ProjectDownloaderProps> = ({ isVisible,
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="project-type">Project Type</Label>
-              <Select value={projectType} onValueChange={(value: 'react' | 'pc') => setProjectType(value)}>
+              <Select value={projectType} onValueChange={(value: 'react' | 'pc' | 'mobile') => setProjectType(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -96,6 +102,12 @@ export const ProjectDownloader: React.FC<ProjectDownloaderProps> = ({ isVisible,
                     <div className="flex items-center gap-2">
                       <Globe className="h-4 w-4" />
                       React Web App
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="mobile">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="h-4 w-4" />
+                      Mobile App (WAP/Native)
                     </div>
                   </SelectItem>
                   <SelectItem value="pc">
@@ -142,6 +154,37 @@ export const ProjectDownloader: React.FC<ProjectDownloaderProps> = ({ isVisible,
                     <SelectItem value="msi">Windows Installer (.msi)</SelectItem>
                     <SelectItem value="dmg">macOS (.dmg)</SelectItem>
                     <SelectItem value="deb">Linux (.deb)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {projectType === 'mobile' && (
+              <div className="space-y-2">
+                <Label htmlFor="mobile-type">Mobile Platform</Label>
+                <Select value={mobileType} onValueChange={(value: any) => setMobileType(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="wap">
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
+                        WAP (Web App Package)
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="android">
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="h-4 w-4" />
+                        Android (.apk)
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="ios">
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="h-4 w-4" />
+                        iOS (.ipa)
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
