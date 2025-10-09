@@ -17,7 +17,7 @@ export const AIChatPanel = () => {
     {
       id: '1',
       role: 'assistant',
-      content: 'NEURAL INTERFACE ACTIVATED\n\nGreeting, user. I am the AI construct integrated into the Matrix DevStudio. My neural pathways are optimized for:\n\n• Generating code from natural language\n• Debugging quantum-level errors\n• Creating cyberpunk-themed components\n• Building PC and web applications\n• Generating installers and deployment packages\n\nInput your requirements and I will manifest the code into reality.',
+      content: '🤖 **GodBot Online** - Elite Dev Companion Activated\n\nHey there! I\'m GodBot, your AI coding partner powered by free Gemini AI. I\'m here to help you build amazing software!\n\n**What I can do:**\n• Write production-ready code in React, TypeScript, Node.js, and more\n• Debug complex issues and optimize performance\n• Architect full-stack applications\n• Explain concepts clearly at any skill level\n• Generate creative solutions to tough problems\n• Help you learn and grow as a developer\n\n**Let\'s build something incredible together!** What are you working on?',
       timestamp: new Date()
     }
   ]);
@@ -25,7 +25,7 @@ export const AIChatPanel = () => {
   const [isTyping, setIsTyping] = useState(false);
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isTyping) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -34,22 +34,95 @@ export const AIChatPanel = () => {
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response with cyberpunk flair
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: generateCyberpunkAIResponse(input),
-        timestamp: new Date()
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/godbot-chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            messages: updatedMessages.map(m => ({
+              role: m.role,
+              content: m.content
+            }))
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to get AI response");
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let assistantMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "",
+        timestamp: new Date(),
       };
       
-      setMessages(prev => [...prev, aiResponse]);
+      setMessages(prev => [...prev, assistantMessage]);
+
+      if (reader) {
+        let buffer = "";
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (let line of lines) {
+            line = line.trim();
+            if (!line || line.startsWith(":")) continue;
+            if (!line.startsWith("data: ")) continue;
+
+            const data = line.slice(6);
+            if (data === "[DONE]") continue;
+
+            try {
+              const parsed = JSON.parse(data);
+              const content = parsed.choices?.[0]?.delta?.content;
+              
+              if (content) {
+                assistantMessage.content += content;
+                setMessages(prev => 
+                  prev.map((m, i) => 
+                    i === prev.length - 1 ? { ...assistantMessage } : m
+                  )
+                );
+              }
+            } catch (e) {
+              console.error("Error parsing SSE:", e);
+            }
+          }
+        }
+      }
+
       setIsTyping(false);
-    }, 1500);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: `[NEURAL_ERROR] ${error instanceof Error ? error.message : "Connection to AI failed"}`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+      setIsTyping(false);
+    }
   };
 
   const generateCyberpunkAIResponse = (userInput: string) => {

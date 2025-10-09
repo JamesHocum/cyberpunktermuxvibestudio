@@ -1,0 +1,4 @@
+project_id = "myzldjuiklczgttasjlx"
+
+[functions.godbot-chat]
+verify_jwt = false

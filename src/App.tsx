@@ -11,12 +11,6 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [isUnlocked, setIsUnlocked] = useState(false);
-
-  if (!isUnlocked) {
-    return <PasscodeGate onUnlock={() => setIsUnlocked(true)} />;
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
