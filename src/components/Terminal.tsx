@@ -49,12 +49,91 @@ export const Terminal = () => {
     }
   };
 
-  const executeCommand = () => {
+  const executeCommand = async () => {
     if (!command.trim()) return;
     
     const newHistory = [...history, `root@matrix:~$ ${command}`];
     
-    // Enhanced command responses with cyberpunk flair
+    // Check if it's a natural language command (not a standard terminal command)
+    const isNaturalLanguage = !command.startsWith('npm') && 
+                               !command.startsWith('git') && 
+                               !command.startsWith('ls') && 
+                               !command.startsWith('cd') &&
+                               !command.startsWith('help') &&
+                               command.length > 10;
+    
+    if (isNaturalLanguage) {
+      newHistory.push('[AI] Processing natural language request...');
+      setHistory(newHistory);
+      setCommand('');
+      
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/godbot-chat`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({
+              messages: [
+                { role: "system", content: "You are GodBot, a code-building AI assistant. Generate code or commands based on the user's natural language request. Be concise and provide executable code when possible." },
+                { role: "user", content: command }
+              ]
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("AI request failed");
+        }
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let aiResponse = "";
+
+        if (reader) {
+          let buffer = "";
+          
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (let line of lines) {
+              line = line.trim();
+              if (!line || line.startsWith(":")) continue;
+              if (!line.startsWith("data: ")) continue;
+
+              const data = line.slice(6);
+              if (data === "[DONE]") continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices?.[0]?.delta?.content;
+                
+                if (content) {
+                  aiResponse += content;
+                }
+              } catch (e) {
+                console.error("Error parsing AI response:", e);
+              }
+            }
+          }
+        }
+
+        setHistory(prev => [...prev, '[AI] ' + aiResponse, '']);
+      } catch (error) {
+        setHistory(prev => [...prev, `[ERROR] AI processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`, '']);
+      }
+      return;
+    }
+    
+    // Standard command responses with cyberpunk flair
     if (command.includes('npm run build')) {
       newHistory.push(
         '[INFO] Compiling neural networks...',
@@ -97,9 +176,9 @@ export const Terminal = () => {
         '  git <command>    - Version control via neural net',
         '',
         'AI Commands:',
-        '  ai code <desc>   - Generate code from thoughts',
-        '  ai debug <err>   - Neural debugging interface',
-        '  ai create <comp> - Manifest new components',
+        '  Use natural language to build code!',
+        '  Example: "create a button component with neon glow"',
+        '  Example: "build a responsive navbar"',
         '',
         'Matrix Commands:',
         '  matrix --status  - Check neural network status',
@@ -119,9 +198,9 @@ export const Terminal = () => {
     setCommand('');
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      executeCommand();
+      await executeCommand();
     }
   };
 

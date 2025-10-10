@@ -67,6 +67,10 @@ export const CodeEditor = ({ activeFile }: CodeEditorProps) => {
   const [openTabs, setOpenTabs] = useState(['CyberApp.tsx', 'NeuralInterface.tsx']);
   const [activeTab, setActiveTab] = useState('CyberApp.tsx');
   const [code, setCode] = useState(cyberpunkSampleCode);
+  const [fileContents, setFileContents] = useState<Record<string, string>>({
+    'CyberApp.tsx': cyberpunkSampleCode,
+    'NeuralInterface.tsx': '// Neural interface component\n\nexport const NeuralInterface = () => {\n  return <div>Neural Link Active</div>;\n};'
+  });
 
   const closeTab = (tab: string) => {
     const newTabs = openTabs.filter(t => t !== tab);
@@ -74,6 +78,24 @@ export const CodeEditor = ({ activeFile }: CodeEditorProps) => {
     if (activeTab === tab && newTabs.length > 0) {
       setActiveTab(newTabs[0]);
     }
+  };
+
+  const createNewFile = () => {
+    const fileName = `NewFile${openTabs.length + 1}.tsx`;
+    setOpenTabs([...openTabs, fileName]);
+    setFileContents({
+      ...fileContents,
+      [fileName]: '// New neural file\n\nimport React from \'react\';\n\nconst Component = () => {\n  return (\n    <div>\n      // Your code here\n    </div>\n  );\n};\n\nexport default Component;'
+    });
+    setActiveTab(fileName);
+  };
+
+  const saveCurrentFile = () => {
+    setFileContents({
+      ...fileContents,
+      [activeTab]: code
+    });
+    console.log(`[SAVE] File ${activeTab} saved to neural storage`);
   };
 
   return (
@@ -110,7 +132,23 @@ export const CodeEditor = ({ activeFile }: CodeEditorProps) => {
           <Badge variant="secondary" className="text-xs neon-green font-terminal">
             TypeScript React | Matrix Enhanced
           </Badge>
-          <Button variant="ghost" size="sm" className="neon-green hover:neon-glow">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="neon-green hover:neon-glow"
+            onClick={createNewFile}
+            title="Create new file"
+          >
+            <File className="h-4 w-4 mr-1" />
+            <span className="text-xs">New</span>
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="neon-green hover:neon-glow"
+            onClick={saveCurrentFile}
+            title="Save current file"
+          >
             <Save className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="sm" className="neon-purple hover:neon-glow">
@@ -146,8 +184,15 @@ export const CodeEditor = ({ activeFile }: CodeEditorProps) => {
                 {/* Code Area */}
                 <div className="flex-1 relative">
                   <textarea
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
+                    value={fileContents[tab] || code}
+                    onChange={(e) => {
+                      const newContent = e.target.value;
+                      setCode(newContent);
+                      setFileContents({
+                        ...fileContents,
+                        [tab]: newContent
+                      });
+                    }}
                     className="w-full h-full p-4 bg-transparent matrix-text font-terminal text-sm leading-5 resize-none focus:outline-none selection:bg-primary/20 cyber-scrollbar"
                     style={{ fontFamily: 'JetBrains Mono, Monaco, Menlo, monospace' }}
                     spellCheck={false}
