@@ -46,7 +46,7 @@ export interface FeatureFlags {
 }
 
 const config: PantheonConfig = {
-  mode: (process.env.PANTHEON_MODE as AppMode) || 'dev',
+  mode: (import.meta.env.VITE_PANTHEON_MODE as AppMode) || 'dev',
   personas: [
     {
       id: 'godbot',
