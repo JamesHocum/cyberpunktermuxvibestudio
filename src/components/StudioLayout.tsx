@@ -8,7 +8,10 @@ import { AIChatPanel } from "./AIChatPanel";
 import StudioApiKeySelector from "./StudioApiKeySelector";
 import { ProjectDownloader } from "./ProjectDownloader";
 import { TestingSuite } from "./TestingSuite";
+import { DevModeOverlay } from "./DevModeOverlay";
+import { IntegrationPanel } from "./IntegrationPanel";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import config from "../../pantheon.config";
 
 export const StudioLayout = () => {
   const [activeFile, setActiveFile] = useState<string | null>(null);
@@ -17,27 +20,31 @@ export const StudioLayout = () => {
   const [showApiConfig, setShowApiConfig] = useState(false);
   const [showDownloader, setShowDownloader] = useState(false);
   const [showTesting, setShowTesting] = useState(false);
+  const [showIntegrations, setShowIntegrations] = useState(false);
   const [apiKey, setApiKey] = useState<string>("DEFAULT");
 
   return (
     <div className="h-screen w-full bg-studio-bg text-matrix-green dark font-terminal">
+      {config.mode === 'dev' && <DevModeOverlay personas={config.personas} />}
       <SidebarProvider>
         <div className="flex h-full w-full">
           <StudioSidebar onFileSelect={setActiveFile} />
           
           <div className="flex-1 flex flex-col">
-            <StudioHeader 
-              onToggleChat={() => setShowChat(!showChat)}
-              onToggleTerminal={() => setShowTerminal(!showTerminal)}
-              onToggleApiConfig={() => setShowApiConfig(!showApiConfig)}
-              onToggleDownloader={() => setShowDownloader(!showDownloader)}
-              onToggleTesting={() => setShowTesting(!showTesting)}
-              showChat={showChat}
-              showTerminal={showTerminal}
-              showApiConfig={showApiConfig}
-              showDownloader={showDownloader}
-              showTesting={showTesting}
-            />
+          <StudioHeader 
+            onToggleChat={() => setShowChat(!showChat)}
+            onToggleTerminal={() => setShowTerminal(!showTerminal)}
+            onToggleApiConfig={() => setShowApiConfig(!showApiConfig)}
+            onToggleDownloader={() => setShowDownloader(!showDownloader)}
+            onToggleTesting={() => setShowTesting(!showTesting)}
+            onToggleIntegrations={() => setShowIntegrations(!showIntegrations)}
+            showChat={showChat}
+            showTerminal={showTerminal}
+            showApiConfig={showApiConfig}
+            showDownloader={showDownloader}
+            showTesting={showTesting}
+            showIntegrations={showIntegrations}
+          />
             
             {showApiConfig && (
               <div className="p-4 border-b bg-muted/50">
@@ -83,6 +90,11 @@ export const StudioLayout = () => {
         <TestingSuite 
           isVisible={showTesting} 
           onClose={() => setShowTesting(false)} 
+        />
+        
+        <IntegrationPanel 
+          isVisible={showIntegrations} 
+          onClose={() => setShowIntegrations(false)} 
         />
       </SidebarProvider>
     </div>

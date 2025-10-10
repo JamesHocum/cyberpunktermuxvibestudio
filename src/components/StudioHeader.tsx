@@ -10,7 +10,8 @@ import {
   Download,
   Upload,
   Key,
-  TestTube
+  TestTube,
+  Plug
 } from "lucide-react";
 
 interface StudioHeaderProps {
@@ -19,11 +20,13 @@ interface StudioHeaderProps {
   onToggleApiConfig: () => void;
   onToggleDownloader: () => void;
   onToggleTesting: () => void;
+  onToggleIntegrations: () => void;
   showChat: boolean;
   showTerminal: boolean;
   showApiConfig: boolean;
   showDownloader: boolean;
   showTesting: boolean;
+  showIntegrations: boolean;
 }
 
 export const StudioHeader = ({ 
@@ -32,11 +35,13 @@ export const StudioHeader = ({
   onToggleApiConfig,
   onToggleDownloader,
   onToggleTesting,
+  onToggleIntegrations,
   showChat, 
   showTerminal,
   showApiConfig,
   showDownloader,
-  showTesting
+  showTesting,
+  showIntegrations
 }: StudioHeaderProps) => {
   return (
     <header className="h-12 border-b cyber-border bg-studio-header flex items-center justify-between px-4 terminal-glow">
@@ -110,6 +115,16 @@ export const StudioHeader = ({
         >
           <TestTube className="h-4 w-4 mr-2" />
           Test
+        </Button>
+        
+        <Button 
+          variant={showIntegrations ? "secondary" : "ghost"} 
+          size="sm"
+          onClick={onToggleIntegrations}
+          className="neon-purple hover:neon-glow"
+        >
+          <Plug className="h-4 w-4 mr-2" />
+          Integrations
         </Button>
       </div>
     </header>
