@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,6 +6,9 @@ import { X, Save, Copy, Maximize2, File } from "lucide-react";
 
 interface CodeEditorProps {
   activeFile: string | null;
+  openFiles?: string[];
+  onCloseFile?: (file: string) => void;
+  onSelectFile?: (file: string) => void;
 }
 
 const cyberpunkSampleCode = `import React, { useState } from 'react';
@@ -63,7 +66,7 @@ const CyberpunkComponent = () => {
 
 export default CyberpunkComponent;`;
 
-export const CodeEditor = ({ activeFile }: CodeEditorProps) => {
+export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFile }: CodeEditorProps) => {
   const [openTabs, setOpenTabs] = useState(['CyberApp.tsx', 'NeuralInterface.tsx']);
   const [activeTab, setActiveTab] = useState('CyberApp.tsx');
   const [code, setCode] = useState(cyberpunkSampleCode);
@@ -72,11 +75,40 @@ export const CodeEditor = ({ activeFile }: CodeEditorProps) => {
     'NeuralInterface.tsx': '// Neural interface component\n\nexport const NeuralInterface = () => {\n  return <div>Neural Link Active</div>;\n};'
   });
 
+  // Sync with external openFiles prop
+  React.useEffect(() => {
+    if (openFiles.length > 0) {
+      setOpenTabs(openFiles);
+    }
+  }, [openFiles]);
+
+  // Sync with external activeFile and create template
+  React.useEffect(() => {
+    if (activeFile && !fileContents[activeFile]) {
+      const extension = activeFile.split('.').pop() || '';
+      const template = extension === 'tsx' || extension === 'jsx' 
+        ? `// ${activeFile}\nimport React from 'react';\n\nexport const Component = () => {\n  return <div>New Component</div>;\n};`
+        : `// ${activeFile}\n`;
+      
+      setFileContents(prev => ({
+        ...prev,
+        [activeFile]: template
+      }));
+    }
+    if (activeFile) {
+      setActiveTab(activeFile);
+    }
+  }, [activeFile, fileContents]);
+
   const closeTab = (tab: string) => {
-    const newTabs = openTabs.filter(t => t !== tab);
-    setOpenTabs(newTabs);
-    if (activeTab === tab && newTabs.length > 0) {
-      setActiveTab(newTabs[0]);
+    if (onCloseFile) {
+      onCloseFile(tab);
+    } else {
+      const newTabs = openTabs.filter(t => t !== tab);
+      setOpenTabs(newTabs);
+      if (activeTab === tab && newTabs.length > 0) {
+        setActiveTab(newTabs[0]);
+      }
     }
   };
 
@@ -102,7 +134,10 @@ export const CodeEditor = ({ activeFile }: CodeEditorProps) => {
     <div className="flex flex-col h-full bg-studio-terminal terminal-glow">
       {/* Tab Bar */}
       <div className="flex items-center bg-studio-header border-b cyber-border">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+        <Tabs value={activeTab} onValueChange={(tab) => {
+          setActiveTab(tab);
+          if (onSelectFile) onSelectFile(tab);
+        }} className="flex-1">
           <TabsList className="h-10 bg-transparent space-x-0 p-0">
             {openTabs.map(tab => (
               <TabsTrigger

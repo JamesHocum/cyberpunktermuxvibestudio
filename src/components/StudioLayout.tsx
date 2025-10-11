@@ -22,13 +22,30 @@ export const StudioLayout = () => {
   const [showTesting, setShowTesting] = useState(false);
   const [showIntegrations, setShowIntegrations] = useState(false);
   const [apiKey, setApiKey] = useState<string>("DEFAULT");
+  const [openFiles, setOpenFiles] = useState<string[]>([]);
+
+  const handleFileSelect = (file: string) => {
+    setActiveFile(file);
+    if (!openFiles.includes(file)) {
+      setOpenFiles(prev => [...prev, file]);
+    }
+  };
+
+  const handleCloseFile = (file: string) => {
+    setOpenFiles(prev => prev.filter(f => f !== file));
+    if (activeFile === file) {
+      const index = openFiles.indexOf(file);
+      const newActiveFile = openFiles[index - 1] || openFiles[index + 1] || null;
+      setActiveFile(newActiveFile);
+    }
+  };
 
   return (
     <div className="h-screen w-full bg-studio-bg text-matrix-green dark font-terminal">
       {config.mode === 'dev' && <DevModeOverlay personas={config.personas} />}
       <SidebarProvider>
         <div className="flex h-full w-full">
-          <StudioSidebar onFileSelect={setActiveFile} />
+          <StudioSidebar onFileSelect={handleFileSelect} />
           
           <div className="flex-1 flex flex-col">
           <StudioHeader 
@@ -56,7 +73,12 @@ export const StudioLayout = () => {
               <ResizablePanel defaultSize={showChat ? 70 : 100} minSize={50}>
                 <ResizablePanelGroup direction="vertical">
                   <ResizablePanel defaultSize={showTerminal ? 70 : 100} minSize={30}>
-                    <CodeEditor activeFile={activeFile} />
+                    <CodeEditor 
+                      activeFile={activeFile} 
+                      openFiles={openFiles}
+                      onCloseFile={handleCloseFile}
+                      onSelectFile={setActiveFile}
+                    />
                   </ResizablePanel>
                   
                   {showTerminal && (

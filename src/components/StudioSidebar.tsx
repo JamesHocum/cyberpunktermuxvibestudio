@@ -120,8 +120,55 @@ export const StudioSidebar = ({ onFileSelect }: StudioSidebarProps) => {
   const [project, setProject] = useState<FileNode>(cyberpunkProject);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const toggleFolderExpanded = (node: FileNode, targetPath: string[], currentPath: string[] = []): FileNode => {
+    const nodePath = [...currentPath, node.name];
+    const pathMatch = nodePath.join('/') === targetPath.join('/');
+    
+    if (pathMatch && node.type === 'folder') {
+      return { ...node, expanded: !node.expanded };
+    }
+    
+    if (node.children) {
+      return {
+        ...node,
+        children: node.children.map(child => 
+          toggleFolderExpanded(child, targetPath, nodePath)
+        )
+      };
+    }
+    
+    return node;
+  };
+
   const toggleFolder = (path: string[]) => {
-    console.log("Neural path accessed:", path);
+    setProject(prevProject => toggleFolderExpanded(prevProject, path, []));
+  };
+
+  const createNewFile = () => {
+    const fileName = prompt("Enter file name (e.g., Component.tsx or foldername/):");
+    if (!fileName?.trim()) return;
+    
+    const trimmedName = fileName.trim();
+    const isFolder = trimmedName.endsWith('/');
+    const name = isFolder ? trimmedName.slice(0, -1) : trimmedName;
+    const extension = isFolder ? undefined : name.split('.').pop();
+    
+    const newNode: FileNode = {
+      name,
+      type: isFolder ? 'folder' : 'file',
+      extension,
+      expanded: isFolder ? true : undefined,
+      children: isFolder ? [] : undefined
+    };
+    
+    setProject(prevProject => ({
+      ...prevProject,
+      children: [...(prevProject.children || []), newNode]
+    }));
+    
+    if (!isFolder) {
+      onFileSelect(`${project.name}/${name}`);
+    }
   };
 
   const renderFileTree = (node: FileNode, path: string[] = []) => {
@@ -179,7 +226,12 @@ export const StudioSidebar = ({ onFileSelect }: StudioSidebarProps) => {
         <SidebarGroup>
           <SidebarGroupLabel className="flex items-center justify-between font-cyber neon-purple">
             FILE_TREE.SYS
-            <Button variant="ghost" size="sm" className="neon-green hover:neon-glow">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="neon-green hover:neon-glow"
+              onClick={createNewFile}
+            >
               <Plus className="h-4 w-4" />
             </Button>
           </SidebarGroupLabel>
