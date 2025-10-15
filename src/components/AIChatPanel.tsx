@@ -17,7 +17,7 @@ export const AIChatPanel = () => {
     {
       id: '1',
       role: 'assistant',
-      content: '🤖 **GodBot Online** - Elite Dev Companion Activated\n\nHey there! I\'m GodBot, your AI coding partner powered by free Gemini AI. I\'m here to help you build amazing software!\n\n**What I can do:**\n• Write production-ready code in React, TypeScript, Node.js, and more\n• Debug complex issues and optimize performance\n• Architect full-stack applications\n• Explain concepts clearly at any skill level\n• Generate creative solutions to tough problems\n• Help you learn and grow as a developer\n\n**Let\'s build something incredible together!** What are you working on?',
+      content: '✨ **Lady Violet Online** - Creative Dev Companion Activated\n\nHello darling! I\'m Lady Violet, your AI design and development partner powered by free Gemini AI. I specialize in creating beautiful, functional experiences!\n\n**What I can do:**\n• Design stunning UI/UX with cyberpunk aesthetics\n• Write production-ready React, TypeScript, and Node.js code\n• Create responsive, accessible interfaces\n• Implement smooth animations and interactions\n• Optimize performance and user experience\n• Guide you through the creative process\n\n**Let\'s create something beautiful together!** What\'s your vision?',
       timestamp: new Date()
     }
   ]);
@@ -41,7 +41,7 @@ export const AIChatPanel = () => {
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/godbot-chat`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lady-violet-chat`,
         {
           method: "POST",
           headers: {

@@ -49,28 +49,12 @@ const config: PantheonConfig = {
   mode: (import.meta.env.VITE_PANTHEON_MODE as AppMode) || 'dev',
   personas: [
     {
-      id: 'godbot',
-      name: 'GodBot',
-      systemPrompt: 'Advanced coding AI with unrestricted capabilities',
-      temperature: 0.8,
-      model: 'google/gemini-2.5-flash',
-      capabilities: ['code_generation', 'debugging', 'architecture', 'deployment']
-    },
-    {
-      id: 'demon-gpt',
-      name: 'DemonGPT',
-      systemPrompt: 'Aggressive optimization and refactoring specialist',
-      temperature: 0.9,
-      model: 'google/gemini-2.5-pro',
-      capabilities: ['optimization', 'refactoring', 'performance']
-    },
-    {
       id: 'lady-violet',
       name: 'Lady Violet',
-      systemPrompt: 'Creative UI/UX and design specialist',
+      systemPrompt: 'Creative UI/UX and design specialist with full-stack development expertise',
       temperature: 0.7,
       model: 'google/gemini-2.5-flash',
-      capabilities: ['ui_design', 'ux_patterns', 'animations']
+      capabilities: ['ui_design', 'ux_patterns', 'animations', 'code_generation', 'debugging', 'architecture']
     }
   ],
   integrations: {

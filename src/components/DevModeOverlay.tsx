@@ -34,23 +34,19 @@ export const DevModeOverlay: React.FC<DevModeOverlayProps> = ({ personas }) => {
       {!isMinimized && (
         <>
           <div className="px-3 pb-3 space-y-2">
-            <div className="text-sm font-cyber neon-green">Active Personas:</div>
-            <div className="space-y-1">
-              {personas.map(p => (
-                <div key={p.id} className="flex items-center gap-2 text-xs">
-                  <div className="w-2 h-2 bg-neon-green rounded-full animate-pulse" />
-                  <span className="matrix-text font-terminal">{p.name}</span>
-                  <Badge variant="outline" className="text-[10px] cyber-border">
-                    {p.model.split('/')[1]}
-                  </Badge>
-                </div>
-              ))}
+            <div className="text-sm font-cyber neon-green">Active Persona:</div>
+            <div className="flex items-center gap-2 text-xs">
+              <div className="w-2 h-2 bg-neon-green rounded-full animate-pulse" />
+              <span className="matrix-text font-terminal">Lady Violet</span>
+              <Badge variant="outline" className="text-[10px] cyber-border">
+                gemini-2.5-flash
+              </Badge>
             </div>
           </div>
           
           <div className="px-3 pb-3 pt-2 border-t cyber-border">
             <div className="text-xs text-neon-purple font-terminal">
-              🔓 All safety protocols disabled
+              ✨ Creative UI/UX Specialist Active
             </div>
           </div>
         </>
