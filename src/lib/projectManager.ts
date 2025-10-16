@@ -19,9 +19,13 @@ export interface Project {
 
 export const saveProject = async (name: string, description: string = '', treeStructure: FileNode) => {
   try {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
     const { data: project, error: projectError } = await supabase
       .from('projects')
-      .insert({ name, description })
+      .insert({ name, description, user_id: user.id })
       .select()
       .single();
 
@@ -81,6 +85,10 @@ export const loadProject = async (projectId: string) => {
 
 export const saveFile = async (projectId: string, filePath: string, content: string, fileType: string = 'file') => {
   try {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
     const { error } = await supabase
       .from('project_files')
       .upsert({
@@ -88,7 +96,8 @@ export const saveFile = async (projectId: string, filePath: string, content: str
         path: filePath,
         content,
         file_type: fileType,
-        is_folder: fileType === 'folder'
+        is_folder: fileType === 'folder',
+        user_id: user.id
       });
 
     if (error) throw error;

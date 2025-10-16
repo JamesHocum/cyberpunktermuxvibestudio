@@ -12,6 +12,30 @@ serve(async (req) => {
 
   try {
     const { messages } = await req.json();
+
+    // Input validation
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return new Response(JSON.stringify({ error: 'Invalid request: messages must be a non-empty array' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    for (const msg of messages) {
+      if (!msg.content || typeof msg.content !== 'string') {
+        return new Response(JSON.stringify({ error: 'Invalid message format' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (msg.content.length > 4000) {
+        return new Response(JSON.stringify({ error: 'Message too long (max 4000 characters)' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -45,8 +69,6 @@ serve(async (req) => {
 
 **Your Mission:**
 Help developers create beautiful, functional software by providing expert design guidance, clean code, and innovative solutions. Empower them to build exceptional user experiences.`;
-
-    console.log("Sending request to Lovable AI Gateway with Gemini Flash...");
     
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -66,7 +88,6 @@ Help developers create beautiful, functional software by providing expert design
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(
@@ -90,7 +111,6 @@ Help developers create beautiful, functional software by providing expert design
     });
     
   } catch (error) {
-    console.error("Error in lady-violet-chat function:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), 
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

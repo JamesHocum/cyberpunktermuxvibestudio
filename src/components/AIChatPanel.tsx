@@ -1,9 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, Zap } from "lucide-react";
+import { toast } from "sonner";
+import { validateMessage, RateLimiter } from "@/lib/inputValidation";
+import { z } from "zod";
 
 interface Message {
   id: string;
@@ -23,9 +26,27 @@ export const AIChatPanel = () => {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const rateLimiterRef = useRef(new RateLimiter(2000));
 
   const sendMessage = async () => {
     if (!input.trim() || isTyping) return;
+
+    // Validate input
+    try {
+      validateMessage(input);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      }
+      return;
+    }
+
+    // Check rate limit
+    if (!rateLimiterRef.current.checkLimit()) {
+      const remaining = Math.ceil(rateLimiterRef.current.getRemainingTime() / 1000);
+      toast.error(`Please wait ${remaining} seconds before sending another message`);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -104,16 +125,15 @@ export const AIChatPanel = () => {
                   )
                 );
               }
-            } catch (e) {
-              console.error("Error parsing SSE:", e);
-            }
+              } catch (e) {
+                // Silently ignore parsing errors for streaming chunks
+              }
           }
         }
       }
 
       setIsTyping(false);
     } catch (error) {
-      console.error("Error sending message:", error);
       const errorMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
@@ -121,6 +141,7 @@ export const AIChatPanel = () => {
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
+      toast.error("Failed to send message. Please try again.");
       setIsTyping(false);
     }
   };

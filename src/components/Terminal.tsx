@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X, Plus, Settings, Square, Terminal as TerminalIcon } from "lucide-react";
+import { toast } from "sonner";
+import { validateMessage, RateLimiter } from "@/lib/inputValidation";
+import { z } from "zod";
 
 export const Terminal = () => {
   const [terminals, setTerminals] = useState(['MAIN_SHELL']);
@@ -11,6 +14,7 @@ export const Terminal = () => {
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const rateLimiterRef = useRef(new RateLimiter(2000));
   const [history, setHistory] = useState([
     'root@matrix:~$ echo "Welcome to the Matrix DevStudio"',
     'Welcome to the Matrix DevStudio',
@@ -62,6 +66,23 @@ export const Terminal = () => {
 
   const executeCommand = async () => {
     if (!command.trim()) return;
+
+    // Validate input
+    try {
+      validateMessage(command);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast.error(error.errors[0].message);
+      }
+      return;
+    }
+
+    // Check rate limit
+    if (!rateLimiterRef.current.checkLimit()) {
+      const remaining = Math.ceil(rateLimiterRef.current.getRemainingTime() / 1000);
+      toast.error(`Please wait ${remaining} seconds before sending another command`);
+      return;
+    }
     
     // Add to command history
     setCommandHistory(prev => [...prev, command]);
@@ -135,7 +156,7 @@ export const Terminal = () => {
                   aiResponse += content;
                 }
               } catch (e) {
-                console.error("Error parsing AI response:", e);
+                // Silently ignore parsing errors for streaming chunks
               }
             }
           }
@@ -144,6 +165,7 @@ export const Terminal = () => {
         setHistory(prev => [...prev, '[AI] ' + aiResponse, '']);
       } catch (error) {
         setHistory(prev => [...prev, `[ERROR] AI processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`, '']);
+        toast.error("Error processing command");
       }
       return;
     }

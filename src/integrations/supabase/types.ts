@@ -20,18 +20,21 @@ export type Database = {
           project_id: string | null
           tree_structure: Json
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           id?: string
           project_id?: string | null
           tree_structure: Json
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           id?: string
           project_id?: string | null
           tree_structure?: Json
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -54,6 +57,7 @@ export type Database = {
           path: string
           project_id: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           content?: string | null
@@ -65,6 +69,7 @@ export type Database = {
           path: string
           project_id?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           content?: string | null
@@ -76,6 +81,7 @@ export type Database = {
           path?: string
           project_id?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -95,6 +101,7 @@ export type Database = {
           id: string
           name: string
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -103,6 +110,7 @@ export type Database = {
           id?: string
           name: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -111,6 +119,7 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
