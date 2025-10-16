@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 
 interface StudioSidebarProps {
   onFileSelect: (file: string) => void;
+  activeFile?: string;
 }
 
 interface FileNode {
@@ -116,7 +117,7 @@ const getCyberFileIcon = (extension?: string) => {
   }
 };
 
-export const StudioSidebar = ({ onFileSelect }: StudioSidebarProps) => {
+export const StudioSidebar = ({ onFileSelect, activeFile = '' }: StudioSidebarProps) => {
   const [project, setProject] = useState<FileNode>(cyberpunkProject);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -174,18 +175,22 @@ export const StudioSidebar = ({ onFileSelect }: StudioSidebarProps) => {
   const renderFileTree = (node: FileNode, path: string[] = []) => {
     const isFolder = node.type === 'folder';
     const currentPath = [...path, node.name];
+    const fullPath = currentPath.join('/');
+    const isActive = !isFolder && fullPath === activeFile;
     
     return (
-      <SidebarMenuItem key={currentPath.join('/')}>
+      <SidebarMenuItem key={fullPath}>
         <SidebarMenuButton
           onClick={() => {
             if (isFolder) {
               toggleFolder(currentPath);
             } else {
-              onFileSelect(currentPath.join('/'));
+              onFileSelect(fullPath);
             }
           }}
-          className="w-full justify-start hover:neon-glow transition-all duration-200 font-terminal"
+          className={`w-full justify-start hover:neon-glow transition-all duration-200 font-terminal ${
+            isActive ? 'neon-glow bg-studio-terminal' : ''
+          }`}
         >
           <div className="flex items-center space-x-2">
             {isFolder ? (

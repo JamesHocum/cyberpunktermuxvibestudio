@@ -1,4 +1,4 @@
 project_id = "myzldjuiklczgttasjlx"
 
-[functions.godbot-chat]
+[functions.lady-violet-chat]
 verify_jwt = false

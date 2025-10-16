@@ -45,7 +45,7 @@ export const StudioLayout = () => {
       {config.mode === 'dev' && <DevModeOverlay personas={config.personas} />}
       <SidebarProvider>
         <div className="flex h-full w-full">
-          <StudioSidebar onFileSelect={handleFileSelect} />
+          <StudioSidebar onFileSelect={handleFileSelect} activeFile={activeFile} />
           
           <div className="flex-1 flex flex-col">
           <StudioHeader 
