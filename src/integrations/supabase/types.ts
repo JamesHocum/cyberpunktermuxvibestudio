@@ -14,7 +14,106 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      file_tree: {
+        Row: {
+          id: string
+          project_id: string | null
+          tree_structure: Json
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          project_id?: string | null
+          tree_structure: Json
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          project_id?: string | null
+          tree_structure?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_tree_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_files: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          file_type: string | null
+          id: string
+          is_folder: boolean | null
+          parent_path: string | null
+          path: string
+          project_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          file_type?: string | null
+          id?: string
+          is_folder?: boolean | null
+          parent_path?: string | null
+          path: string
+          project_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          file_type?: string | null
+          id?: string
+          is_folder?: boolean | null
+          parent_path?: string | null
+          path?: string
+          project_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          github_url: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          github_url?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          github_url?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
