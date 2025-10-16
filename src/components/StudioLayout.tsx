@@ -8,10 +8,10 @@ import { AIChatPanel } from "./AIChatPanel";
 import StudioApiKeySelector from "./StudioApiKeySelector";
 import { ProjectDownloader } from "./ProjectDownloader";
 import { TestingSuite } from "./TestingSuite";
-import { DevModeOverlay } from "./DevModeOverlay";
+
 import { IntegrationPanel } from "./IntegrationPanel";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import config from "../../pantheon.config";
+
 
 export const StudioLayout = () => {
   const [activeFile, setActiveFile] = useState<string | null>(null);
@@ -42,7 +42,6 @@ export const StudioLayout = () => {
 
   return (
     <div className="h-screen w-full bg-studio-bg text-matrix-green dark font-terminal">
-      {config.mode === 'dev' && <DevModeOverlay personas={config.personas} />}
       <SidebarProvider>
         <div className="flex h-full w-full">
           <StudioSidebar onFileSelect={handleFileSelect} activeFile={activeFile} />
