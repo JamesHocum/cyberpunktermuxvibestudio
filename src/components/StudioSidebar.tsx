@@ -172,6 +172,30 @@ export const StudioSidebar = ({ onFileSelect, activeFile = '' }: StudioSidebarPr
     }
   };
 
+  const filterFileTree = (node: FileNode): FileNode | null => {
+    if (!searchQuery.trim()) return node;
+    
+    const query = searchQuery.toLowerCase();
+    
+    if (node.type === 'file') {
+      return node.name.toLowerCase().includes(query) ? node : null;
+    }
+    
+    if (node.type === 'folder') {
+      const filteredChildren = node.children
+        ?.map(child => filterFileTree(child))
+        .filter(Boolean) as FileNode[] | undefined;
+      
+      if (filteredChildren && filteredChildren.length > 0) {
+        return { ...node, children: filteredChildren, expanded: true };
+      }
+      
+      return node.name.toLowerCase().includes(query) ? { ...node, expanded: true } : null;
+    }
+    
+    return node;
+  };
+
   const renderFileTree = (node: FileNode, path: string[] = []) => {
     const isFolder = node.type === 'folder';
     const currentPath = [...path, node.name];
@@ -250,7 +274,14 @@ export const StudioSidebar = ({ onFileSelect, activeFile = '' }: StudioSidebarPr
               />
             </div>
             <SidebarMenu>
-              {renderFileTree(project)}
+              {(() => {
+                const filteredTree = filterFileTree(project);
+                return filteredTree ? renderFileTree(filteredTree) : (
+                  <div className="text-sm matrix-text text-center py-4">
+                    No files match your search
+                  </div>
+                );
+              })()}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

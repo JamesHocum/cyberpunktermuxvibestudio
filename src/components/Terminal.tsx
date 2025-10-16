@@ -8,6 +8,9 @@ export const Terminal = () => {
   const [terminals, setTerminals] = useState(['MAIN_SHELL']);
   const [activeTerminal, setActiveTerminal] = useState('MAIN_SHELL');
   const [command, setCommand] = useState('');
+  const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [history, setHistory] = useState([
     'root@matrix:~$ echo "Welcome to the Matrix DevStudio"',
     'Welcome to the Matrix DevStudio',
@@ -35,6 +38,14 @@ export const Terminal = () => {
     ''
   ]);
 
+  const availableCommands = [
+    'npm install', 'npm run build', 'npm run dev', 'npm test',
+    'git status', 'git add', 'git commit', 'git push', 'git pull',
+    'ls', 'cd', 'mkdir', 'rm', 'cat', 'echo',
+    'ai code', 'ai debug', 'ai optimize', 'ai create',
+    'help', 'clear', 'matrix --status', 'cyber --theme'
+  ];
+
   const addTerminal = () => {
     const newTerminal = `SHELL_${terminals.length + 1}`;
     setTerminals([...terminals, newTerminal]);
@@ -51,6 +62,10 @@ export const Terminal = () => {
 
   const executeCommand = async () => {
     if (!command.trim()) return;
+    
+    // Add to command history
+    setCommandHistory(prev => [...prev, command]);
+    setHistoryIndex(-1);
     
     const newHistory = [...history, `root@matrix:~$ ${command}`];
     
@@ -69,7 +84,7 @@ export const Terminal = () => {
       
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/godbot-chat`,
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lady-violet-chat`,
           {
             method: "POST",
             headers: {
@@ -201,6 +216,42 @@ export const Terminal = () => {
   const handleKeyPress = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       await executeCommand();
+      setSuggestions([]);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (commandHistory.length > 0) {
+        const newIndex = historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1);
+        setHistoryIndex(newIndex);
+        setCommand(commandHistory[newIndex]);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex !== -1) {
+        const newIndex = Math.min(commandHistory.length - 1, historyIndex + 1);
+        if (newIndex === commandHistory.length - 1 && historyIndex === newIndex) {
+          setHistoryIndex(-1);
+          setCommand('');
+        } else {
+          setHistoryIndex(newIndex);
+          setCommand(commandHistory[newIndex]);
+        }
+      }
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      if (suggestions.length > 0) {
+        setCommand(suggestions[0]);
+        setSuggestions([]);
+      }
+    }
+  };
+
+  const handleCommandChange = (value: string) => {
+    setCommand(value);
+    if (value.trim()) {
+      const matches = availableCommands.filter(cmd => cmd.startsWith(value.trim()));
+      setSuggestions(matches.slice(0, 5));
+    } else {
+      setSuggestions([]);
     }
   };
 
@@ -298,17 +349,39 @@ export const Terminal = () => {
                 </div>
                 
                 {/* Current Command Line */}
-                <div className="flex items-center">
-                  <span className="neon-purple mr-2 font-bold">root@matrix:~$</span>
-                  <input
-                    type="text"
-                    value={command}
-                    onChange={(e) => setCommand(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="flex-1 bg-transparent border-none outline-none matrix-text font-terminal flicker"
-                    placeholder="Enter neural command or natural language..."
-                    autoFocus
-                  />
+                <div className="relative">
+                  <div className="flex items-center">
+                    <span className="neon-purple mr-2 font-bold">root@matrix:~$</span>
+                    <input
+                      type="text"
+                      value={command}
+                      onChange={(e) => handleCommandChange(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                      className="flex-1 bg-transparent border-none outline-none matrix-text font-terminal flicker"
+                      placeholder="Enter neural command or natural language..."
+                      autoFocus
+                    />
+                  </div>
+                  {/* Autocomplete Suggestions */}
+                  {suggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-studio-sidebar cyber-border rounded p-2 space-y-1 z-10">
+                      {suggestions.map((suggestion, idx) => (
+                        <div
+                          key={idx}
+                          className="px-2 py-1 hover:bg-studio-terminal rounded cursor-pointer neon-green transition-colors"
+                          onClick={() => {
+                            setCommand(suggestion);
+                            setSuggestions([]);
+                          }}
+                        >
+                          {suggestion}
+                        </div>
+                      ))}
+                      <div className="text-xs matrix-text mt-2 border-t cyber-border pt-1">
+                        Press Tab to autocomplete
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>

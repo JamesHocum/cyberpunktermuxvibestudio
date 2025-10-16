@@ -70,6 +70,7 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
   const [openTabs, setOpenTabs] = useState(['CyberApp.tsx', 'NeuralInterface.tsx']);
   const [activeTab, setActiveTab] = useState('CyberApp.tsx');
   const [code, setCode] = useState(cyberpunkSampleCode);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [fileContents, setFileContents] = useState<Record<string, string>>({
     'CyberApp.tsx': cyberpunkSampleCode,
     'NeuralInterface.tsx': '// Neural interface component\n\nexport const NeuralInterface = () => {\n  return <div>Neural Link Active</div>;\n};'
@@ -130,8 +131,21 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
     console.log(`[SAVE] File ${activeTab} saved to neural storage`);
   };
 
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(fileContents[activeTab] || code);
+      console.log('[COPY] Code copied to quantum clipboard');
+    } catch (err) {
+      console.error('[ERROR] Failed to copy code:', err);
+    }
+  };
+
+  const toggleMaximize = () => {
+    setIsMaximized(!isMaximized);
+  };
+
   return (
-    <div className="flex flex-col h-full bg-studio-terminal terminal-glow">
+    <div className={`flex flex-col h-full bg-studio-terminal terminal-glow ${isMaximized ? 'fixed inset-0 z-50' : ''}`}>
       {/* Tab Bar */}
       <div className="flex items-center bg-studio-header border-b cyber-border">
         <Tabs value={activeTab} onValueChange={(tab) => {
@@ -186,10 +200,22 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
           >
             <Save className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="neon-purple hover:neon-glow">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="neon-purple hover:neon-glow"
+            onClick={copyToClipboard}
+            title="Copy code to clipboard"
+          >
             <Copy className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="neon-green hover:neon-glow">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="neon-green hover:neon-glow"
+            onClick={toggleMaximize}
+            title={isMaximized ? "Exit fullscreen" : "Maximize editor"}
+          >
             <Maximize2 className="h-4 w-4" />
           </Button>
         </div>

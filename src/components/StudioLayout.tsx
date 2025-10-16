@@ -8,11 +8,10 @@ import { AIChatPanel } from "./AIChatPanel";
 import StudioApiKeySelector from "./StudioApiKeySelector";
 import { ProjectDownloader } from "./ProjectDownloader";
 import { TestingSuite } from "./TestingSuite";
-
 import { IntegrationPanel } from "./IntegrationPanel";
+import { GitPanel } from "./GitPanel";
+import { SettingsPanel } from "./SettingsPanel";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-
-
 export const StudioLayout = () => {
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
@@ -21,6 +20,8 @@ export const StudioLayout = () => {
   const [showDownloader, setShowDownloader] = useState(false);
   const [showTesting, setShowTesting] = useState(false);
   const [showIntegrations, setShowIntegrations] = useState(false);
+  const [showGit, setShowGit] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [apiKey, setApiKey] = useState<string>("DEFAULT");
   const [openFiles, setOpenFiles] = useState<string[]>([]);
 
@@ -60,6 +61,8 @@ export const StudioLayout = () => {
             showDownloader={showDownloader}
             showTesting={showTesting}
             showIntegrations={showIntegrations}
+            onToggleGit={() => setShowGit(!showGit)}
+            onToggleSettings={() => setShowSettings(!showSettings)}
           />
             
             {showApiConfig && (
@@ -116,6 +119,16 @@ export const StudioLayout = () => {
         <IntegrationPanel 
           isVisible={showIntegrations} 
           onClose={() => setShowIntegrations(false)} 
+        />
+        
+        <GitPanel 
+          isVisible={showGit} 
+          onClose={() => setShowGit(false)} 
+        />
+        
+        <SettingsPanel 
+          isVisible={showSettings} 
+          onClose={() => setShowSettings(false)} 
         />
       </SidebarProvider>
     </div>

@@ -11,7 +11,8 @@ import {
   Upload,
   Key,
   TestTube,
-  Plug
+  Plug,
+  GitBranch
 } from "lucide-react";
 
 interface StudioHeaderProps {
@@ -21,6 +22,8 @@ interface StudioHeaderProps {
   onToggleDownloader: () => void;
   onToggleTesting: () => void;
   onToggleIntegrations: () => void;
+  onToggleGit?: () => void;
+  onToggleSettings?: () => void;
   showChat: boolean;
   showTerminal: boolean;
   showApiConfig: boolean;
@@ -36,6 +39,8 @@ export const StudioHeader = ({
   onToggleDownloader,
   onToggleTesting,
   onToggleIntegrations,
+  onToggleGit,
+  onToggleSettings,
   showChat, 
   showTerminal,
   showApiConfig,
@@ -125,6 +130,26 @@ export const StudioHeader = ({
         >
           <Plug className="h-4 w-4 mr-2" />
           Integrations
+        </Button>
+        
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={onToggleGit}
+          className="neon-green hover:neon-glow"
+        >
+          <GitBranch className="h-4 w-4 mr-2" />
+          Git
+        </Button>
+        
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={onToggleSettings}
+          className="neon-purple hover:neon-glow"
+        >
+          <Settings className="h-4 w-4 mr-2" />
+          Settings
         </Button>
       </div>
     </header>
