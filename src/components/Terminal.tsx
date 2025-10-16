@@ -156,7 +156,9 @@ export const Terminal = () => {
                   aiResponse += content;
                 }
               } catch (e) {
-                // Silently ignore parsing errors for streaming chunks
+                if (import.meta.env.DEV) {
+                  console.error("Error parsing streaming chunk:", e);
+                }
               }
             }
           }
@@ -164,6 +166,9 @@ export const Terminal = () => {
 
         setHistory(prev => [...prev, '[AI] ' + aiResponse, '']);
       } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error("Terminal AI request error:", error);
+        }
         setHistory(prev => [...prev, `[ERROR] AI processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`, '']);
         toast.error("Error processing command");
       }

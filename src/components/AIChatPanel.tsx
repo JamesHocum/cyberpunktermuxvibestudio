@@ -126,7 +126,9 @@ export const AIChatPanel = () => {
                 );
               }
               } catch (e) {
-                // Silently ignore parsing errors for streaming chunks
+                if (import.meta.env.DEV) {
+                  console.error("Error parsing streaming chunk:", e);
+                }
               }
           }
         }
@@ -134,6 +136,9 @@ export const AIChatPanel = () => {
 
       setIsTyping(false);
     } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Error sending message:", error);
+      }
       const errorMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
