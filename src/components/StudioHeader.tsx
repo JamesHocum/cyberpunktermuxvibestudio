@@ -1,5 +1,7 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useUserRole } from '@/hooks/useUserRole';
 import { 
   Play, 
   Square, 
@@ -12,7 +14,8 @@ import {
   Key,
   TestTube,
   Plug,
-  GitBranch
+  GitBranch,
+  Shield
 } from "lucide-react";
 
 interface StudioHeaderProps {
@@ -48,6 +51,9 @@ export const StudioHeader = ({
   showTesting,
   showIntegrations
 }: StudioHeaderProps) => {
+  const navigate = useNavigate();
+  const { isAdmin } = useUserRole();
+
   return (
     <header className="h-12 border-b cyber-border bg-studio-header flex items-center justify-between px-4 terminal-glow">
       <div className="flex items-center space-x-4">
@@ -151,6 +157,17 @@ export const StudioHeader = ({
           <Settings className="h-4 w-4 mr-2" />
           Settings
         </Button>
+        
+        {isAdmin && (
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => navigate('/admin')}
+            className="text-xs opacity-70 hover:opacity-100 neon-green hover:neon-glow"
+          >
+            <Shield className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     </header>
   );

@@ -21,7 +21,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
       setSession(session);
       setUser(session?.user ?? null);
 
-      if (!session) {
+      if (!session && window.location.pathname !== "/auth" && window.location.pathname !== "/") {
         navigate("/auth");
       }
     });
@@ -32,7 +32,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
       setUser(session?.user ?? null);
       setLoading(false);
 
-      if (!session) {
+      if (!session && window.location.pathname !== "/auth" && window.location.pathname !== "/") {
         navigate("/auth");
       }
     });

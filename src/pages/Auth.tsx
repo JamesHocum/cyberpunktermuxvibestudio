@@ -51,7 +51,7 @@ export default function Auth() {
         if (error) throw error;
 
         toast.success("Signed in successfully!");
-        navigate("/");
+        navigate("/studio");
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
