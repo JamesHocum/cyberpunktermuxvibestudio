@@ -46,6 +46,47 @@ export type Database = {
           },
         ]
       }
+      project_analysis: {
+        Row: {
+          analysis_type: string
+          analyzed_at: string | null
+          created_at: string | null
+          findings: Json | null
+          id: string
+          project_id: string
+          score: number | null
+          suggestions: Json | null
+        }
+        Insert: {
+          analysis_type: string
+          analyzed_at?: string | null
+          created_at?: string | null
+          findings?: Json | null
+          id?: string
+          project_id: string
+          score?: number | null
+          suggestions?: Json | null
+        }
+        Update: {
+          analysis_type?: string
+          analyzed_at?: string | null
+          created_at?: string | null
+          findings?: Json | null
+          id?: string
+          project_id?: string
+          score?: number | null
+          suggestions?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_analysis_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_files: {
         Row: {
           content: string | null
@@ -95,29 +136,38 @@ export type Database = {
       }
       projects: {
         Row: {
+          auto_initialized: boolean | null
           created_at: string | null
           description: string | null
           github_url: string | null
           id: string
+          last_synced_at: string | null
           name: string
+          status: string | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
+          auto_initialized?: boolean | null
           created_at?: string | null
           description?: string | null
           github_url?: string | null
           id?: string
+          last_synced_at?: string | null
           name: string
+          status?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
+          auto_initialized?: boolean | null
           created_at?: string | null
           description?: string | null
           github_url?: string | null
           id?: string
+          last_synced_at?: string | null
           name?: string
+          status?: string | null
           updated_at?: string | null
           user_id?: string | null
         }

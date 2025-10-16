@@ -2,3 +2,12 @@ project_id = "myzldjuiklczgttasjlx"
 
 [functions.lady-violet-chat]
 verify_jwt = false
+
+[functions.project-watcher]
+verify_jwt = false
+
+[functions.git-sync]
+verify_jwt = false
+
+[functions.analyze-project]
+verify_jwt = false
