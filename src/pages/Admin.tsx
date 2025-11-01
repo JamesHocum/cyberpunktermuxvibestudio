@@ -33,7 +33,9 @@ const Admin = () => {
       if (error) throw error;
       setUsers(data.users || []);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      if (import.meta.env.DEV) {
+        console.error("Error fetching users:", error);
+      }
       toast({
         title: "Error",
         description: "Failed to fetch users",
@@ -55,11 +57,24 @@ const Admin = () => {
       if (error) throw error;
       setAuditLogs(data || []);
     } catch (error) {
-      console.error("Error fetching audit logs:", error);
+      if (import.meta.env.DEV) {
+        console.error("Error fetching audit logs:", error);
+      }
     }
   };
 
   const assignRole = async (userId: string, role: string) => {
+    // Client-side validation for allowed roles
+    const allowedRoles = ['admin', 'moderator', 'user'];
+    if (!allowedRoles.includes(role)) {
+      toast({
+        title: "Error",
+        description: "Invalid role selected",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase.functions.invoke("assign-role", {
         body: { user_id: userId, role },
@@ -75,7 +90,9 @@ const Admin = () => {
       fetchUsers();
       fetchAuditLogs();
     } catch (error) {
-      console.error("Error assigning role:", error);
+      if (import.meta.env.DEV) {
+        console.error("Error assigning role:", error);
+      }
       toast({
         title: "Error",
         description: "Failed to assign role",

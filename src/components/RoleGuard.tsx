@@ -32,7 +32,9 @@ export const RoleGuard = ({ children, requiredRole = "admin" }: RoleGuardProps) 
       });
 
       if (error) {
-        console.error("Error checking role:", error);
+        if (import.meta.env.DEV) {
+          console.error("Error checking role:", error);
+        }
         navigate("/studio");
         return;
       }
