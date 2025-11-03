@@ -101,7 +101,6 @@
   body {
     @apply bg-background text-foreground font-mono;
     font-family: 'JetBrains Mono', 'Courier New', monospace;
-    background: hsl(var(--studio-bg));
     overflow-x: hidden;
   }
   
