@@ -42,13 +42,13 @@ export const StudioLayout = () => {
   };
 
   return (
-    <div className="h-screen w-full bg-studio-bg text-matrix-green font-terminal">
+    <div className="h-screen w-full bg-studio-bg text-matrix-green font-terminal overflow-hidden">
       <SidebarProvider>
-        <div className="flex h-full w-full">
+        <div className="flex h-full w-full overflow-hidden">
           <StudioSidebar onFileSelect={handleFileSelect} activeFile={activeFile} />
           
-          <div className="flex-1 flex flex-col">
-          <StudioHeader 
+          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <StudioHeader
             onToggleChat={() => setShowChat(!showChat)}
             onToggleTerminal={() => setShowTerminal(!showTerminal)}
             onToggleApiConfig={() => setShowApiConfig(!showApiConfig)}
@@ -71,9 +71,9 @@ export const StudioLayout = () => {
               </div>
             )}
             
-            <ResizablePanelGroup direction="horizontal" className="flex-1">
+            <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
               <ResizablePanel defaultSize={showChat ? 70 : 100} minSize={50}>
-                <ResizablePanelGroup direction="vertical">
+                <ResizablePanelGroup direction="vertical" className="h-full">
                   <ResizablePanel defaultSize={showTerminal ? 70 : 100} minSize={30}>
                     <CodeEditor 
                       activeFile={activeFile} 
