@@ -12,19 +12,44 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('🔮 Lady Violet: Scanning for new projects for user:', user.id);
+    
+    const serviceClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    console.log('🔮 Lady Violet: Scanning for new projects...');
-
-    // Find pending projects that haven't been auto-initialized
-    const { data: pendingProjects, error: fetchError } = await supabaseClient
+    // Find pending projects that haven't been auto-initialized (only user's own projects)
+    const { data: pendingProjects, error: fetchError } = await serviceClient
       .from('projects')
       .select('*')
       .eq('status', 'pending')
-      .eq('auto_initialized', false);
+      .eq('auto_initialized', false)
+      .eq('user_id', user.id);
 
     if (fetchError) {
       console.error('Error fetching pending projects:', fetchError);
@@ -38,14 +63,15 @@ serve(async (req) => {
       console.log(`Initializing project: ${project.name} (${project.id})`);
 
       // Update project status
-      const { error: updateError } = await supabaseClient
+      const { error: updateError } = await serviceClient
         .from('projects')
         .update({
           status: 'initialized',
           auto_initialized: true,
           updated_at: new Date().toISOString()
         })
-        .eq('id', project.id);
+        .eq('id', project.id)
+        .eq('user_id', user.id);
 
       if (updateError) {
         console.error(`Failed to initialize ${project.name}:`, updateError);
@@ -53,7 +79,7 @@ serve(async (req) => {
       }
 
       // Create initial file tree if it doesn't exist
-      const { data: existingTree } = await supabaseClient
+      const { data: existingTree } = await serviceClient
         .from('file_tree')
         .select('*')
         .eq('project_id', project.id)
@@ -77,7 +103,7 @@ serve(async (req) => {
           ]
         };
 
-        await supabaseClient
+        await serviceClient
           .from('file_tree')
           .insert({
             project_id: project.id,

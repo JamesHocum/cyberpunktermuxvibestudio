@@ -1,16 +1,16 @@
 project_id = "myzldjuiklczgttasjlx"
 
 [functions.lady-violet-chat]
-verify_jwt = false
+verify_jwt = true
 
 [functions.project-watcher]
-verify_jwt = false
+verify_jwt = true
 
 [functions.git-sync]
-verify_jwt = false
+verify_jwt = true
 
 [functions.analyze-project]
-verify_jwt = false
+verify_jwt = true
 
 [functions.get-users]
 verify_jwt = true

@@ -12,10 +12,29 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
     );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const { projectId } = await req.json();
 
@@ -25,15 +44,19 @@ serve(async (req) => {
       throw new Error('Project ID is required');
     }
 
-    // Get project and files
+    // Get project and verify ownership
     const { data: project, error: projectError } = await supabaseClient
       .from('projects')
       .select('*')
       .eq('id', projectId)
+      .eq('user_id', user.id)
       .single();
 
     if (projectError || !project) {
-      throw new Error('Project not found');
+      return new Response(
+        JSON.stringify({ error: 'Project not found or access denied' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const { data: files, error: filesError } = await supabaseClient
@@ -159,8 +182,13 @@ Provide analysis in JSON format with:
       summary: "Analysis could not be completed"
     };
 
-    // Store analysis in database
-    const { error: insertError } = await supabaseClient
+    // Store analysis in database using service role
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
+
+    const { error: insertError } = await serviceClient
       .from('project_analysis')
       .insert({
         project_id: projectId,
