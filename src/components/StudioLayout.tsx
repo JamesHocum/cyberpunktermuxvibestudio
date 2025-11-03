@@ -42,7 +42,7 @@ export const StudioLayout = () => {
   };
 
   return (
-    <div className="h-screen w-full bg-studio-bg text-matrix-green dark font-terminal">
+    <div className="h-screen w-full bg-studio-bg text-matrix-green font-terminal">
       <SidebarProvider>
         <div className="flex h-full w-full">
           <StudioSidebar onFileSelect={handleFileSelect} activeFile={activeFile} />
