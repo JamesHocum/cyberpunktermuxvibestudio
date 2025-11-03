@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { StudioSidebar } from "./StudioSidebar";
 import { StudioHeader } from "./StudioHeader";
@@ -12,7 +12,14 @@ import { IntegrationPanel } from "./IntegrationPanel";
 import { GitPanel } from "./GitPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+
 export const StudioLayout = () => {
+  // Mobile viewport debug
+  useEffect(() => {
+    console.log('Mobile viewport:', window.innerWidth, window.innerHeight);
+    document.body.style.background = '#111';
+    document.body.style.overflow = 'auto';
+  }, []);
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [showTerminal, setShowTerminal] = useState(true);

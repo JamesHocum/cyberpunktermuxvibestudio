@@ -197,3 +197,17 @@
     background: hsl(var(--neon-green) / 0.8);
   }
 }
+
+/* Mobile Layout Fixes */
+@media (max-width: 768px) {
+  #app, #root, body, html {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow: auto;
+  }
+  
+  .resizable-panel {
+    min-height: 50vh !important;
+  }
+}
