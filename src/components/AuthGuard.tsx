@@ -42,8 +42,8 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-cyber-primary">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-primary font-cyber text-xl animate-pulse">Loading...</div>
       </div>
     );
   }
