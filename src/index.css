@@ -179,6 +179,21 @@
     100% { opacity: 0.95; }
   }
   
+  @keyframes pulseGlow {
+    0%, 100% {
+      filter: drop-shadow(0 0 4px #8c00ff)
+              drop-shadow(0 0 8px #00ff7f);
+    }
+    50% {
+      filter: drop-shadow(0 0 10px #8c00ff)
+              drop-shadow(0 0 18px #00ff7f);
+    }
+  }
+  
+  .logo-glow {
+    animation: pulseGlow 3s ease-in-out infinite;
+  }
+  
   /* Scrollbar Styling */
   .cyber-scrollbar::-webkit-scrollbar {
     width: 8px;
