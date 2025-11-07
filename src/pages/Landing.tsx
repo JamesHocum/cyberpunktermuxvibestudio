@@ -48,15 +48,38 @@ const Landing = () => {
         
         {/* Main Content */}
         <div className="relative z-10 px-4">
-          <h1 className="text-6xl md:text-7xl font-cyber font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-primary to-neon-green animate-neonFlicker mb-6">
-            DEVSTUDIO_MATRIX.EXE
+          {/* Brand Logo */}
+          <div className="flex justify-center mb-8 animate-fadeIn">
+            <img 
+              src="/favicon.png" 
+              alt="Cyberpunk Termux Logo" 
+              className="w-24 h-24 md:w-32 md:h-32 drop-shadow-[0_0_25px_rgba(139,92,246,0.8)] animate-pulse"
+            />
+          </div>
+          
+          <h1 className="text-6xl md:text-7xl font-cyber font-extrabold tracking-wider mb-6" style={{
+            color: '#7c3aed',
+            textShadow: '0 0 10px #22c55e, 0 0 20px #22c55e, 0 0 30px #22c55e',
+            WebkitTextStroke: '2px #22c55e'
+          }}>
+            CYBERPUNK TERMUX
           </h1>
           <TypingEffect 
             text="The Chill Spot for Code Rebels and Future Builders"
             speed={80}
-            className="text-lg md:text-xl text-neon-cyan drop-shadow-lg mb-8 max-w-2xl mx-auto"
+            className="text-lg md:text-xl mb-8 max-w-2xl mx-auto" 
+            style={{
+              color: '#22c55e',
+              textShadow: '0 0 10px #22c55e, 0 0 20px #22c55e',
+              WebkitTextStroke: '1px #22c55e'
+            }}
           />
-          <p className="text-sm md:text-base text-muted-foreground animate-fadeIn mb-10 max-w-xl mx-auto" style={{ animationDelay: '0.2s' }}>
+          <p className="text-sm md:text-base animate-fadeIn mb-10 max-w-xl mx-auto" style={{ 
+            animationDelay: '0.2s',
+            color: '#22c55e',
+            textShadow: '0 0 10px #22c55e, 0 0 20px #22c55e, 0 0 30px #22c55e',
+            fontWeight: '500'
+          }}>
             AI-Powered Development Studio with Autonomous Workflow Intelligence
           </p>
           <div className="flex gap-4 justify-center animate-fadeIn" style={{ animationDelay: '0.4s' }}>

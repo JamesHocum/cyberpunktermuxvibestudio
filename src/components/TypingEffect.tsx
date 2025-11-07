@@ -5,13 +5,15 @@ interface TypingEffectProps {
   speed?: number;
   className?: string;
   showCursor?: boolean;
+  style?: React.CSSProperties;
 }
 
 export default function TypingEffect({ 
   text, 
   speed = 80, 
   className = "",
-  showCursor = true 
+  showCursor = true,
+  style
 }: TypingEffectProps) {
   const [displayedText, setDisplayedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -31,7 +33,7 @@ export default function TypingEffect({
   }, [currentIndex, text, speed]);
 
   return (
-    <p className={className}>
+    <p className={className} style={style}>
       {displayedText}
       {showCursor && !isComplete && (
         <span className="inline-block w-2 h-5 ml-1 bg-neon-cyan animate-pulse" />
