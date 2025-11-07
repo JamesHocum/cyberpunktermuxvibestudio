@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Code2, Sparkles, GitBranch, Terminal } from "lucide-react";
+import cityGlow from "@/assets/city-glow.png";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -31,26 +32,42 @@ const Landing = () => {
   if (session) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-background/80">
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+    <div className="min-h-screen bg-black">
+      {/* Cyberpunk Hero Section */}
+      <section className="relative flex flex-col items-center justify-center min-h-screen overflow-hidden text-center">
+        {/* Background Layers */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center opacity-30"
+          style={{ backgroundImage: `url(${cityGlow})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90" />
+        <div className="absolute inset-0 animate-scanlines pointer-events-none" />
+        
+        {/* Main Content */}
+        <div className="relative z-10 px-4">
+          <h1 className="text-6xl md:text-7xl font-cyber font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-primary to-neon-green animate-neonFlicker mb-6">
             DEVSTUDIO_MATRIX.EXE
           </h1>
-          <p className="text-xl text-muted-foreground mb-8">
+          <p className="text-lg md:text-xl text-neon-cyan drop-shadow-lg animate-fadeIn mb-8 max-w-2xl mx-auto">
+            The Chill Spot for Code Rebels and Future Builders
+          </p>
+          <p className="text-sm md:text-base text-muted-foreground animate-fadeIn mb-10 max-w-xl mx-auto" style={{ animationDelay: '0.2s' }}>
             AI-Powered Development Studio with Autonomous Workflow Intelligence
           </p>
-          <div className="flex gap-4 justify-center">
-            <Button size="lg" onClick={() => navigate("/auth")}>
+          <div className="flex gap-4 justify-center animate-fadeIn" style={{ animationDelay: '0.4s' }}>
+            <Button size="lg" onClick={() => navigate("/auth")} className="bg-neon-purple hover:bg-neon-purple/80 text-white shadow-neon-purple">
               Get Started
             </Button>
-            <Button size="lg" variant="outline" onClick={() => navigate("/auth")}>
+            <Button size="lg" variant="outline" onClick={() => navigate("/auth")} className="border-neon-cyan text-neon-cyan hover:bg-neon-cyan/10">
               Sign In
             </Button>
           </div>
         </div>
+      </section>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+      {/* Features Section */}
+      <div className="container mx-auto px-4 py-16 bg-gradient-to-b from-black to-background">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto mb-16">
           <div className="p-6 rounded-lg border bg-card">
             <Code2 className="h-12 w-12 mb-4 text-primary" />
             <h3 className="text-lg font-semibold mb-2">Code Editor</h3>
