@@ -129,7 +129,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Project watcher error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Failed to initialize projects. Please try again.' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

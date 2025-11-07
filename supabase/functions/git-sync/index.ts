@@ -1,10 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.75.0';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const requestSchema = z.object({
+  projectId: z.string().uuid('Invalid project ID format').max(36),
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -36,7 +41,8 @@ serve(async (req) => {
       );
     }
 
-    const { projectId } = await req.json();
+    const body = await req.json();
+    const { projectId } = requestSchema.parse(body);
 
     console.log('🔮 Lady Violet: Syncing project to GitHub...', projectId);
 
@@ -113,7 +119,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Git sync error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Failed to sync project. Please try again.' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
