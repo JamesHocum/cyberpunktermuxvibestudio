@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Code2, Sparkles, GitBranch, Terminal } from "lucide-react";
 import cityGlow from "@/assets/city-glow.png";
+import Particles from "@/components/Particles";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ const Landing = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90" />
         <div className="absolute inset-0 animate-scanlines pointer-events-none" />
+        <Particles />
         
         {/* Main Content */}
         <div className="relative z-10 px-4">
