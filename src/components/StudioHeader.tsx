@@ -57,6 +57,7 @@ export const StudioHeader = ({
   return (
     <header className="h-12 border-b cyber-border bg-studio-header flex items-center justify-between px-4 terminal-glow">
       <div className="flex items-center space-x-4">
+        <img src="/favicon.svg" alt="Cyberpunk Termux" className="logo-glow w-8 h-8" />
         <h1 className="text-lg font-cyber font-bold neon-green flicker">
           DEVSTUDIO_MATRIX.EXE
         </h1>
