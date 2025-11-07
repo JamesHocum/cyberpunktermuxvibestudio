@@ -2,7 +2,14 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X, Save, Copy, Maximize2, File } from "lucide-react";
+import { X, Save, Copy, Maximize2, File, Palette } from "lucide-react";
+import { highlightCode, saveTheme, loadTheme, type NeonTheme } from "@/lib/neonSyntaxHighlighter";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface CodeEditorProps {
   activeFile: string | null;
@@ -71,6 +78,7 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
   const [activeTab, setActiveTab] = useState('CyberApp.tsx');
   const [code, setCode] = useState(cyberpunkSampleCode);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [syntaxTheme, setSyntaxTheme] = useState<NeonTheme>(loadTheme());
   const [fileContents, setFileContents] = useState<Record<string, string>>({
     'CyberApp.tsx': cyberpunkSampleCode,
     'NeuralInterface.tsx': '// Neural interface component\n\nexport const NeuralInterface = () => {\n  return <div>Neural Link Active</div>;\n};'
@@ -142,6 +150,11 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
 
   const toggleMaximize = () => {
     setIsMaximized(!isMaximized);
+  };
+
+  const changeTheme = (theme: NeonTheme) => {
+    setSyntaxTheme(theme);
+    saveTheme(theme);
   };
 
   return (
@@ -218,6 +231,38 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
           >
             <Maximize2 className="h-4 w-4" />
           </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="neon-purple hover:neon-glow"
+                title="Change syntax theme"
+              >
+                <Palette className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="cyber-border terminal-glow">
+              <DropdownMenuItem 
+                onClick={() => changeTheme('matrix')}
+                className="neon-green font-terminal"
+              >
+                Matrix Theme
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => changeTheme('cyber')}
+                className="text-cyber-cyan font-terminal"
+              >
+                Cyber Theme
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => changeTheme('vaporwave')}
+                className="text-neon-pink font-terminal"
+              >
+                Vaporwave Theme
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -244,6 +289,15 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
                 
                 {/* Code Area */}
                 <div className="flex-1 relative">
+                  <div className="absolute inset-0 pointer-events-none overflow-auto p-4 font-terminal text-sm leading-5 cyber-scrollbar">
+                    <pre
+                      dangerouslySetInnerHTML={{
+                        __html: highlightCode(fileContents[tab] || code, syntaxTheme)
+                      }}
+                      className="m-0"
+                      style={{ fontFamily: 'JetBrains Mono, Monaco, Menlo, monospace' }}
+                    />
+                  </div>
                   <textarea
                     value={fileContents[tab] || code}
                     onChange={(e) => {
@@ -254,7 +308,7 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
                         [tab]: newContent
                       });
                     }}
-                    className="w-full h-full p-4 bg-transparent matrix-text font-terminal text-sm leading-5 resize-none focus:outline-none selection:bg-primary/20 cyber-scrollbar"
+                    className="w-full h-full p-4 bg-transparent text-transparent caret-neon-green font-terminal text-sm leading-5 resize-none focus:outline-none selection:bg-primary/20 cyber-scrollbar relative z-10"
                     style={{ fontFamily: 'JetBrains Mono, Monaco, Menlo, monospace' }}
                     spellCheck={false}
                     placeholder="// Enter your neural code here..."
