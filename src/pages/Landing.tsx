@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Code2, Sparkles, GitBranch, Terminal } from "lucide-react";
 import cityGlow from "@/assets/city-glow.png";
 import Particles from "@/components/Particles";
+import TypingEffect from "@/components/TypingEffect";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -50,9 +51,11 @@ const Landing = () => {
           <h1 className="text-6xl md:text-7xl font-cyber font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-neon-purple via-primary to-neon-green animate-neonFlicker mb-6">
             DEVSTUDIO_MATRIX.EXE
           </h1>
-          <p className="text-lg md:text-xl text-neon-cyan drop-shadow-lg animate-fadeIn mb-8 max-w-2xl mx-auto">
-            The Chill Spot for Code Rebels and Future Builders
-          </p>
+          <TypingEffect 
+            text="The Chill Spot for Code Rebels and Future Builders"
+            speed={80}
+            className="text-lg md:text-xl text-neon-cyan drop-shadow-lg mb-8 max-w-2xl mx-auto"
+          />
           <p className="text-sm md:text-base text-muted-foreground animate-fadeIn mb-10 max-w-xl mx-auto" style={{ animationDelay: '0.2s' }}>
             AI-Powered Development Studio with Autonomous Workflow Intelligence
           </p>
