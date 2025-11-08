@@ -198,7 +198,7 @@ const Landing = () => {
       {/* Features Section */}
       <div className="container mx-auto px-4 py-16 bg-gradient-to-b from-black to-background">
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto mb-16">
-          <div className="p-6 rounded-lg border bg-card">
+          <div className="neon-feature-card p-6 rounded-lg border bg-card">
             <Code2 className="h-12 w-12 mb-4 text-primary" />
             <h3 className="text-lg font-semibold mb-2">Code Editor</h3>
             <p className="text-sm text-muted-foreground">
@@ -206,7 +206,7 @@ const Landing = () => {
             </p>
           </div>
 
-          <div className="p-6 rounded-lg border bg-card">
+          <div className="neon-feature-card p-6 rounded-lg border bg-card">
             <Sparkles className="h-12 w-12 mb-4 text-primary" />
             <h3 className="text-lg font-semibold mb-2">AI Assistant</h3>
             <p className="text-sm text-muted-foreground">
@@ -214,7 +214,7 @@ const Landing = () => {
             </p>
           </div>
 
-          <div className="p-6 rounded-lg border bg-card">
+          <div className="neon-feature-card p-6 rounded-lg border bg-card">
             <GitBranch className="h-12 w-12 mb-4 text-primary" />
             <h3 className="text-lg font-semibold mb-2">Git Integration</h3>
             <p className="text-sm text-muted-foreground">
@@ -222,7 +222,7 @@ const Landing = () => {
             </p>
           </div>
 
-          <div className="p-6 rounded-lg border bg-card">
+          <div className="neon-feature-card p-6 rounded-lg border bg-card">
             <Terminal className="h-12 w-12 mb-4 text-primary" />
             <h3 className="text-lg font-semibold mb-2">Terminal & Testing</h3>
             <p className="text-sm text-muted-foreground">
