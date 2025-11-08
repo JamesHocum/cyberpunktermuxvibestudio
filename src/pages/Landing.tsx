@@ -31,6 +31,38 @@ const Landing = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Parallax mouse movement effect
+  useEffect(() => {
+    const haze = document.getElementById('haze-overlay');
+    const city = document.querySelector('.cityscape');
+    if (!haze || !city) return;
+
+    const move = (e: MouseEvent) => {
+      const x = (e.clientX / window.innerWidth - 0.5);
+      const y = (e.clientY / window.innerHeight - 0.5);
+
+      const hazeTiltX = y * 20;
+      const hazeTiltY = x * 20;
+      const cityShiftX = x * -15;
+      const cityShiftY = y * -10;
+
+      (haze as HTMLElement).style.transform = `rotateX(${hazeTiltX}deg) rotateY(${hazeTiltY}deg)`;
+      (city as HTMLElement).style.transform = `translate(${cityShiftX}px, ${cityShiftY}px) scale(1.03)`;
+    };
+
+    const reset = () => {
+      (haze as HTMLElement).style.transform = 'rotateX(0deg) rotateY(0deg)';
+      (city as HTMLElement).style.transform = 'translate(0px, 0px) scale(1)';
+    };
+
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseleave', reset);
+    return () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseleave', reset);
+    };
+  }, []);
+
   if (session) return null;
 
   return (
@@ -38,23 +70,31 @@ const Landing = () => {
       {/* Cyberpunk Hero Section */}
       <section className="relative flex flex-col items-center justify-center min-h-screen overflow-hidden text-center">
         {/* Background Layers */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center opacity-30"
-          style={{ backgroundImage: `url(${cityGlow})` }}
-        />
+        <div className="absolute inset-0">
+          <img 
+            src={cityGlow} 
+            alt="Cyberpunk Cityscape"
+            className="cityscape w-full h-full object-cover opacity-30"
+          />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90" />
         <div className="absolute inset-0 animate-scanlines pointer-events-none" />
         <Particles />
+        
+        {/* Haze Overlay */}
+        <div className="haze-overlay" id="haze-overlay" />
         
         {/* Main Content */}
         <div className="relative z-10 px-4">
           {/* Brand Logo */}
           <div className="flex justify-center mb-8 animate-fadeIn">
-            <img 
-              src="/favicon.png" 
-              alt="Cyberpunk Termux Logo" 
-              className="w-24 h-24 md:w-32 md:h-32 drop-shadow-[0_0_25px_rgba(139,92,246,0.8)] animate-pulse"
-            />
+            <div className="logo-container">
+              <img 
+                src="/termux-logo.jpeg" 
+                alt="Cyberpunk Termux Logo" 
+                className="w-48 h-auto md:w-64 md:h-auto animate-pulseGlow drop-shadow-[0_0_15px_#00ff88]"
+              />
+            </div>
           </div>
           
           <h1 className="text-6xl md:text-7xl font-cyber font-extrabold tracking-wider mb-6" style={{
