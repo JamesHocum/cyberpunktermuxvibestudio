@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Code2, Sparkles, GitBranch, Terminal } from "lucide-react";
@@ -10,6 +10,7 @@ import TypingEffect from "@/components/TypingEffect";
 const Landing = () => {
   const navigate = useNavigate();
   const [session, setSession] = useState(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -63,10 +64,71 @@ const Landing = () => {
     };
   }, []);
 
+  // Ambient audio with fade-in on user interaction
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    let hasStarted = false;
+
+    const startAudio = () => {
+      if (hasStarted) return;
+      hasStarted = true;
+
+      audio.volume = 0;
+      audio.play().then(() => {
+        let vol = 0;
+        const fade = setInterval(() => {
+          vol += 0.02;
+          if (vol >= 0.25) {
+            clearInterval(fade);
+            audio.volume = 0.25;
+          } else {
+            audio.volume = vol;
+          }
+        }, 200);
+      }).catch(() => {
+        // Silent fail if autoplay is blocked
+      });
+    };
+
+    const events = ['click', 'keydown', 'scroll'];
+    events.forEach(event => {
+      window.addEventListener(event, startAudio, { once: true });
+    });
+
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, startAudio);
+      });
+    };
+  }, []);
+
+  // Optional: Volume pulse sync with neon glow
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const pulse = setInterval(() => {
+      if (audio.volume > 0) {
+        const t = Date.now() / 2000;
+        const baseVolume = 0.2 + 0.05 * Math.sin(t);
+        audio.volume = Math.max(0, Math.min(0.25, baseVolume));
+      }
+    }, 100);
+
+    return () => clearInterval(pulse);
+  }, []);
+
   if (session) return null;
 
   return (
     <div className="min-h-screen bg-black">
+      {/* Ambient Audio */}
+      <audio ref={audioRef} loop preload="auto">
+        <source src="/ambient-hum.mp3" type="audio/mpeg" />
+      </audio>
+
       {/* Cyberpunk Hero Section */}
       <section className="relative flex flex-col items-center justify-center min-h-screen overflow-hidden text-center">
         {/* Background Layers */}
