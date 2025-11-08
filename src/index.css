@@ -431,6 +431,55 @@
   22% { opacity: 0.93; }
 }
 
+/* Neon button pulse animation */
+@keyframes pulseNeon {
+  0%, 100% {
+    box-shadow:
+      0 0 10px rgba(0, 255, 136, 0.2),
+      0 0 20px rgba(179, 0, 255, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 20px rgba(0, 255, 136, 0.6),
+      0 0 30px rgba(179, 0, 255, 0.4);
+  }
+}
+
+/* Neon Button Styles */
+.neon-button {
+  color: #00ff88 !important;
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  border: 2px solid #b300ff !important;
+  border-radius: 8px;
+  padding: 0.5rem 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow:
+    0 0 10px rgba(0, 255, 136, 0.3),
+    inset 0 0 10px rgba(0, 255, 136, 0.2),
+    0 0 20px rgba(179, 0, 255, 0.2);
+  transition: all 0.3s ease-in-out;
+  animation: pulseNeon 4s ease-in-out infinite;
+}
+
+.neon-button:hover {
+  color: #b300ff !important;
+  border-color: #00ff88 !important;
+  box-shadow:
+    0 0 15px rgba(0, 255, 136, 0.7),
+    0 0 30px rgba(179, 0, 255, 0.6),
+    inset 0 0 15px rgba(179, 0, 255, 0.5);
+  transform: scale(1.03);
+}
+
+.neon-button:active {
+  transform: scale(0.98);
+  box-shadow:
+    0 0 10px rgba(0, 255, 136, 0.4),
+    0 0 25px rgba(179, 0, 255, 0.3);
+}
+
 .cityscape {
   transition: transform 0.5s ease-out;
   transform-origin: center;
