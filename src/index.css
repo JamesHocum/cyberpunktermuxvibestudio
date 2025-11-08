@@ -118,20 +118,92 @@
 }
 
 @layer components {
-  /* Neon Glow Effects */
+  /* Neon text animation */
+  .neon-text {
+    color: #00ff88;
+    text-shadow:
+      0 0 8px #00ffaa,
+      0 0 16px #b300ff,
+      0 0 32px rgba(0, 255, 136, 0.75);
+    animation: glowText 4s ease-in-out infinite alternate;
+  }
+
+  @keyframes glowText {
+    0%, 100% { 
+      text-shadow: 0 0 8px #00ffaa; 
+      opacity: 1; 
+    }
+    50% { 
+      text-shadow: 0 0 24px #b300ff; 
+      opacity: 0.9; 
+    }
+  }
+
+  /* Enhanced neon button styles */
   .neon-green {
-    color: hsl(var(--neon-green));
-    text-shadow: 0 0 10px hsl(var(--neon-green) / 0.8);
+    color: #00ff88;
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    background: rgba(0, 255, 80, 0.05);
+    box-shadow:
+      0 0 5px #00ff88,
+      inset 0 0 8px rgba(0, 255, 136, 0.5);
+    transition: all 0.3s ease-in-out;
+    animation: pulseMatrix 2.2s infinite ease-in-out;
+    position: relative;
+    overflow: hidden;
   }
   
   .neon-purple {
-    color: hsl(var(--neon-purple));
-    text-shadow: 0 0 10px hsl(var(--neon-purple) / 0.8);
+    color: #b300ff;
+    border: 1px solid rgba(179, 0, 255, 0.4);
+    background: rgba(179, 0, 255, 0.05);
+    box-shadow:
+      0 0 5px #b300ff,
+      inset 0 0 8px rgba(179, 0, 255, 0.5);
+    transition: all 0.3s ease-in-out;
+    animation: pulseMatrix 2.2s infinite ease-in-out;
+    position: relative;
+    overflow: hidden;
+  }
+
+  @keyframes pulseMatrix {
+    0%, 100% {
+      box-shadow: 0 0 5px currentColor, inset 0 0 8px rgba(0, 255, 136, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 20px currentColor, inset 0 0 12px rgba(0, 255, 136, 0.9);
+    }
   }
   
   .neon-glow {
-    box-shadow: var(--shadow-neon-green);
-    border: 1px solid hsl(var(--neon-green) / 0.5);
+    transition: all 0.3s ease;
+  }
+
+  .neon-glow:hover {
+    filter: brightness(1.3);
+    text-shadow: 0 0 15px currentColor, 0 0 30px currentColor;
+  }
+
+  /* Spark effect */
+  .spark {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: radial-gradient(circle, #00ff88 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: sparkMove 0.4s linear forwards;
+  }
+
+  @keyframes sparkMove {
+    0% { 
+      transform: scale(1) translate(0, 0); 
+      opacity: 1; 
+    }
+    100% { 
+      transform: scale(0.5) translate(20px, -20px); 
+      opacity: 0; 
+    }
   }
   
   .cyber-border {
