@@ -71,15 +71,15 @@ export const StudioHeader = ({
       </h1>
       
       <div className="flex items-center space-x-2">
-        <Button variant="ghost" size="sm" className="neon-button" onClick={handleClick}>
+        <Button variant="ghost" size="sm" className="neon-green" onClick={handleClick}>
           <Play className="h-4 w-4 mr-2" />
           Run
         </Button>
-        <Button variant="ghost" size="sm" className="neon-button" onClick={handleClick}>
+        <Button variant="ghost" size="sm" className="neon-purple" onClick={handleClick}>
           <Square className="h-4 w-4 mr-2" />
           Stop
         </Button>
-        <Button variant="ghost" size="sm" className="neon-button" onClick={handleClick}>
+        <Button variant="ghost" size="sm" className="neon-green" onClick={handleClick}>
           <FolderPlus className="h-4 w-4 mr-2" />
           New
         </Button>
