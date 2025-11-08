@@ -185,10 +185,10 @@ const Landing = () => {
             AI-Powered Development Studio with Autonomous Workflow Intelligence
           </p>
           <div className="flex gap-4 justify-center animate-fadeIn" style={{ animationDelay: '0.4s' }}>
-            <Button size="lg" onClick={() => navigate("/auth")} className="bg-neon-purple hover:bg-neon-purple/80 text-white shadow-neon-purple">
+            <Button size="lg" onClick={() => navigate("/auth")} className="neon-button">
               Get Started
             </Button>
-            <Button size="lg" variant="outline" onClick={() => navigate("/auth")} className="border-neon-cyan text-neon-cyan hover:bg-neon-cyan/10">
+            <Button size="lg" onClick={() => navigate("/auth")} className="neon-button">
               Sign In
             </Button>
           </div>
