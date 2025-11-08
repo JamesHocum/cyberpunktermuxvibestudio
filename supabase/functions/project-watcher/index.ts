@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.75.0';
+import { checkRateLimit, createRateLimitHeaders } from '../_shared/rateLimiter.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,6 +35,22 @@ serve(async (req) => {
         JSON.stringify({ error: 'Invalid authentication' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Rate limiting: 10 requests per minute per user
+    const rateLimit = checkRateLimit(user.id);
+    if (!rateLimit.allowed) {
+      return new Response(JSON.stringify({ 
+        error: 'Rate limit exceeded. Please try again later.',
+        resetAt: new Date(rateLimit.resetAt).toISOString()
+      }), {
+        status: 429,
+        headers: { 
+          ...corsHeaders, 
+          ...createRateLimitHeaders(rateLimit.resetAt, rateLimit.remaining),
+          'Content-Type': 'application/json' 
+        },
+      });
     }
 
     console.log('🔮 Lady Violet: Scanning for new projects for user:', user.id);
