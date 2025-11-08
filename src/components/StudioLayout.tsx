@@ -11,6 +11,7 @@ import { TestingSuite } from "./TestingSuite";
 import { IntegrationPanel } from "./IntegrationPanel";
 import { GitPanel } from "./GitPanel";
 import { SettingsPanel } from "./SettingsPanel";
+import { StudioFooter } from "./StudioFooter";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 export const StudioLayout = () => {
@@ -110,10 +111,12 @@ export const StudioLayout = () => {
                 </>
               )}
             </ResizablePanelGroup>
+            
+            <StudioFooter />
           </div>
         </div>
         
-        <ProjectDownloader 
+        <ProjectDownloader
           isVisible={showDownloader} 
           onClose={() => setShowDownloader(false)} 
         />
