@@ -6,6 +6,7 @@ import { Code2, Sparkles, GitBranch, Terminal } from "lucide-react";
 import cityGlow from "@/assets/city-glow.png";
 import Particles from "@/components/Particles";
 import TypingEffect from "@/components/TypingEffect";
+import { PasswordGate } from "@/components/PasswordGate";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -123,6 +124,7 @@ const Landing = () => {
   if (session) return null;
 
   return (
+    <PasswordGate>
     <div className="min-h-screen bg-black">
       {/* Ambient Audio */}
       <audio ref={audioRef} loop preload="auto">
@@ -232,6 +234,7 @@ const Landing = () => {
         </div>
       </div>
     </div>
+    </PasswordGate>
   );
 };
 
