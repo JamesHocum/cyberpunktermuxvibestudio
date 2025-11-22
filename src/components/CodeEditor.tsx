@@ -3,13 +3,82 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X, Save, Copy, Maximize2, File, Palette } from "lucide-react";
-import { highlightCode, saveTheme, loadTheme, type NeonTheme } from "@/lib/neonSyntaxHighlighter";
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+type NeonTheme = 'matrix' | 'cyber' | 'vaporwave';
+
+const themeStyles = {
+  matrix: {
+    ...tomorrow,
+    'pre[class*="language-"]': {
+      ...tomorrow['pre[class*="language-"]'],
+      background: 'transparent',
+      margin: 0,
+      padding: 0,
+    },
+    'code[class*="language-"]': {
+      ...tomorrow['code[class*="language-"]'],
+      color: '#00ff41',
+      fontFamily: 'JetBrains Mono, Monaco, Menlo, monospace',
+    },
+    keyword: { color: '#8c00ff' },
+    string: { color: '#00ff41' },
+    function: { color: '#00d4ff' },
+    comment: { color: '#666', fontStyle: 'italic' },
+  },
+  cyber: {
+    ...tomorrow,
+    'pre[class*="language-"]': {
+      ...tomorrow['pre[class*="language-"]'],
+      background: 'transparent',
+      margin: 0,
+      padding: 0,
+    },
+    'code[class*="language-"]': {
+      ...tomorrow['code[class*="language-"]'],
+      color: '#00d4ff',
+      fontFamily: 'JetBrains Mono, Monaco, Menlo, monospace',
+    },
+    keyword: { color: '#ff006e' },
+    string: { color: '#00d4ff' },
+    function: { color: '#ffbe0b' },
+    comment: { color: '#666', fontStyle: 'italic' },
+  },
+  vaporwave: {
+    ...tomorrow,
+    'pre[class*="language-"]': {
+      ...tomorrow['pre[class*="language-"]'],
+      background: 'transparent',
+      margin: 0,
+      padding: 0,
+    },
+    'code[class*="language-"]': {
+      ...tomorrow['code[class*="language-"]'],
+      color: '#ff006e',
+      fontFamily: 'JetBrains Mono, Monaco, Menlo, monospace',
+    },
+    keyword: { color: '#8c00ff' },
+    string: { color: '#ff006e' },
+    function: { color: '#00d4ff' },
+    comment: { color: '#666', fontStyle: 'italic' },
+  },
+};
+
+const saveTheme = (theme: NeonTheme) => {
+  localStorage.setItem('neon-syntax-theme', theme);
+};
+
+const loadTheme = (): NeonTheme => {
+  const saved = localStorage.getItem('neon-syntax-theme');
+  return (saved as NeonTheme) || 'matrix';
+};
 
 interface CodeEditorProps {
   activeFile: string | null;
@@ -289,14 +358,25 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
                 
                 {/* Code Area */}
                 <div className="flex-1 relative">
-                  <div className="absolute inset-0 pointer-events-none overflow-auto p-4 font-terminal text-sm leading-5 cyber-scrollbar">
-                    <pre
-                      dangerouslySetInnerHTML={{
-                        __html: highlightCode(fileContents[tab] || code, syntaxTheme)
+                  <div className="absolute inset-0 pointer-events-none overflow-auto p-4 cyber-scrollbar">
+                    <SyntaxHighlighter
+                      language="typescript"
+                      style={themeStyles[syntaxTheme]}
+                      customStyle={{
+                        background: 'transparent',
+                        margin: 0,
+                        padding: 0,
+                        fontSize: '0.875rem',
+                        lineHeight: '1.25rem',
                       }}
-                      className="m-0"
-                      style={{ fontFamily: 'JetBrains Mono, Monaco, Menlo, monospace' }}
-                    />
+                      codeTagProps={{
+                        style: {
+                          fontFamily: 'JetBrains Mono, Monaco, Menlo, monospace',
+                        }
+                      }}
+                    >
+                      {fileContents[tab] || code}
+                    </SyntaxHighlighter>
                   </div>
                   <textarea
                     value={fileContents[tab] || code}
