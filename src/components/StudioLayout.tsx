@@ -12,15 +12,42 @@ import { IntegrationPanel } from "./IntegrationPanel";
 import { GitPanel } from "./GitPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { StudioFooter } from "./StudioFooter";
+import { ProjectManagerModal } from "./ProjectManagerModal";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { useProject } from "@/hooks/useProject";
 
 export const StudioLayout = () => {
-  // Mobile viewport debug
+  const {
+    currentProject,
+    fileTree,
+    fileContents,
+    projects,
+    isLoading,
+    isSaving,
+    history,
+    hasUnsavedChanges,
+    loadProject,
+    saveProject,
+    createProject,
+    deleteProject,
+    updateFileContent,
+    createFile,
+    deleteFile,
+    clearProject,
+    toggleFolder
+  } = useProject();
+
   useEffect(() => {
-    console.log('Mobile viewport:', window.innerWidth, window.innerHeight);
     document.body.style.background = '#111';
     document.body.style.overflow = 'auto';
+    
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('[PWA] Service Worker registered'))
+        .catch(err => console.log('[PWA] SW failed:', err));
+    }
   }, []);
+
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [showTerminal, setShowTerminal] = useState(true);
@@ -30,6 +57,7 @@ export const StudioLayout = () => {
   const [showIntegrations, setShowIntegrations] = useState(false);
   const [showGit, setShowGit] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showProjectManager, setShowProjectManager] = useState(false);
   const [apiKey, setApiKey] = useState<string>("DEFAULT");
   const [openFiles, setOpenFiles] = useState<string[]>([]);
 
@@ -53,25 +81,33 @@ export const StudioLayout = () => {
     <div className="h-screen w-full bg-studio-bg text-matrix-green font-terminal overflow-hidden">
       <SidebarProvider>
         <div className="flex h-full w-full overflow-hidden">
-          <StudioSidebar onFileSelect={handleFileSelect} activeFile={activeFile} />
+          <StudioSidebar 
+            onFileSelect={handleFileSelect} 
+            activeFile={activeFile || ''}
+            fileTree={fileTree}
+            onToggleFolder={toggleFolder}
+            onCreateFile={createFile}
+            onDeleteFile={deleteFile}
+            currentProjectName={currentProject?.name}
+          />
           
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <StudioHeader
-            onToggleChat={() => setShowChat(!showChat)}
-            onToggleTerminal={() => setShowTerminal(!showTerminal)}
-            onToggleApiConfig={() => setShowApiConfig(!showApiConfig)}
-            onToggleDownloader={() => setShowDownloader(!showDownloader)}
-            onToggleTesting={() => setShowTesting(!showTesting)}
-            onToggleIntegrations={() => setShowIntegrations(!showIntegrations)}
-            showChat={showChat}
-            showTerminal={showTerminal}
-            showApiConfig={showApiConfig}
-            showDownloader={showDownloader}
-            showTesting={showTesting}
-            showIntegrations={showIntegrations}
-            onToggleGit={() => setShowGit(!showGit)}
-            onToggleSettings={() => setShowSettings(!showSettings)}
-          />
+            <StudioHeader
+              onToggleChat={() => setShowChat(!showChat)}
+              onToggleTerminal={() => setShowTerminal(!showTerminal)}
+              onToggleApiConfig={() => setShowApiConfig(!showApiConfig)}
+              onToggleDownloader={() => setShowDownloader(!showDownloader)}
+              onToggleTesting={() => setShowTesting(!showTesting)}
+              onToggleIntegrations={() => setShowIntegrations(!showIntegrations)}
+              showChat={showChat}
+              showTerminal={showTerminal}
+              showApiConfig={showApiConfig}
+              showDownloader={showDownloader}
+              showTesting={showTesting}
+              showIntegrations={showIntegrations}
+              onToggleGit={() => setShowGit(!showGit)}
+              onToggleSettings={() => setShowSettings(!showSettings)}
+            />
             
             {showApiConfig && (
               <div className="p-4 border-b bg-muted/50">
@@ -116,14 +152,30 @@ export const StudioLayout = () => {
           </div>
         </div>
         
+        <ProjectManagerModal
+          isVisible={showProjectManager}
+          onClose={() => setShowProjectManager(false)}
+          projects={projects}
+          currentProject={currentProject}
+          history={history}
+          isLoading={isLoading}
+          isSaving={isSaving}
+          hasUnsavedChanges={hasUnsavedChanges}
+          onCreateProject={createProject}
+          onLoadProject={loadProject}
+          onDeleteProject={deleteProject}
+          onSaveProject={saveProject}
+          onClearProject={clearProject}
+        />
+        
         <ProjectDownloader
           isVisible={showDownloader} 
-          onClose={() => setShowDownloader(false)} 
+          onClose={() => setShowDownloader(false)}
         />
         
         <TestingSuite 
           isVisible={showTesting} 
-          onClose={() => setShowTesting(false)} 
+          onClose={() => setShowTesting(false)}
         />
         
         <IntegrationPanel 
@@ -133,7 +185,7 @@ export const StudioLayout = () => {
         
         <GitPanel 
           isVisible={showGit} 
-          onClose={() => setShowGit(false)} 
+          onClose={() => setShowGit(false)}
         />
         
         <SettingsPanel 
