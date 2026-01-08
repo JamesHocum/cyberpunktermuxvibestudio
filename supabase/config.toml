@@ -1,7 +1,7 @@
 project_id = "myzldjuiklczgttasjlx"
 
 [functions.lady-violet-chat]
-verify_jwt = true
+verify_jwt = false
 
 [functions.project-watcher]
 verify_jwt = true
@@ -17,3 +17,9 @@ verify_jwt = true
 
 [functions.assign-role]
 verify_jwt = true
+
+[functions.huggingface-inference]
+verify_jwt = false
+
+[functions.codex-agent]
+verify_jwt = false
