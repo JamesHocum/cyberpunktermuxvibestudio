@@ -1,7 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useUserRole } from '@/hooks/useUserRole';
 import { 
   Play, 
   Square, 
@@ -10,12 +8,10 @@ import {
   Terminal as TerminalIcon,
   FolderPlus,
   Download,
-  Upload,
   Key,
   TestTube,
   Plug,
-  GitBranch,
-  Shield
+  GitBranch
 } from "lucide-react";
 
 interface StudioHeaderProps {
@@ -51,8 +47,6 @@ export const StudioHeader = ({
   showTesting,
   showIntegrations
 }: StudioHeaderProps) => {
-  const navigate = useNavigate();
-  const { isAdmin } = useUserRole();
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     const button = e.currentTarget;
@@ -165,17 +159,6 @@ export const StudioHeader = ({
           <Settings className="h-4 w-4 mr-2" />
           Settings
         </Button>
-        
-        {isAdmin && (
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={(e) => { handleClick(e); navigate('/admin'); }}
-            className="text-xs opacity-70 hover:opacity-100 neon-green"
-          >
-            <Shield className="h-4 w-4" />
-          </Button>
-        )}
       </div>
     </header>
   );
