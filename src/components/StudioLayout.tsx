@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { StudioSidebar } from "./StudioSidebar";
 import { StudioHeader } from "./StudioHeader";
@@ -61,21 +61,42 @@ export const StudioLayout = () => {
   const [apiKey, setApiKey] = useState<string>("DEFAULT");
   const [openFiles, setOpenFiles] = useState<string[]>([]);
 
-  const handleFileSelect = (file: string) => {
+  const handleFileSelect = useCallback((file: string) => {
     setActiveFile(file);
     if (!openFiles.includes(file)) {
       setOpenFiles(prev => [...prev, file]);
     }
-  };
+  }, [openFiles]);
 
-  const handleCloseFile = (file: string) => {
+  const handleCloseFile = useCallback((file: string) => {
     setOpenFiles(prev => prev.filter(f => f !== file));
     if (activeFile === file) {
       const index = openFiles.indexOf(file);
       const newActiveFile = openFiles[index - 1] || openFiles[index + 1] || null;
       setActiveFile(newActiveFile);
     }
-  };
+  }, [activeFile, openFiles]);
+
+  const handleFileChange = useCallback((filename: string, content: string) => {
+    updateFileContent(filename, content);
+  }, [updateFileContent]);
+
+  const handleSave = useCallback(() => {
+    saveProject();
+  }, [saveProject]);
+
+  // Handle AI code generation from terminal
+  const handleCodeGenerated = useCallback((code: string, filename: string) => {
+    createFile(filename, 'file');
+    updateFileContent(filename, code);
+    handleFileSelect(filename);
+  }, [createFile, updateFileContent, handleFileSelect]);
+
+  // Convert file contents to array format for GitPanel
+  const filesForGit = Object.entries(fileContents).map(([path, content]) => ({
+    path,
+    content
+  }));
 
   return (
     <div className="h-screen w-full bg-studio-bg text-matrix-green font-terminal overflow-hidden">
@@ -107,6 +128,11 @@ export const StudioLayout = () => {
               showIntegrations={showIntegrations}
               onToggleGit={() => setShowGit(!showGit)}
               onToggleSettings={() => setShowSettings(!showSettings)}
+              onToggleProjectManager={() => setShowProjectManager(!showProjectManager)}
+              onSave={handleSave}
+              isSaving={isSaving}
+              hasUnsavedChanges={hasUnsavedChanges}
+              currentProjectName={currentProject?.name}
             />
             
             {showApiConfig && (
@@ -124,6 +150,10 @@ export const StudioLayout = () => {
                       openFiles={openFiles}
                       onCloseFile={handleCloseFile}
                       onSelectFile={setActiveFile}
+                      fileContents={fileContents}
+                      onFileChange={handleFileChange}
+                      onSave={handleSave}
+                      hasUnsavedChanges={hasUnsavedChanges}
                     />
                   </ResizablePanel>
                   
@@ -131,7 +161,11 @@ export const StudioLayout = () => {
                     <>
                       <ResizableHandle />
                       <ResizablePanel defaultSize={30} minSize={20}>
-                        <Terminal />
+                        <Terminal 
+                          fileTree={fileTree}
+                          fileContents={fileContents}
+                          onCodeGenerated={handleCodeGenerated}
+                        />
                       </ResizablePanel>
                     </>
                   )}
@@ -171,11 +205,14 @@ export const StudioLayout = () => {
         <ProjectDownloader
           isVisible={showDownloader} 
           onClose={() => setShowDownloader(false)}
+          projectName={currentProject?.name || 'MyProject'}
+          fileContents={fileContents}
         />
         
         <TestingSuite 
           isVisible={showTesting} 
           onClose={() => setShowTesting(false)}
+          fileContents={fileContents}
         />
         
         <IntegrationPanel 
@@ -186,6 +223,8 @@ export const StudioLayout = () => {
         <GitPanel 
           isVisible={showGit} 
           onClose={() => setShowGit(false)}
+          projectId={currentProject?.id}
+          files={filesForGit}
         />
         
         <SettingsPanel 

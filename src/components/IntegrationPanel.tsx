@@ -4,6 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { 
   Github, 
   Brain, 
@@ -11,9 +12,15 @@ import {
   DollarSign, 
   Sparkles,
   CreditCard,
-  Wallet
+  Wallet,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface IntegrationPanelProps {
   isVisible: boolean;
@@ -24,7 +31,7 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
   const { toast } = useToast();
   const [integrations, setIntegrations] = useState({
     github: { enabled: true, autoPush: false },
-    huggingface: { enabled: false },
+    huggingface: { enabled: false, token: '', verified: false },
     supabase: { enabled: true },
     googleAdsense: { enabled: false },
     stripe: false,
@@ -32,6 +39,8 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
     paypal: false,
     chime: false
   });
+  const [showHfToken, setShowHfToken] = useState(false);
+  const [isTestingHf, setIsTestingHf] = useState(false);
 
   if (!isVisible) return null;
 
@@ -60,6 +69,88 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
     });
   };
 
+  const testHuggingFaceConnection = async () => {
+    setIsTestingHf(true);
+    
+    try {
+      // Test the HuggingFace integration via edge function
+      const { data, error } = await supabase.functions.invoke('huggingface-inference', {
+        body: {
+          task: 'text-generation',
+          inputs: 'Hello, this is a test.',
+          parameters: { max_new_tokens: 10 }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.setup_required) {
+        toast({
+          title: "Token Required",
+          description: "Please add HUGGING_FACE_ACCESS_TOKEN to your secrets",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (data?.loading) {
+        toast({
+          title: "Model Loading",
+          description: "HuggingFace model is warming up. Try again in a moment.",
+        });
+        return;
+      }
+
+      setIntegrations(prev => ({
+        ...prev,
+        huggingface: { ...prev.huggingface, verified: true, enabled: true }
+      }));
+
+      toast({
+        title: "Connection Verified! ✓",
+        description: "HuggingFace integration is working correctly",
+      });
+    } catch (error) {
+      console.error('[HuggingFace Test Error]:', error);
+      setIntegrations(prev => ({
+        ...prev,
+        huggingface: { ...prev.huggingface, verified: false }
+      }));
+      toast({
+        title: "Connection Failed",
+        description: "Could not connect to HuggingFace. Check your token.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsTestingHf(false);
+    }
+  };
+
+  const testCodexAgent = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('codex-agent', {
+        body: {
+          task: 'complete',
+          code: 'function hello() { return'
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Codex Agent Active! ✓",
+        description: "AI coding assistant is ready",
+      });
+    } catch (error) {
+      console.error('[Codex Agent Test Error]:', error);
+      toast({
+        title: "Codex Agent Error",
+        description: "Could not connect to Codex Agent",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
       <Card className="w-full max-w-4xl mx-4 bg-studio-sidebar border-2 cyber-border neon-glow max-h-[90vh] overflow-y-auto">
@@ -69,15 +160,97 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
             INTEGRATION_MATRIX.SYS
           </CardTitle>
           <CardDescription className="font-terminal matrix-text">
-            Configure external service connections and payment gateways
+            Configure external service connections and AI integrations
           </CardDescription>
         </CardHeader>
         
         <CardContent className="space-y-6">
-          {/* Development Tools */}
+          {/* AI & Development Tools */}
           <div className="space-y-4">
-            <h3 className="text-sm font-cyber neon-purple">Development & Deployment</h3>
+            <h3 className="text-sm font-cyber neon-purple">AI & Development</h3>
             
+            {/* Codex Agent (Built-in) */}
+            <div className="flex items-center justify-between p-4 rounded-lg bg-studio-terminal cyber-border">
+              <div className="flex items-center gap-3">
+                <Brain className="h-5 w-5 neon-green pulse-glow" />
+                <div>
+                  <Label className="font-terminal matrix-text">Codex Agent (Lovable AI)</Label>
+                  <p className="text-xs text-muted-foreground font-terminal">
+                    Built-in AI coding assistant - No API key needed
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge className="bg-neon-green text-studio-bg font-terminal">ACTIVE</Badge>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={testCodexAgent}
+                  className="cyber-border"
+                >
+                  Test
+                </Button>
+              </div>
+            </div>
+
+            {/* HuggingFace Integration */}
+            <div className="p-4 rounded-lg bg-studio-terminal cyber-border space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Brain className="h-5 w-5 neon-purple" />
+                  <div>
+                    <Label className="font-terminal matrix-text">HuggingFace</Label>
+                    <p className="text-xs text-muted-foreground font-terminal">
+                      ML model deployment, image generation & inference
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {integrations.huggingface.verified ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <Switch
+                    checked={integrations.huggingface.enabled}
+                    onCheckedChange={() => toggleIntegration('huggingface', 'enabled')}
+                  />
+                </div>
+              </div>
+              
+              {integrations.huggingface.enabled && (
+                <div className="pt-2 border-t cyber-border space-y-2">
+                  <p className="text-xs font-terminal text-muted-foreground">
+                    Token is stored securely in backend. Click Test to verify connection.
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={testHuggingFaceConnection}
+                      disabled={isTestingHf}
+                      className="cyber-border bg-neon-purple/20 hover:bg-neon-purple/30"
+                    >
+                      {isTestingHf ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Brain className="h-4 w-4 mr-2" />
+                      )}
+                      Test Connection
+                    </Button>
+                    <a 
+                      href="https://huggingface.co/settings/tokens" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs text-neon-cyan underline font-terminal self-center"
+                    >
+                      Get Token →
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* GitHub */}
             <div className="flex items-center justify-between p-4 rounded-lg bg-studio-terminal cyber-border">
               <div className="flex items-center gap-3">
                 <Github className="h-5 w-5 neon-green" />
@@ -102,33 +275,18 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-lg bg-studio-terminal cyber-border">
-              <div className="flex items-center gap-3">
-                <Brain className="h-5 w-5 neon-purple" />
-                <div>
-                  <Label className="font-terminal matrix-text">Hugging Face</Label>
-                  <p className="text-xs text-muted-foreground font-terminal">
-                    ML model deployment & inference
-                  </p>
-                </div>
-              </div>
-              <Switch
-                checked={integrations.huggingface.enabled}
-                onCheckedChange={() => toggleIntegration('huggingface', 'enabled')}
-              />
-            </div>
-
+            {/* Lovable Cloud */}
             <div className="flex items-center justify-between p-4 rounded-lg bg-studio-terminal cyber-border">
               <div className="flex items-center gap-3">
                 <Database className="h-5 w-5 neon-green" />
                 <div>
                   <Label className="font-terminal matrix-text">Lovable Cloud</Label>
                   <p className="text-xs text-muted-foreground font-terminal">
-                    Backend & database services
+                    Backend, database & edge functions
                   </p>
                 </div>
               </div>
-              <Badge className="bg-neon-green text-studio-bg">CONNECTED</Badge>
+              <Badge className="bg-neon-green text-studio-bg font-terminal">CONNECTED</Badge>
             </div>
           </div>
 
@@ -211,7 +369,7 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
                 });
                 onClose();
               }}
-              className="bg-neon-green text-studio-bg hover:bg-neon-green/90"
+              className="bg-neon-green text-studio-bg hover:bg-neon-green/90 font-terminal"
             >
               Save Configuration
             </Button>

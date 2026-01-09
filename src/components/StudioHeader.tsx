@@ -23,12 +23,17 @@ interface StudioHeaderProps {
   onToggleIntegrations: () => void;
   onToggleGit?: () => void;
   onToggleSettings?: () => void;
+  onToggleProjectManager?: () => void;
+  onSave?: () => void;
   showChat: boolean;
   showTerminal: boolean;
   showApiConfig: boolean;
   showDownloader: boolean;
   showTesting: boolean;
   showIntegrations: boolean;
+  isSaving?: boolean;
+  hasUnsavedChanges?: boolean;
+  currentProjectName?: string;
 }
 
 export const StudioHeader = ({ 

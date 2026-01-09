@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X, Save, Copy, Maximize2, File, Palette } from "lucide-react";
+import { X, Save, Copy, Maximize2, File, Palette, Check } from "lucide-react";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,135 +86,165 @@ interface CodeEditorProps {
   openFiles?: string[];
   onCloseFile?: (file: string) => void;
   onSelectFile?: (file: string) => void;
+  fileContents?: Record<string, string>;
+  onFileChange?: (filename: string, content: string) => void;
+  onSave?: () => void;
+  hasUnsavedChanges?: boolean;
 }
 
-const cyberpunkSampleCode = `import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Zap, Circuit } from 'lucide-react';
+const defaultSampleCode = `// Welcome to Matrix DevStudio
+// Select or create a file to start coding
 
-const CyberpunkComponent = () => {
-  const [neuralState, setNeuralState] = useState(0);
-  const [quantumLink, setQuantumLink] = useState(false);
+import React from 'react';
 
-  const activateNeuralInterface = () => {
-    setNeuralState(prev => prev + 1);
-    setQuantumLink(true);
-    console.log('Neural interface activated!');
-  };
-
+const App = () => {
   return (
-    <div className="p-6 space-y-4 cyber-gradient">
-      <h1 className="text-2xl font-cyber font-bold neon-green flicker">
-        Welcome to the Matrix DevStudio
+    <div className="p-6 neon-glow">
+      <h1 className="text-2xl font-cyber neon-green">
+        Matrix DevStudio
       </h1>
-      
-      <p className="matrix-text font-terminal">
-        Build cyberpunk applications with neural-enhanced coding
+      <p className="matrix-text">
+        Your cyberpunk coding environment
       </p>
-      
-      <div className="flex items-center space-x-4">
-        <Button 
-          onClick={activateNeuralInterface}
-          className="neon-glow pulse-glow cyber-border"
-        >
-          <Zap className="h-4 w-4 mr-2 neon-green" />
-          Neural Count: {neuralState}
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          className="cyber-border neon-purple hover:neon-glow"
-        >
-          <Circuit className="h-4 w-4 mr-2" />
-          Reset Matrix
-        </Button>
-      </div>
-      
-      {quantumLink && (
-        <div className="p-4 cyber-border terminal-glow rounded">
-          <p className="neon-green font-terminal">
-            [OK] Quantum entanglement established
-          </p>
-        </div>
-      )}
     </div>
   );
 };
 
-export default CyberpunkComponent;`;
+export default App;`;
 
-export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFile }: CodeEditorProps) => {
-  const [openTabs, setOpenTabs] = useState(['CyberApp.tsx', 'NeuralInterface.tsx']);
-  const [activeTab, setActiveTab] = useState('CyberApp.tsx');
-  const [code, setCode] = useState(cyberpunkSampleCode);
+export const CodeEditor = ({ 
+  activeFile, 
+  openFiles = [], 
+  onCloseFile, 
+  onSelectFile,
+  fileContents: externalFileContents,
+  onFileChange,
+  onSave,
+  hasUnsavedChanges = false
+}: CodeEditorProps) => {
+  const [localOpenTabs, setLocalOpenTabs] = useState<string[]>(['Welcome.tsx']);
+  const [activeTab, setActiveTab] = useState('Welcome.tsx');
   const [isMaximized, setIsMaximized] = useState(false);
   const [syntaxTheme, setSyntaxTheme] = useState<NeonTheme>(loadTheme());
-  const [fileContents, setFileContents] = useState<Record<string, string>>({
-    'CyberApp.tsx': cyberpunkSampleCode,
-    'NeuralInterface.tsx': '// Neural interface component\n\nexport const NeuralInterface = () => {\n  return <div>Neural Link Active</div>;\n};'
+  const [localFileContents, setLocalFileContents] = useState<Record<string, string>>({
+    'Welcome.tsx': defaultSampleCode
   });
+  const [cursorPosition, setCursorPosition] = useState({ line: 1, col: 1 });
+  const [isSaved, setIsSaved] = useState(true);
 
-  // Sync with external openFiles prop
-  React.useEffect(() => {
-    if (openFiles.length > 0) {
-      setOpenTabs(openFiles);
-    }
-  }, [openFiles]);
+  // Use external file contents if provided, otherwise use local
+  const fileContents = externalFileContents || localFileContents;
+  const openTabs = openFiles.length > 0 ? openFiles : localOpenTabs;
 
-  // Sync with external activeFile and create template
-  React.useEffect(() => {
-    if (activeFile && !fileContents[activeFile]) {
-      const extension = activeFile.split('.').pop() || '';
-      const template = extension === 'tsx' || extension === 'jsx' 
-        ? `// ${activeFile}\nimport React from 'react';\n\nexport const Component = () => {\n  return <div>New Component</div>;\n};`
-        : `// ${activeFile}\n`;
-      
-      setFileContents(prev => ({
-        ...prev,
-        [activeFile]: template
-      }));
-    }
+  // Sync with external activeFile
+  useEffect(() => {
     if (activeFile) {
       setActiveTab(activeFile);
+      if (!openTabs.includes(activeFile)) {
+        if (openFiles.length === 0) {
+          setLocalOpenTabs(prev => [...prev, activeFile]);
+        }
+      }
     }
-  }, [activeFile, fileContents]);
+  }, [activeFile, openTabs, openFiles.length]);
+
+  // Auto-create template for new files
+  useEffect(() => {
+    if (activeFile && !fileContents[activeFile]) {
+      const extension = activeFile.split('.').pop() || '';
+      const template = getFileTemplate(activeFile, extension);
+      
+      if (onFileChange) {
+        onFileChange(activeFile, template);
+      } else {
+        setLocalFileContents(prev => ({
+          ...prev,
+          [activeFile]: template
+        }));
+      }
+    }
+  }, [activeFile, fileContents, onFileChange]);
+
+  const getFileTemplate = (filename: string, extension: string): string => {
+    const name = filename.replace(/\.[^/.]+$/, '');
+    
+    switch (extension) {
+      case 'tsx':
+      case 'jsx':
+        return `import React from 'react';
+
+export const ${name} = () => {
+  return (
+    <div className="p-4">
+      <h1>${name}</h1>
+    </div>
+  );
+};
+
+export default ${name};`;
+      case 'ts':
+        return `// ${filename}\n\nexport const ${name} = () => {\n  // TODO: Implement\n};\n`;
+      case 'js':
+        return `// ${filename}\n\nmodule.exports = {\n  // TODO: Implement\n};\n`;
+      case 'css':
+        return `/* ${filename} */\n\n.container {\n  \n}\n`;
+      case 'json':
+        return `{\n  "name": "${name}"\n}\n`;
+      default:
+        return `// ${filename}\n`;
+    }
+  };
 
   const closeTab = (tab: string) => {
     if (onCloseFile) {
       onCloseFile(tab);
     } else {
-      const newTabs = openTabs.filter(t => t !== tab);
-      setOpenTabs(newTabs);
+      const newTabs = localOpenTabs.filter(t => t !== tab);
+      setLocalOpenTabs(newTabs);
       if (activeTab === tab && newTabs.length > 0) {
         setActiveTab(newTabs[0]);
       }
     }
   };
 
-  const createNewFile = () => {
-    const fileName = `NewFile${openTabs.length + 1}.tsx`;
-    setOpenTabs([...openTabs, fileName]);
-    setFileContents({
-      ...fileContents,
-      [fileName]: '// New neural file\n\nimport React from \'react\';\n\nconst Component = () => {\n  return (\n    <div>\n      // Your code here\n    </div>\n  );\n};\n\nexport default Component;'
-    });
-    setActiveTab(fileName);
-  };
+  const handleContentChange = useCallback((tab: string, newContent: string) => {
+    setIsSaved(false);
+    if (onFileChange) {
+      onFileChange(tab, newContent);
+    } else {
+      setLocalFileContents(prev => ({
+        ...prev,
+        [tab]: newContent
+      }));
+    }
+  }, [onFileChange]);
 
-  const saveCurrentFile = () => {
-    setFileContents({
-      ...fileContents,
-      [activeTab]: code
-    });
-    console.log(`[SAVE] File ${activeTab} saved to neural storage`);
-  };
+  const saveCurrentFile = useCallback(() => {
+    if (onSave) {
+      onSave();
+    }
+    setIsSaved(true);
+    toast.success(`Saved ${activeTab}`);
+  }, [activeTab, onSave]);
+
+  // Keyboard shortcut for save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveCurrentFile();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [saveCurrentFile]);
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(fileContents[activeTab] || code);
-      console.log('[COPY] Code copied to quantum clipboard');
+      await navigator.clipboard.writeText(fileContents[activeTab] || '');
+      toast.success('Copied to clipboard');
     } catch (err) {
-      console.error('[ERROR] Failed to copy code:', err);
+      toast.error('Failed to copy');
     }
   };
 
@@ -224,6 +255,43 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
   const changeTheme = (theme: NeonTheme) => {
     setSyntaxTheme(theme);
     saveTheme(theme);
+    toast.success(`Theme: ${theme}`);
+  };
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>, tab: string) => {
+    const newContent = e.target.value;
+    handleContentChange(tab, newContent);
+    
+    // Update cursor position
+    const textarea = e.target;
+    const text = textarea.value.substring(0, textarea.selectionStart);
+    const lines = text.split('\n');
+    setCursorPosition({
+      line: lines.length,
+      col: lines[lines.length - 1].length + 1
+    });
+  };
+
+  const getLanguage = (filename: string): string => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'ts':
+      case 'tsx':
+        return 'typescript';
+      case 'js':
+      case 'jsx':
+        return 'javascript';
+      case 'css':
+        return 'css';
+      case 'json':
+        return 'json';
+      case 'html':
+        return 'html';
+      case 'md':
+        return 'markdown';
+      default:
+        return 'typescript';
+    }
   };
 
   return (
@@ -243,6 +311,9 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
               >
                 <File className="h-3 w-3 mr-2 neon-green" />
                 <span className="text-sm">{tab}</span>
+                {!isSaved && activeTab === tab && (
+                  <span className="ml-1 text-yellow-400">●</span>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -260,34 +331,24 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
         </Tabs>
         
         <div className="flex items-center space-x-2 px-4">
-          <Badge variant="secondary" className="text-xs neon-green font-terminal">
-            TypeScript React | Matrix Enhanced
+          <Badge variant="secondary" className={`text-xs font-terminal ${hasUnsavedChanges ? 'bg-yellow-500/20 text-yellow-400' : 'neon-green'}`}>
+            {hasUnsavedChanges ? 'UNSAVED' : 'SYNCED'}
           </Badge>
           <Button 
             variant="ghost" 
             size="sm" 
             className="neon-green hover:neon-glow"
-            onClick={createNewFile}
-            title="Create new file"
-          >
-            <File className="h-4 w-4 mr-1" />
-            <span className="text-xs">New</span>
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="neon-green hover:neon-glow"
             onClick={saveCurrentFile}
-            title="Save current file"
+            title="Save (Ctrl+S)"
           >
-            <Save className="h-4 w-4" />
+            {isSaved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
           </Button>
           <Button 
             variant="ghost" 
             size="sm" 
             className="neon-purple hover:neon-glow"
             onClick={copyToClipboard}
-            title="Copy code to clipboard"
+            title="Copy code"
           >
             <Copy className="h-4 w-4" />
           </Button>
@@ -296,7 +357,7 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
             size="sm" 
             className="neon-green hover:neon-glow"
             onClick={toggleMaximize}
-            title={isMaximized ? "Exit fullscreen" : "Maximize editor"}
+            title={isMaximized ? "Exit fullscreen" : "Maximize"}
           >
             <Maximize2 className="h-4 w-4" />
           </Button>
@@ -306,12 +367,12 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
                 variant="ghost" 
                 size="sm" 
                 className="neon-purple hover:neon-glow"
-                title="Change syntax theme"
+                title="Theme"
               >
                 <Palette className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="cyber-border terminal-glow">
+            <DropdownMenuContent className="cyber-border terminal-glow bg-studio-sidebar">
               <DropdownMenuItem 
                 onClick={() => changeTheme('matrix')}
                 className="neon-green font-terminal"
@@ -336,31 +397,33 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
       </div>
 
       {/* Editor Content */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative overflow-hidden">
         <Tabs value={activeTab} className="h-full">
           {openTabs.map(tab => (
             <TabsContent key={tab} value={tab} className="h-full m-0">
               <div className="h-full flex">
                 {/* Line Numbers */}
-                <div className="w-12 bg-studio-sidebar cyber-border flex flex-col text-xs text-muted-foreground font-terminal">
+                <div className="w-12 bg-studio-sidebar cyber-border flex flex-col text-xs text-muted-foreground font-terminal overflow-hidden">
                   <div className="p-2 border-b cyber-border">
                     <span className="neon-purple">#</span>
                   </div>
-                  {Array.from({ length: 40 }, (_, i) => (
-                    <div
-                      key={i + 1}
-                      className="px-2 py-0.5 text-right hover:bg-muted/20 transition-colors neon-green"
-                    >
-                      {i + 1}
-                    </div>
-                  ))}
+                  <div className="flex-1 overflow-auto cyber-scrollbar">
+                    {(fileContents[tab] || '').split('\n').map((_, i) => (
+                      <div
+                        key={i + 1}
+                        className={`px-2 py-0.5 text-right transition-colors ${cursorPosition.line === i + 1 ? 'neon-green bg-muted/20' : 'hover:bg-muted/20'}`}
+                      >
+                        {i + 1}
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 
                 {/* Code Area */}
                 <div className="flex-1 relative">
                   <div className="absolute inset-0 pointer-events-none overflow-auto p-4 cyber-scrollbar">
                     <SyntaxHighlighter
-                      language="typescript"
+                      language={getLanguage(tab)}
                       style={themeStyles[syntaxTheme]}
                       customStyle={{
                         background: 'transparent',
@@ -375,19 +438,12 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
                         }
                       }}
                     >
-                      {fileContents[tab] || code}
+                      {fileContents[tab] || ''}
                     </SyntaxHighlighter>
                   </div>
                   <textarea
-                    value={fileContents[tab] || code}
-                    onChange={(e) => {
-                      const newContent = e.target.value;
-                      setCode(newContent);
-                      setFileContents({
-                        ...fileContents,
-                        [tab]: newContent
-                      });
-                    }}
+                    value={fileContents[tab] || ''}
+                    onChange={(e) => handleTextareaChange(e, tab)}
                     className="w-full h-full p-4 bg-transparent text-transparent caret-neon-green font-terminal text-sm leading-5 resize-none focus:outline-none selection:bg-primary/20 cyber-scrollbar relative z-10"
                     style={{ fontFamily: 'JetBrains Mono, Monaco, Menlo, monospace' }}
                     spellCheck={false}
@@ -403,16 +459,16 @@ export const CodeEditor = ({ activeFile, openFiles = [], onCloseFile, onSelectFi
       {/* Status Bar */}
       <div className="h-6 bg-studio-header border-t cyber-border flex items-center justify-between px-4 text-xs">
         <div className="flex items-center space-x-4">
-          <span className="neon-green font-terminal">Ln 24, Col 12</span>
+          <span className="neon-green font-terminal">Ln {cursorPosition.line}, Col {cursorPosition.col}</span>
           <span className="matrix-text font-terminal">UTF-8</span>
-          <span className="matrix-text font-terminal">{activeTab ? 'TypeScript Matrix' : 'No neural file'}</span>
+          <span className="matrix-text font-terminal">{activeTab ? getLanguage(activeTab).toUpperCase() : 'No file'}</span>
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex items-center gap-2">
-            <span className="neon-purple">●</span>
-            <span className="matrix-text font-terminal">MATRIX_MODE</span>
+            <span className={isSaved ? "text-green-500" : "text-yellow-400"}>●</span>
+            <span className="matrix-text font-terminal">{isSaved ? 'SAVED' : 'MODIFIED'}</span>
           </div>
-          <span className="matrix-text font-terminal">Quantum Spaces: 2</span>
+          <span className="matrix-text font-terminal">Spaces: 2</span>
         </div>
       </div>
     </div>

@@ -5,15 +5,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X, Plus, Settings, Square, Terminal as TerminalIcon } from "lucide-react";
 import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
+import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
-export const Terminal = () => {
+interface TerminalProps {
+  fileTree?: any;
+  fileContents?: Record<string, string>;
+  onCodeGenerated?: (code: string, filename: string) => void;
+}
+
+export const Terminal = ({ fileTree, fileContents = {}, onCodeGenerated }: TerminalProps) => {
   const [terminals, setTerminals] = useState(['MAIN_SHELL']);
   const [activeTerminal, setActiveTerminal] = useState('MAIN_SHELL');
   const [command, setCommand] = useState('');
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
   const rateLimiterRef = useRef(new RateLimiter(2000));
   const [history, setHistory] = useState([
     'root@matrix:~$ echo "Welcome to the Matrix DevStudio"',
@@ -22,20 +30,23 @@ export const Terminal = () => {
     'root@matrix:~$ system --init --neural-interface',
     '[OK] Neural interface initialized',
     '[OK] AI subsystems online',
-    '[OK] Natural language processing: ACTIVE',
-    '',
-    'root@matrix:~$ npm create cyberpunk-app --template matrix',
-    'Creating cyberpunk application...',
-    '[OK] Installing neon dependencies',
-    '[OK] Configuring holographic display',
-    '[OK] Injecting cyberpunk aesthetics',
+    '[OK] Codex Agent: ACTIVE',
     '',
     'root@matrix:~$ ai --help',
     'AI Commands Available:',
     '  ai code <description>    - Generate code from natural language',
-    '  ai debug <error>        - Debug and fix code issues',
-    '  ai optimize <file>      - Optimize performance',
-    '  ai create <component>   - Create new components',
+    '  ai refactor <file>       - Refactor and improve code',
+    '  ai explain <file>        - Explain code functionality',
+    '  ai debug <error>         - Debug and fix code issues',
+    '  ai complete <context>    - Complete code snippet',
+    '',
+    'root@matrix:~$ help',
+    'Standard Commands:',
+    '  ls                       - List project files',
+    '  cat <file>               - Display file contents',
+    '  clear                    - Clear terminal',
+    '  npm <command>            - Package manager (simulated)',
+    '  git <command>            - Version control (simulated)',
     '',
     'root@matrix:~$ echo "Ready for neural commands..."',
     'Ready for neural commands...',
@@ -46,7 +57,7 @@ export const Terminal = () => {
     'npm install', 'npm run build', 'npm run dev', 'npm test',
     'git status', 'git add', 'git commit', 'git push', 'git pull',
     'ls', 'cd', 'mkdir', 'rm', 'cat', 'echo',
-    'ai code', 'ai debug', 'ai optimize', 'ai create',
+    'ai code', 'ai debug', 'ai refactor', 'ai explain', 'ai complete', 'ai test',
     'help', 'clear', 'matrix --status', 'cyber --theme'
   ];
 
@@ -64,8 +75,48 @@ export const Terminal = () => {
     }
   };
 
+  // Flatten file tree to get all file paths
+  const getFilePaths = (tree: any, prefix = ''): string[] => {
+    if (!tree) return [];
+    const paths: string[] = [];
+    
+    const traverse = (node: any, currentPath: string) => {
+      if (!node) return;
+      const fullPath = currentPath ? `${currentPath}/${node.name}` : node.name;
+      
+      if (node.type === 'file') {
+        paths.push(fullPath);
+      } else if (node.type === 'folder' && node.children) {
+        node.children.forEach((child: any) => traverse(child, fullPath));
+      }
+    };
+    
+    if (Array.isArray(tree)) {
+      tree.forEach(node => traverse(node, prefix));
+    } else {
+      traverse(tree, prefix);
+    }
+    
+    return paths;
+  };
+
+  // Call Codex Agent for AI commands
+  const callCodexAgent = async (task: string, content: string, context?: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('codex-agent', {
+        body: { task, code: content, context }
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error('[Codex Agent Error]:', err);
+      throw err;
+    }
+  };
+
   const executeCommand = async () => {
-    if (!command.trim()) return;
+    if (!command.trim() || isProcessing) return;
 
     // Validate input
     try {
@@ -89,19 +140,215 @@ export const Terminal = () => {
     setHistoryIndex(-1);
     
     const newHistory = [...history, `root@matrix:~$ ${command}`];
+    const cmd = command.trim().toLowerCase();
+    const cmdParts = command.trim().split(' ');
     
-    // Check if it's a natural language command (not a standard terminal command)
-    const isNaturalLanguage = !command.startsWith('npm') && 
-                               !command.startsWith('git') && 
-                               !command.startsWith('ls') && 
-                               !command.startsWith('cd') &&
-                               !command.startsWith('help') &&
-                               command.length > 10;
-    
-    if (isNaturalLanguage) {
-      newHistory.push('[AI] Processing natural language request...');
-      setHistory(newHistory);
-      setCommand('');
+    setHistory(newHistory);
+    setCommand('');
+    setSuggestions([]);
+
+    // ============ REAL COMMAND IMPLEMENTATIONS ============
+
+    // CLEAR command
+    if (cmd === 'clear') {
+      setHistory(['root@matrix:~$ Terminal cleared', '']);
+      return;
+    }
+
+    // LS command - list actual project files
+    if (cmd === 'ls' || cmd === 'dir') {
+      const files = getFilePaths(fileTree);
+      if (files.length > 0) {
+        setHistory(prev => [...prev, ...files.map(f => `  ${f}`), '']);
+      } else {
+        setHistory(prev => [...prev, '  (no files in project)', '']);
+      }
+      return;
+    }
+
+    // CAT command - display actual file contents
+    if (cmd.startsWith('cat ')) {
+      const fileName = command.slice(4).trim();
+      const content = fileContents[fileName];
+      
+      if (content) {
+        const lines = content.split('\n').slice(0, 50); // Limit to 50 lines
+        setHistory(prev => [...prev, `--- ${fileName} ---`, ...lines, '---', '']);
+      } else {
+        setHistory(prev => [...prev, `[ERROR] File not found: ${fileName}`, '']);
+      }
+      return;
+    }
+
+    // HELP command
+    if (cmd === 'help') {
+      setHistory(prev => [...prev,
+        'MATRIX TERMINAL - Neural Command Interface',
+        '',
+        'Standard Commands:',
+        '  ls, dir          - List project files',
+        '  cat <file>       - Display file contents',
+        '  clear            - Clear terminal',
+        '  npm <command>    - Package manager',
+        '  git <command>    - Version control',
+        '',
+        'AI Commands (powered by Codex Agent):',
+        '  ai code <desc>       - Generate code from description',
+        '  ai refactor <file>   - Improve and refactor code',
+        '  ai explain <file>    - Explain what code does',
+        '  ai debug <error>     - Debug and fix issues',
+        '  ai complete <code>   - Complete code snippet',
+        '  ai test <file>       - Generate tests for code',
+        '',
+        'Matrix Commands:',
+        '  matrix --status  - Check neural network status',
+        ''
+      ]);
+      return;
+    }
+
+    // AI COMMANDS - Route to Codex Agent
+    if (cmd.startsWith('ai ')) {
+      const aiCmd = cmdParts[1];
+      const aiArg = cmdParts.slice(2).join(' ');
+
+      if (!aiArg) {
+        setHistory(prev => [...prev, '[ERROR] Please provide an argument for AI command', '']);
+        return;
+      }
+
+      setIsProcessing(true);
+      setHistory(prev => [...prev, `[AI] Processing ${aiCmd} request...`]);
+
+      try {
+        let result;
+        
+        switch (aiCmd) {
+          case 'code':
+            result = await callCodexAgent('generate', aiArg);
+            if (result?.code) {
+              const codeLines = result.code.split('\n');
+              setHistory(prev => [...prev, '[AI] Generated code:', '', ...codeLines, '']);
+              if (onCodeGenerated) {
+                onCodeGenerated(result.code, `generated_${Date.now()}.tsx`);
+              }
+              toast.success('Code generated! Check the output above.');
+            }
+            break;
+
+          case 'refactor':
+            const refactorContent = fileContents[aiArg];
+            if (!refactorContent) {
+              setHistory(prev => [...prev, `[ERROR] File not found: ${aiArg}`, '']);
+              break;
+            }
+            result = await callCodexAgent('refactor', refactorContent);
+            if (result?.code) {
+              const refactoredLines = result.code.split('\n').slice(0, 30);
+              setHistory(prev => [...prev, '[AI] Refactored code:', '', ...refactoredLines, '...', '']);
+            }
+            break;
+
+          case 'explain':
+            const explainContent = fileContents[aiArg];
+            if (!explainContent) {
+              setHistory(prev => [...prev, `[ERROR] File not found: ${aiArg}`, '']);
+              break;
+            }
+            result = await callCodexAgent('explain', explainContent);
+            if (result?.explanation) {
+              setHistory(prev => [...prev, '[AI] Explanation:', '', result.explanation, '']);
+            }
+            break;
+
+          case 'debug':
+            result = await callCodexAgent('debug', aiArg);
+            if (result?.code) {
+              setHistory(prev => [...prev, '[AI] Debug analysis:', '', result.explanation || '', '', 'Fixed code:', result.code, '']);
+            }
+            break;
+
+          case 'complete':
+            result = await callCodexAgent('complete', aiArg);
+            if (result?.code) {
+              setHistory(prev => [...prev, '[AI] Completed code:', '', result.code, '']);
+            }
+            break;
+
+          case 'test':
+            const testContent = fileContents[aiArg];
+            if (!testContent) {
+              setHistory(prev => [...prev, `[ERROR] File not found: ${aiArg}`, '']);
+              break;
+            }
+            result = await callCodexAgent('test', testContent);
+            if (result?.code) {
+              const testLines = result.code.split('\n').slice(0, 40);
+              setHistory(prev => [...prev, '[AI] Generated tests:', '', ...testLines, '']);
+            }
+            break;
+
+          default:
+            setHistory(prev => [...prev, `[ERROR] Unknown AI command: ${aiCmd}`, '']);
+        }
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : 'Unknown error';
+        setHistory(prev => [...prev, `[ERROR] AI processing failed: ${errMsg}`, '']);
+        toast.error('AI command failed');
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+
+    // NPM commands (simulated with style)
+    if (cmd.startsWith('npm ')) {
+      const npmCmd = cmdParts[1];
+      setHistory(prev => [...prev,
+        `[NPM] Executing: npm ${cmdParts.slice(1).join(' ')}`,
+        npmCmd === 'install' ? '[OK] Dependencies installed' :
+        npmCmd === 'run' ? '[OK] Script executed successfully' :
+        npmCmd === 'test' ? '[OK] Tests passed' :
+        '[OK] NPM command completed',
+        ''
+      ]);
+      return;
+    }
+
+    // GIT commands (simulated)
+    if (cmd.startsWith('git ')) {
+      const gitCmd = cmdParts[1];
+      setHistory(prev => [...prev,
+        `[GIT] Executing: git ${cmdParts.slice(1).join(' ')}`,
+        gitCmd === 'status' ? 'On branch main\nYour branch is up to date.' :
+        gitCmd === 'add' ? '[OK] Changes staged' :
+        gitCmd === 'commit' ? '[OK] Changes committed' :
+        gitCmd === 'push' ? '[OK] Pushed to remote' :
+        gitCmd === 'pull' ? '[OK] Pulled from remote' :
+        '[OK] Git command completed',
+        ''
+      ]);
+      return;
+    }
+
+    // Matrix status
+    if (cmd === 'matrix --status') {
+      setHistory(prev => [...prev,
+        '[MATRIX] System Status:',
+        '  Neural Interface: ACTIVE',
+        '  Codex Agent: ONLINE',
+        '  Quantum Processors: 4/4',
+        '  Memory Banks: 87% utilized',
+        '  Network Sync: STABLE',
+        ''
+      ]);
+      return;
+    }
+
+    // Default: Try natural language via AI chat
+    if (cmd.length > 10) {
+      setIsProcessing(true);
+      setHistory(prev => [...prev, '[AI] Processing natural language request...']);
       
       try {
         const response = await fetch(
@@ -114,16 +361,14 @@ export const Terminal = () => {
             },
             body: JSON.stringify({
               messages: [
-                { role: "system", content: "You are GodBot, a code-building AI assistant. Generate code or commands based on the user's natural language request. Be concise and provide executable code when possible." },
+                { role: "system", content: "You are a helpful terminal assistant. Be concise and provide code when relevant." },
                 { role: "user", content: command }
               ]
             }),
           }
         );
 
-        if (!response.ok) {
-          throw new Error("AI request failed");
-        }
+        if (!response.ok) throw new Error("AI request failed");
 
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
@@ -131,7 +376,6 @@ export const Terminal = () => {
 
         if (reader) {
           let buffer = "";
-          
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -151,93 +395,27 @@ export const Terminal = () => {
               try {
                 const parsed = JSON.parse(data);
                 const content = parsed.choices?.[0]?.delta?.content;
-                
-                if (content) {
-                  aiResponse += content;
-                }
-              } catch (e) {
-                if (import.meta.env.DEV) {
-                  console.error("Error parsing streaming chunk:", e);
-                }
-              }
+                if (content) aiResponse += content;
+              } catch (e) {}
             }
           }
         }
 
         setHistory(prev => [...prev, '[AI] ' + aiResponse, '']);
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error("Terminal AI request error:", error);
-        }
-        setHistory(prev => [...prev, `[ERROR] AI processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`, '']);
-        toast.error("Error processing command");
+        setHistory(prev => [...prev, `[ERROR] AI processing failed`, '']);
+      } finally {
+        setIsProcessing(false);
       }
       return;
     }
-    
-    // Standard command responses with cyberpunk flair
-    if (command.includes('npm run build')) {
-      newHistory.push(
-        '[INFO] Compiling neural networks...',
-        '[OK] Quantum compilation complete',
-        '[OK] Holographic assets generated',
-        '✓ Build complete - ready for deployment to the matrix',
-        ''
-      );
-    } else if (command.includes('ai ')) {
-      newHistory.push(
-        '[AI] Processing neural request...',
-        '[AI] Interfacing with quantum processors...',
-        '[OK] AI task completed successfully',
-        ''
-      );
-    } else if (command.includes('git')) {
-      newHistory.push(
-        '[GIT] Syncing with neural repository...',
-        '[OK] Matrix state synchronized',
-        ''
-      );
-    } else if (command.includes('ls') || command.includes('dir')) {
-      newHistory.push(
-        'cyberpunk_components/',
-        'neural_networks/',
-        'matrix_assets/',
-        'quantum_deps/',
-        'package.json',
-        'README.matrix',
-        ''
-      );
-    } else if (command.includes('help')) {
-      newHistory.push(
-        'MATRIX TERMINAL - Neural Command Interface',
-        '',
-        'Standard Commands:',
-        '  ls, dir          - List neural directories',
-        '  cd <path>        - Navigate matrix paths',
-        '  npm <command>    - Package quantum modules',
-        '  git <command>    - Version control via neural net',
-        '',
-        'AI Commands:',
-        '  Use natural language to build code!',
-        '  Example: "create a button component with neon glow"',
-        '  Example: "build a responsive navbar"',
-        '',
-        'Matrix Commands:',
-        '  matrix --status  - Check neural network status',
-        '  cyber --theme    - Toggle cyberpunk aesthetics',
-        '  hack --mode      - Enter hacker mode',
-        ''
-      );
-    } else {
-      newHistory.push(
-        `[EXEC] Processing command: ${command}`,
-        '[OK] Neural command executed',
-        ''
-      );
-    }
-    
-    setHistory(newHistory);
-    setCommand('');
+
+    // Fallback
+    setHistory(prev => [...prev,
+      `[EXEC] Unknown command: ${command}`,
+      'Type "help" for available commands',
+      ''
+    ]);
   };
 
   const handleKeyPress = async (e: React.KeyboardEvent) => {
@@ -315,8 +493,8 @@ export const Terminal = () => {
         </Tabs>
         
         <div className="flex items-center space-x-2 px-4">
-          <Badge variant="secondary" className="text-xs bg-green-500/20 neon-green border-green-500/30 font-terminal">
-            NEURAL_LINK_ACTIVE
+          <Badge variant="secondary" className={`text-xs font-terminal border-green-500/30 ${isProcessing ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 neon-green'}`}>
+            {isProcessing ? 'PROCESSING...' : 'CODEX_ACTIVE'}
           </Badge>
           <Button
             variant="ghost"
@@ -363,8 +541,12 @@ export const Terminal = () => {
                           ? 'neon-purple'
                           : line.startsWith('[INFO]') 
                           ? 'neon-cyan'
-                          : line.startsWith('[EXEC]') 
+                          : line.startsWith('[ERROR]') 
+                          ? 'text-red-400'
+                          : line.startsWith('[EXEC]') || line.startsWith('[NPM]') || line.startsWith('[GIT]')
                           ? 'neon-green'
+                          : line.startsWith('[MATRIX]')
+                          ? 'neon-purple'
                           : line.startsWith('✓')
                           ? 'neon-green'
                           : 'matrix-text'
@@ -385,8 +567,9 @@ export const Terminal = () => {
                       onChange={(e) => handleCommandChange(e.target.value)}
                       onKeyDown={handleKeyPress}
                       className="flex-1 bg-transparent border-none outline-none matrix-text font-terminal flicker"
-                      placeholder="Enter neural command or natural language..."
+                      placeholder={isProcessing ? "Processing..." : "Enter command or 'ai code <description>'..."}
                       autoFocus
+                      disabled={isProcessing}
                     />
                   </div>
                   {/* Autocomplete Suggestions */}
