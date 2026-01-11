@@ -13,6 +13,7 @@ import { GitPanel } from "./GitPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { StudioFooter } from "./StudioFooter";
 import { ProjectManagerModal } from "./ProjectManagerModal";
+import { NeonModuleSelector } from "./NeonModuleSelector";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useProject } from "@/hooks/useProject";
 

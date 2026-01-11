@@ -73,6 +73,36 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          github_access_token: string | null
+          github_username: string | null
+          huggingface_token: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          github_access_token?: string | null
+          github_username?: string | null
+          huggingface_token?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          github_access_token?: string | null
+          github_username?: string | null
+          huggingface_token?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       project_analysis: {
         Row: {
           analysis_type: string
@@ -166,6 +196,8 @@ export type Database = {
           auto_initialized: boolean | null
           created_at: string | null
           description: string | null
+          github_branch: string | null
+          github_repo: string | null
           github_url: string | null
           id: string
           last_synced_at: string | null
@@ -178,6 +210,8 @@ export type Database = {
           auto_initialized?: boolean | null
           created_at?: string | null
           description?: string | null
+          github_branch?: string | null
+          github_repo?: string | null
           github_url?: string | null
           id?: string
           last_synced_at?: string | null
@@ -190,6 +224,8 @@ export type Database = {
           auto_initialized?: boolean | null
           created_at?: string | null
           description?: string | null
+          github_branch?: string | null
+          github_repo?: string | null
           github_url?: string | null
           id?: string
           last_synced_at?: string | null
