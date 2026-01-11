@@ -11,8 +11,19 @@ import {
   Key,
   TestTube,
   Plug,
-  GitBranch
+  GitBranch,
+  LogOut,
+  User
 } from "lucide-react";
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface StudioHeaderProps {
   onToggleChat: () => void;
@@ -52,6 +63,24 @@ export const StudioHeader = ({
   showTesting,
   showIntegrations
 }: StudioHeaderProps) => {
+  const { user, signOut } = useAuth();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast({
+        title: 'Sign Out Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Signed Out',
+        description: 'You have been disconnected from the matrix.',
+      });
+    }
+  };
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     const button = e.currentTarget;
@@ -164,6 +193,30 @@ export const StudioHeader = ({
           <Settings className="h-4 w-4 mr-2" />
           Settings
         </Button>
+
+        {user && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="neon-green">
+                <User className="h-4 w-4 mr-2" />
+                {user.email?.split('@')[0] || 'Agent'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-black/90 border-purple-600/30">
+              <DropdownMenuItem className="text-gray-400 cursor-default">
+                {user.email}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-purple-600/30" />
+              <DropdownMenuItem 
+                onClick={handleSignOut}
+                className="text-red-400 focus:text-red-300 focus:bg-red-900/30 cursor-pointer"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </header>
   );
