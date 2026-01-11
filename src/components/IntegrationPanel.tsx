@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Github, 
   Brain, 
@@ -17,10 +18,13 @@ import {
   CheckCircle,
   XCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  LogOut,
+  Link2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useGitHub } from '@/hooks/useGitHub';
 
 interface IntegrationPanelProps {
   isVisible: boolean;
@@ -29,6 +33,7 @@ interface IntegrationPanelProps {
 
 export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, onClose }) => {
   const { toast } = useToast();
+  const github = useGitHub();
   const [integrations, setIntegrations] = useState({
     github: { enabled: true, autoPush: false },
     huggingface: { enabled: false, token: '', verified: false },
@@ -41,6 +46,14 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
   });
   const [showHfToken, setShowHfToken] = useState(false);
   const [isTestingHf, setIsTestingHf] = useState(false);
+
+  // Update GitHub enabled state based on connection
+  useEffect(() => {
+    setIntegrations(prev => ({
+      ...prev,
+      github: { ...prev.github, enabled: github.connected }
+    }));
+  }, [github.connected]);
 
   if (!isVisible) return null;
 
@@ -251,28 +264,79 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
             </div>
 
             {/* GitHub */}
-            <div className="flex items-center justify-between p-4 rounded-lg bg-studio-terminal cyber-border">
-              <div className="flex items-center gap-3">
-                <Github className="h-5 w-5 neon-green" />
-                <div>
-                  <Label className="font-terminal matrix-text">GitHub Integration</Label>
-                  <p className="text-xs text-muted-foreground font-terminal">
-                    Auto-push to repository branches
-                  </p>
+            <div className="p-4 rounded-lg bg-studio-terminal cyber-border space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Github className="h-5 w-5 neon-green" />
+                  <div>
+                    <Label className="font-terminal matrix-text">GitHub Integration</Label>
+                    <p className="text-xs text-muted-foreground font-terminal">
+                      Connect to push/pull from repositories
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <Switch
-                    checked={integrations.github.autoPush}
-                    onCheckedChange={() => toggleIntegration('github', 'autoPush')}
-                  />
-                  <Label className="text-xs font-terminal">Auto-Push</Label>
+                  {github.connected ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <Badge className={github.connected ? 'bg-neon-green text-studio-bg' : ''}>
+                    {github.loading ? 'CHECKING...' : github.connected ? 'CONNECTED' : 'NOT CONNECTED'}
+                  </Badge>
                 </div>
-                <Badge className={integrations.github.enabled ? 'bg-neon-green text-studio-bg' : ''}>
-                  {integrations.github.enabled ? 'ACTIVE' : 'INACTIVE'}
-                </Badge>
               </div>
+
+              {github.connected ? (
+                <div className="pt-2 border-t cyber-border space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={github.avatarUrl || ''} alt={github.username || ''} />
+                      <AvatarFallback className="bg-neon-green/20 text-neon-green">
+                        {github.username?.charAt(0).toUpperCase() || 'G'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-terminal text-sm matrix-text">{github.username}</p>
+                      <p className="text-xs text-muted-foreground font-terminal">Connected Account</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={integrations.github.autoPush}
+                      onCheckedChange={() => toggleIntegration('github', 'autoPush')}
+                    />
+                    <Label className="text-xs font-terminal">Auto-Push on Save</Label>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={github.disconnect}
+                    className="cyber-border text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Disconnect
+                  </Button>
+                </div>
+              ) : (
+                <div className="pt-2 border-t cyber-border">
+                  <Button
+                    size="sm"
+                    onClick={github.connect}
+                    disabled={github.isAuthorizing || github.loading}
+                    className="cyber-border bg-neon-green/20 hover:bg-neon-green/30 neon-green"
+                  >
+                    {github.isAuthorizing ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Link2 className="h-4 w-4 mr-2" />
+                    )}
+                    Connect GitHub Account
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Lovable Cloud */}
