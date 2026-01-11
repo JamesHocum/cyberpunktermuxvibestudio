@@ -269,6 +269,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      log_admin_action: {
+        Args: { _action: string; _details: Json; _target_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
