@@ -171,6 +171,7 @@ export const StudioLayout = () => {
                           fileTree={fileTree}
                           fileContents={fileContents}
                           onCodeGenerated={handleCodeGenerated}
+                          projectId={currentProject?.id}
                         />
                       </ResizablePanel>
                     </>

@@ -7,6 +7,7 @@ import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, Zap } from "luci
 import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { z } from "zod";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Message {
   id: string;
@@ -16,6 +17,7 @@ interface Message {
 }
 
 export const AIChatPanel = () => {
+  const { session } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -61,13 +63,16 @@ export const AIChatPanel = () => {
     setIsTyping(true);
 
     try {
+      // Use session token if available, fallback to anon key
+      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lady-violet-chat`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify({
             messages: updatedMessages.map(m => ({
