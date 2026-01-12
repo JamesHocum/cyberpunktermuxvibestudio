@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { GitBranch, GitCommit, GitPullRequest, Upload, Download, X, RefreshCw, Loader2 } from 'lucide-react';
+import { GitBranch, GitCommit, GitPullRequest, Upload, Download, X, RefreshCw, Loader2, Github, Link } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { RepoSelector } from './RepoSelector';
+import { useGitHub } from '@/hooks/useGitHub';
 
 interface GitPanelProps {
   isVisible: boolean;
@@ -19,6 +21,7 @@ export const GitPanel = ({ isVisible, onClose, projectId, files = [] }: GitPanel
   const [branch, setBranch] = useState('main');
   const [isLoading, setIsLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [linkedRepo, setLinkedRepo] = useState<string | null>(null);
   const [status, setStatus] = useState<string[]>(() => {
     // Show actual files from project
     return files.length > 0 
@@ -30,6 +33,34 @@ export const GitPanel = ({ isVisible, onClose, projectId, files = [] }: GitPanel
     { message: 'Add neural interface components', hash: 'e4f5g6h', time: '5 hours ago' },
     { message: 'Configure quantum build', hash: 'i7j8k9l', time: '1 day ago' }
   ]);
+  
+  const { connected: githubConnected, username: githubUsername } = useGitHub();
+
+  // Fetch linked repo on mount
+  useEffect(() => {
+    const fetchLinkedRepo = async () => {
+      if (!projectId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('github_repo, github_branch')
+          .eq('id', projectId)
+          .single();
+          
+        if (data?.github_repo) {
+          setLinkedRepo(data.github_repo);
+          if (data.github_branch) {
+            setBranch(data.github_branch);
+          }
+        }
+      } catch (err) {
+        console.error('[GitPanel] Failed to fetch linked repo:', err);
+      }
+    };
+    
+    fetchLinkedRepo();
+  }, [projectId]);
 
   if (!isVisible) return null;
 
@@ -185,6 +216,35 @@ export const GitPanel = ({ isVisible, onClose, projectId, files = [] }: GitPanel
 
         {/* Content */}
         <div className="flex-1 overflow-auto p-4 space-y-4">
+          {/* GitHub Connection Status */}
+          {!githubConnected && (
+            <div className="cyber-border rounded p-3 bg-yellow-500/10 border-yellow-500/30">
+              <div className="flex items-center gap-2 text-yellow-400 font-terminal text-sm">
+                <Github className="h-4 w-4" />
+                <span>GitHub not connected. Connect via the header button to enable sync.</span>
+              </div>
+            </div>
+          )}
+
+          {/* Repository Selector */}
+          {githubConnected && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 font-terminal text-sm neon-purple">
+                <Link className="h-4 w-4" />
+                Repository
+              </div>
+              <RepoSelector 
+                projectId={projectId} 
+                onRepoSelect={(repo) => {
+                  setLinkedRepo(repo?.full_name || null);
+                  if (repo?.default_branch) {
+                    setBranch(repo.default_branch);
+                  }
+                }}
+              />
+            </div>
+          )}
+
           {/* Branch Info */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -251,8 +311,9 @@ export const GitPanel = ({ isVisible, onClose, projectId, files = [] }: GitPanel
           <div className="flex gap-2">
             <Button
               onClick={handleCommit}
-              disabled={!commitMessage.trim() || isLoading}
+              disabled={!commitMessage.trim() || isLoading || !linkedRepo}
               className="flex-1 neon-glow cyber-border"
+              title={!linkedRepo ? 'Link a repository first' : ''}
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -264,8 +325,9 @@ export const GitPanel = ({ isVisible, onClose, projectId, files = [] }: GitPanel
             <Button
               onClick={handlePush}
               variant="outline"
-              disabled={isLoading}
+              disabled={isLoading || !linkedRepo}
               className="cyber-border neon-purple hover:neon-glow"
+              title={!linkedRepo ? 'Link a repository first' : ''}
             >
               <Upload className="h-4 w-4 mr-2" />
               Push
@@ -273,8 +335,9 @@ export const GitPanel = ({ isVisible, onClose, projectId, files = [] }: GitPanel
             <Button
               onClick={handlePull}
               variant="outline"
-              disabled={isLoading}
+              disabled={isLoading || !linkedRepo}
               className="cyber-border neon-green hover:neon-glow"
+              title={!linkedRepo ? 'Link a repository first' : ''}
             >
               <Download className="h-4 w-4 mr-2" />
               Pull
