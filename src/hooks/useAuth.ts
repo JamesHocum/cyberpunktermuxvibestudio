@@ -8,6 +8,9 @@ export interface AuthState {
   isLoading: boolean;
 }
 
+// Build-time development bypass - completely tree-shaken in production
+const isDevAuthBypass = import.meta.env.DEV && import.meta.env.VITE_DEV_AUTH_BYPASS === 'true';
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -63,7 +66,8 @@ export function useAuth() {
     user,
     session,
     isLoading,
-    isAuthenticated: !!session,
+    isAuthenticated: !!session || isDevAuthBypass,
+    isDevBypass: isDevAuthBypass,
     signIn,
     signUp,
     signOut,

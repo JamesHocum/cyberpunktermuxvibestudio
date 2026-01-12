@@ -15,6 +15,7 @@ import { SettingsPanel } from "./SettingsPanel";
 import { StudioFooter } from "./StudioFooter";
 import { ProjectManagerModal } from "./ProjectManagerModal";
 import { NeonModuleSelector } from "./NeonModuleSelector";
+import { DevModeIndicator } from "./DevModeIndicator";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useProject } from "@/hooks/useProject";
 
@@ -248,6 +249,8 @@ export const StudioLayout = () => {
           isVisible={showSettings} 
           onClose={() => setShowSettings(false)} 
         />
+        
+        <DevModeIndicator />
       </SidebarProvider>
     </div>
   );
