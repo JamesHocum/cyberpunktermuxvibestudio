@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { StudioSidebar } from "./StudioSidebar";
 import { StudioHeader } from "./StudioHeader";
-import { CodeEditor } from "./CodeEditor";
+import { MonacoCodeEditor } from "./MonacoEditor";
+import { LivePreview } from "./LivePreview";
 import { Terminal } from "./Terminal";
 import { AIChatPanel } from "./AIChatPanel";
 import StudioApiKeySelector from "./StudioApiKeySelector";
@@ -52,6 +53,7 @@ export const StudioLayout = () => {
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [showTerminal, setShowTerminal] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
   const [showApiConfig, setShowApiConfig] = useState(false);
   const [showDownloader, setShowDownloader] = useState(false);
   const [showTesting, setShowTesting] = useState(false);
@@ -117,12 +119,14 @@ export const StudioLayout = () => {
             <StudioHeader
               onToggleChat={() => setShowChat(!showChat)}
               onToggleTerminal={() => setShowTerminal(!showTerminal)}
+              onTogglePreview={() => setShowPreview(!showPreview)}
               onToggleApiConfig={() => setShowApiConfig(!showApiConfig)}
               onToggleDownloader={() => setShowDownloader(!showDownloader)}
               onToggleTesting={() => setShowTesting(!showTesting)}
               onToggleIntegrations={() => setShowIntegrations(!showIntegrations)}
               showChat={showChat}
               showTerminal={showTerminal}
+              showPreview={showPreview}
               showApiConfig={showApiConfig}
               showDownloader={showDownloader}
               showTesting={showTesting}
@@ -143,10 +147,10 @@ export const StudioLayout = () => {
             )}
             
             <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
-              <ResizablePanel defaultSize={showChat ? 70 : 100} minSize={50}>
+              <ResizablePanel defaultSize={showChat || showPreview ? 60 : 100} minSize={40}>
                 <ResizablePanelGroup direction="vertical" className="h-full">
                   <ResizablePanel defaultSize={showTerminal ? 70 : 100} minSize={30}>
-                    <CodeEditor 
+                    <MonacoCodeEditor 
                       activeFile={activeFile} 
                       openFiles={openFiles}
                       onCloseFile={handleCloseFile}
@@ -172,6 +176,18 @@ export const StudioLayout = () => {
                   )}
                 </ResizablePanelGroup>
               </ResizablePanel>
+              
+              {showPreview && (
+                <>
+                  <ResizableHandle />
+                  <ResizablePanel defaultSize={40} minSize={25} maxSize={60}>
+                    <LivePreview 
+                      content={activeFile ? (fileContents[activeFile] || '') : ''}
+                      filename={activeFile || 'untitled'}
+                    />
+                  </ResizablePanel>
+                </>
+              )}
               
               {showChat && (
                 <>

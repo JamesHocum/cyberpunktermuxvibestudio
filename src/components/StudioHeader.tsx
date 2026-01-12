@@ -13,7 +13,8 @@ import {
   Plug,
   GitBranch,
   LogOut,
-  User
+  User,
+  Eye
 } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +29,7 @@ import {
 interface StudioHeaderProps {
   onToggleChat: () => void;
   onToggleTerminal: () => void;
+  onTogglePreview: () => void;
   onToggleApiConfig: () => void;
   onToggleDownloader: () => void;
   onToggleTesting: () => void;
@@ -38,6 +40,7 @@ interface StudioHeaderProps {
   onSave?: () => void;
   showChat: boolean;
   showTerminal: boolean;
+  showPreview: boolean;
   showApiConfig: boolean;
   showDownloader: boolean;
   showTesting: boolean;
@@ -49,7 +52,8 @@ interface StudioHeaderProps {
 
 export const StudioHeader = ({ 
   onToggleChat, 
-  onToggleTerminal, 
+  onToggleTerminal,
+  onTogglePreview,
   onToggleApiConfig,
   onToggleDownloader,
   onToggleTesting,
@@ -58,6 +62,7 @@ export const StudioHeader = ({
   onToggleSettings,
   showChat, 
   showTerminal,
+  showPreview,
   showApiConfig,
   showDownloader,
   showTesting,
@@ -155,10 +160,19 @@ export const StudioHeader = ({
         </Button>
         
         <Button 
+          variant={showPreview ? "secondary" : "ghost"} 
+          size="sm"
+          onClick={(e) => { handleClick(e); onTogglePreview(); }}
+          className="neon-green"
+        >
+          <Eye className="h-4 w-4 mr-2" />
+          Preview
+        </Button>
+        <Button 
           variant={showTesting ? "secondary" : "ghost"} 
           size="sm"
           onClick={(e) => { handleClick(e); onToggleTesting(); }}
-          className="neon-green"
+          className="neon-purple"
         >
           <TestTube className="h-4 w-4 mr-2" />
           Test
@@ -168,7 +182,7 @@ export const StudioHeader = ({
           variant={showIntegrations ? "secondary" : "ghost"} 
           size="sm"
           onClick={(e) => { handleClick(e); onToggleIntegrations(); }}
-          className="neon-purple"
+          className="neon-green"
         >
           <Plug className="h-4 w-4 mr-2" />
           Integrations
