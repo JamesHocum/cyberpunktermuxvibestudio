@@ -14,9 +14,14 @@ import {
   GitBranch,
   LogOut,
   User,
-  Eye
+  Eye,
+  Github,
+  Loader2,
+  CheckCircle,
+  XCircle
 } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
+import { useGitHub } from '@/hooks/useGitHub';
 import { useToast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
@@ -25,6 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface StudioHeaderProps {
   onToggleChat: () => void;
@@ -70,6 +76,15 @@ export const StudioHeader = ({
 }: StudioHeaderProps) => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const { 
+    connected: githubConnected, 
+    username: githubUsername, 
+    avatarUrl: githubAvatar,
+    loading: githubLoading,
+    isAuthorizing,
+    connect: connectGitHub,
+    disconnect: disconnectGitHub
+  } = useGitHub();
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -188,6 +203,73 @@ export const StudioHeader = ({
           Integrations
         </Button>
         
+        {/* GitHub Connection Button */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className={githubConnected ? "neon-green" : "text-muted-foreground hover:neon-purple"}
+            >
+              {githubLoading || isAuthorizing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : githubConnected ? (
+                <Avatar className="h-5 w-5 mr-2">
+                  <AvatarImage src={githubAvatar || undefined} alt={githubUsername || 'GitHub'} />
+                  <AvatarFallback className="bg-green-500/20 text-green-400 text-xs">
+                    <Github className="h-3 w-3" />
+                  </AvatarFallback>
+                </Avatar>
+              ) : (
+                <Github className="h-4 w-4 mr-2" />
+              )}
+              {githubConnected ? githubUsername || 'GitHub' : 'GitHub'}
+              {githubConnected && <CheckCircle className="h-3 w-3 ml-1 text-green-400" />}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-black/90 border-purple-600/30">
+            {githubConnected ? (
+              <>
+                <DropdownMenuItem className="text-gray-400 cursor-default">
+                  <CheckCircle className="h-4 w-4 mr-2 text-green-400" />
+                  Connected as {githubUsername}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-purple-600/30" />
+                <DropdownMenuItem 
+                  onClick={() => onToggleGit?.()}
+                  className="text-purple-400 focus:text-purple-300 focus:bg-purple-900/30 cursor-pointer"
+                >
+                  <GitBranch className="h-4 w-4 mr-2" />
+                  Open Git Panel
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={disconnectGitHub}
+                  className="text-red-400 focus:text-red-300 focus:bg-red-900/30 cursor-pointer"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Disconnect GitHub
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <>
+                <DropdownMenuItem className="text-gray-400 cursor-default">
+                  <XCircle className="h-4 w-4 mr-2 text-gray-500" />
+                  Not connected
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-purple-600/30" />
+                <DropdownMenuItem 
+                  onClick={connectGitHub}
+                  disabled={isAuthorizing}
+                  className="text-green-400 focus:text-green-300 focus:bg-green-900/30 cursor-pointer"
+                >
+                  <Github className="h-4 w-4 mr-2" />
+                  {isAuthorizing ? 'Connecting...' : 'Connect GitHub'}
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <Button 
           variant="ghost" 
           size="sm"
