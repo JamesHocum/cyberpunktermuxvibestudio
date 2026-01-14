@@ -61,7 +61,8 @@ export const Terminal = ({ fileTree, fileContents = {}, onCodeGenerated, project
     'git status', 'git add', 'git commit', 'git push', 'git pull',
     'ls', 'cd', 'mkdir', 'rm', 'cat', 'echo',
     'ai code', 'ai debug', 'ai refactor', 'ai explain', 'ai complete', 'ai test',
-    'help', 'clear', 'matrix --status', 'cyber --theme'
+    'help', 'clear', 'matrix --status', 'cyber --theme',
+    'pwa --install', 'pwa --status', 'electron --info'
   ];
 
   const addTerminal = () => {
@@ -195,7 +196,7 @@ export const Terminal = ({ fileTree, fileContents = {}, onCodeGenerated, project
         '  npm <command>    - Package manager',
         '  git <command>    - Version control',
         '',
-        'AI Commands (powered by Codex Agent):',
+        'AI Commands (requires authentication):',
         '  ai code <desc>       - Generate code from description',
         '  ai refactor <file>   - Improve and refactor code',
         '  ai explain <file>    - Explain what code does',
@@ -205,20 +206,31 @@ export const Terminal = ({ fileTree, fileContents = {}, onCodeGenerated, project
         '',
         'Matrix Commands:',
         '  matrix --status  - Check neural network status',
+        '',
+        'App Commands:',
+        '  pwa --install    - Install as PWA (if available)',
+        '  pwa --status     - Check PWA installation status',
+        '  electron --info  - Show Electron build instructions',
         ''
       ]);
       return;
     }
 
-    // AI COMMANDS - Route to Codex Agent
+    // AI COMMANDS - Route to Codex Agent (requires auth)
     if (cmd.startsWith('ai ')) {
-      const aiCmd = cmdParts[1];
-      const aiArg = cmdParts.slice(2).join(' ');
-
-      if (!aiArg) {
-        setHistory(prev => [...prev, '[ERROR] Please provide an argument for AI command', '']);
+      // Check authentication
+      if (!session) {
+        setHistory(prev => [...prev,
+          '[AUTH] Neural interface requires authentication',
+          '[INFO] Log in via the Auth page to activate AI commands',
+          '[HINT] Use the user menu in the header to sign in',
+          ''
+        ]);
         return;
       }
+
+      const aiCmd = cmdParts[1];
+      const aiArg = cmdParts.slice(2).join(' ');
 
       setIsProcessing(true);
       setHistory(prev => [...prev, `[AI] Processing ${aiCmd} request...`]);
@@ -492,10 +504,85 @@ export const Terminal = ({ fileTree, fileContents = {}, onCodeGenerated, project
       return;
     }
 
-    // Default: Try natural language via AI chat
+    // PWA commands
+    if (cmd === 'pwa --install' || cmd === 'pwa --status') {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true;
+      
+      if (cmd === 'pwa --status') {
+        setHistory(prev => [...prev,
+          '[PWA] Installation Status:',
+          `  Running as PWA: ${isStandalone ? 'YES' : 'NO'}`,
+          `  Service Worker: ${navigator.serviceWorker ? 'REGISTERED' : 'NOT AVAILABLE'}`,
+          `  Protocol: ${window.location.protocol}`,
+          '',
+          isStandalone 
+            ? '[OK] App is installed and running in standalone mode'
+            : '[INFO] Use "pwa --install" or the Install button in header to install',
+          ''
+        ]);
+      } else {
+        if (isStandalone) {
+          setHistory(prev => [...prev,
+            '[PWA] App is already installed!',
+            '[INFO] Running in standalone mode',
+            ''
+          ]);
+        } else {
+          setHistory(prev => [...prev,
+            '[PWA] To install this app:',
+            '',
+            '  Desktop: Click the Install button in your browser\'s address bar',
+            '  iOS: Tap Share → Add to Home Screen',
+            '  Android: Tap Menu → Add to Home Screen',
+            '',
+            '[INFO] Or use the Install button in the header',
+            ''
+          ]);
+        }
+      }
+      return;
+    }
+
+    // Electron info command
+    if (cmd === 'electron --info') {
+      setHistory(prev => [...prev,
+        '[ELECTRON] Desktop Build Information',
+        '',
+        'To build a desktop application:',
+        '',
+        '1. Clone project from GitHub',
+        '2. Install dependencies: npm install',
+        '3. Install Electron: npm install -D electron electron-builder',
+        '4. Build the app:',
+        '   - Windows: npm run electron:build:win',
+        '   - macOS:   npm run electron:build:mac',
+        '   - Linux:   npm run electron:build:linux',
+        '',
+        'Output will be in the "release" folder',
+        '',
+        '[INFO] Electron configuration files:',
+        '  - electron/main.js     - Main process',
+        '  - electron/preload.js  - Preload script',
+        '  - electron-builder.config.js - Build config',
+        ''
+      ]);
+      return;
+    }
+
+    // Default: Try natural language via AI chat (requires auth)
     if (cmd.length > 10) {
+      // Check authentication
+      if (!session) {
+        setHistory(prev => [...prev,
+          '[AUTH] Neural interface requires authentication',
+          '[INFO] Log in to use natural language AI processing',
+          ''
+        ]);
+        return;
+      }
+      
       setIsProcessing(true);
-      setHistory(prev => [...prev, '[AI] Processing natural language request...']);
       
       try {
         // Use session token if available, fallback to anon key

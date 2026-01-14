@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Play, 
@@ -18,10 +18,12 @@ import {
   Github,
   Loader2,
   CheckCircle,
-  XCircle
+  XCircle,
+  Smartphone
 } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import { useGitHub } from '@/hooks/useGitHub';
+import { usePWA } from '@/hooks/usePWA';
 import { useToast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
@@ -31,6 +33,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PWAInstallPrompt } from './PWAInstallPrompt';
+import { Badge } from "@/components/ui/badge";
 
 interface StudioHeaderProps {
   onToggleChat: () => void;
@@ -76,6 +80,8 @@ export const StudioHeader = ({
 }: StudioHeaderProps) => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const { canInstall, isInstalled, isStandalone } = usePWA();
+  const [showPWAPrompt, setShowPWAPrompt] = useState(false);
   const { 
     connected: githubConnected, 
     username: githubUsername, 
@@ -279,6 +285,26 @@ export const StudioHeader = ({
           <GitBranch className="h-4 w-4 mr-2" />
           Git
         </Button>
+
+        {/* PWA Install Button */}
+        {(canInstall || isInstalled || isStandalone) && (
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={(e) => { handleClick(e); setShowPWAPrompt(true); }}
+            className={isInstalled || isStandalone ? "neon-green" : "neon-purple pulse-glow"}
+          >
+            <Smartphone className="h-4 w-4 mr-2" />
+            {isInstalled || isStandalone ? (
+              <>
+                Installed
+                <Badge variant="secondary" className="ml-2 text-xs bg-green-500/20 neon-green border-green-500/30">PWA</Badge>
+              </>
+            ) : (
+              'Install'
+            )}
+          </Button>
+        )}
         
         <Button 
           variant="ghost" 
@@ -314,6 +340,9 @@ export const StudioHeader = ({
           </DropdownMenu>
         )}
       </div>
+
+      {/* PWA Install Dialog */}
+      <PWAInstallPrompt open={showPWAPrompt} onOpenChange={setShowPWAPrompt} />
     </header>
   );
 };
