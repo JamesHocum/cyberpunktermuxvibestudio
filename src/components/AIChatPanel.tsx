@@ -3,12 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, Zap, LogIn, Lock } from "lucide-react";
+import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, Zap, LogIn, Lock, GitBranch, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   id: string;
@@ -17,22 +18,80 @@ interface Message {
   timestamp: Date;
 }
 
-export const AIChatPanel = () => {
+interface AIChatPanelProps {
+  onProjectCreated?: (projectId: string) => Promise<void>;
+  currentProjectId?: string;
+}
+
+// Extract GitHub repo URL from message
+const extractRepoUrl = (message: string): string | null => {
+  const match = message.match(/https?:\/\/github\.com\/[\w.-]+\/[\w.-]+/);
+  return match ? match[0] : null;
+};
+
+// Check if message is an agentic command
+const isAgenticCommand = (message: string): boolean => {
+  const lower = message.toLowerCase();
+  const hasGitHubUrl = extractRepoUrl(message) !== null;
+  const hasBuildIntent = 
+    lower.includes('build this') ||
+    lower.includes('clone this') ||
+    lower.includes('scaffold') ||
+    lower.includes('import this') ||
+    lower.includes('fetch this') ||
+    lower.includes('pull this') ||
+    lower.includes('create from');
+  
+  return hasGitHubUrl && (hasBuildIntent || !lower.includes('?'));
+};
+
+export const AIChatPanel = ({ onProjectCreated, currentProjectId }: AIChatPanelProps) => {
   const { session, isAuthenticated, isDevBypass } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: '✨ **Lady Violet Online** - Creative Dev Companion Activated\n\nHello darling! I\'m Lady Violet, your AI design and development partner powered by free Gemini AI. I specialize in creating beautiful, functional experiences!\n\n**What I can do:**\n• Design stunning UI/UX with cyberpunk aesthetics\n• Write production-ready React, TypeScript, and Node.js code\n• Create responsive, accessible interfaces\n• Implement smooth animations and interactions\n• Optimize performance and user experience\n• Guide you through the creative process\n\n**Let\'s create something beautiful together!** What\'s your vision?',
+      content: '✨ **Lady Violet Online** - Agentic Dev Companion Activated\n\nHello darling! I\'m Lady Violet, your AI design and development partner.\n\n**🔮 Agentic Capabilities:**\n• **Clone GitHub repos** - Just paste a URL and say "Build this"\n• Design stunning UI/UX with cyberpunk aesthetics\n• Write production-ready React, TypeScript, and Node.js code\n• Create responsive, accessible interfaces\n• Implement smooth animations and interactions\n\n**Example Commands:**\n• `Build this https://github.com/user/repo`\n• `Clone https://github.com/user/repo`\n• `Create a cyberpunk login page`\n\n**Let\'s create something beautiful together!** What\'s your vision?',
       timestamp: new Date()
     }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isCloning, setIsCloning] = useState(false);
   const rateLimiterRef = useRef(new RateLimiter(2000));
 
+  // Handle GitHub clone action
+  const handleGitHubClone = async (repoUrl: string): Promise<{ success: boolean; projectId?: string; message: string }> => {
+    try {
+      const authToken = session?.access_token;
+      if (!authToken) {
+        return { success: false, message: 'Authentication required for cloning' };
+      }
+
+      const response = await supabase.functions.invoke('github-clone', {
+        body: { repoUrl }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Clone failed');
+      }
+
+      return {
+        success: true,
+        projectId: response.data.projectId,
+        message: response.data.message || `Successfully cloned ${response.data.fileCount} files`
+      };
+    } catch (error) {
+      console.error('GitHub clone error:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Clone failed'
+      };
+    }
+  };
+
   const sendMessage = async () => {
-    if (!input.trim() || isTyping) return;
+    if (!input.trim() || isTyping || isCloning) return;
 
     // Validate input
     try {
@@ -60,11 +119,60 @@ export const AIChatPanel = () => {
 
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
+    const currentInput = input;
     setInput('');
+
+    // Check for agentic GitHub clone command
+    const repoUrl = extractRepoUrl(currentInput);
+    if (repoUrl && isAgenticCommand(currentInput)) {
+      setIsCloning(true);
+
+      // Add immediate response
+      const cloningMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `🔮 **Initiating Neural Clone Sequence**\n\n💾 Connecting to GitHub matrix...\n📡 Repository detected: \`${repoUrl}\`\n⚡ Downloading files into the system...\n\n*Please wait while I materialize your project, darling...*`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, cloningMessage]);
+
+      // Execute the clone
+      const result = await handleGitHubClone(repoUrl);
+
+      // Update with result
+      const resultMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: result.success
+          ? `✅ **Clone Complete!**\n\n${result.message}\n\n🌱 Your project has been lovingly planted in our file system, my love. You can find it in the Project Manager.\n\n**What's next?**\n• Open the project from the sidebar\n• Explore the file tree\n• Let me know what you'd like to modify!`
+          : `❌ **Clone Failed**\n\n${result.message}\n\n*Don't worry darling, let's try again or check if the repository is accessible.*`,
+        timestamp: new Date()
+      };
+
+      setMessages(prev => {
+        // Replace the cloning message with result
+        const withoutCloning = prev.slice(0, -1);
+        return [...withoutCloning, resultMessage];
+      });
+
+      // Load the project if successful
+      if (result.success && result.projectId && onProjectCreated) {
+        try {
+          await onProjectCreated(result.projectId);
+          toast.success('Project loaded successfully!');
+        } catch (err) {
+          console.error('Failed to load cloned project:', err);
+        }
+      }
+
+      setIsCloning(false);
+      return;
+    }
+
+    // Regular AI chat flow
     setIsTyping(true);
 
     try {
-      // Use session token if available, fallback to anon key
       const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       
       const response = await fetch(
@@ -157,22 +265,6 @@ export const AIChatPanel = () => {
     }
   };
 
-  const generateCyberpunkAIResponse = (userInput: string) => {
-    if (userInput.toLowerCase().includes('button') || userInput.toLowerCase().includes('component')) {
-      return `[NEURAL_SYNTHESIS] Compiling cyberpunk button component...\n\n\`\`\`tsx\nimport { Button } from '@/components/ui/button';\n\nconst CyberButton = () => {\n  return (\n    <Button \n      className="neon-glow pulse-glow cyber-border"\n      onClick={() => console.log('Neural link activated!')}\n    >\n      <Zap className="h-4 w-4 mr-2 neon-green" />\n      Execute Command\n    </Button>\n  );\n};\n\`\`\`\n\n[OK] Component manifested with neon aesthetics and quantum animations. Ready for integration into the matrix.`;
-    }
-    
-    if (userInput.toLowerCase().includes('app') || userInput.toLowerCase().includes('build')) {
-      return `[QUANTUM_COMPILER] Analyzing project requirements...\n\n**CYBERPUNK APP GENERATOR**\n\n🔹 **Neural Web Apps**\n• Matrix-themed React components\n• Holographic UI elements\n• Quantum state management\n\n🔹 **Desktop Applications**\n• Electron-powered cyber apps\n• Native OS integration protocols\n• Auto-updater neural networks\n\n🔹 **Installation Packages**\n• Windows MSI quantum packages\n• macOS DMG neural containers\n• Linux AppImage cyber-binaries\n\n[AI_PROMPT] Specify your target platform and I will initiate the compilation sequence.`;
-    }
-
-    if (userInput.toLowerCase().includes('cyberpunk') || userInput.toLowerCase().includes('theme')) {
-      return `[AESTHETIC_PROCESSOR] Deploying cyberpunk visual enhancements...\n\n**MATRIX THEME SYSTEM**\n\n🟢 **Neon Color Palette**\n• Matrix green (--neon-green): Primary neural interface\n• Cyber purple (--neon-purple): Secondary quantum channels\n• Terminal cyan (--neon-cyan): Data stream indicators\n\n🟣 **Visual Effects**\n• .neon-glow - Quantum illumination\n• .pulse-glow - Neural pulse animation\n• .cyber-border - Matrix boundary styling\n• .flicker - Holographic instability\n\n🔵 **Typography**\n• JetBrains Mono - Terminal interface font\n• Orbitron - Cyberpunk display headers\n\n[OK] Aesthetic matrix fully deployed. Your application now radiates with pure cyber energy.`;
-    }
-
-    return `[NEURAL_PROCESSING] Analyzing input: "${userInput}"\n\n[AI_CORE] I understand your request. Let me interface with the quantum processors to manifest your requirements.\n\n**PROCESSING PARAMETERS:**\n• Input classification: SUCCESSFUL\n• Neural pathway: ACTIVE\n• Quantum entanglement: STABLE\n\n[REQUEST] Please provide additional specifications:\n• Target implementation details\n• Preferred aesthetic enhancements\n• Integration requirements\n\nI will generate the optimal code solution for integration into the matrix.`;
-  };
-
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -191,10 +283,18 @@ export const AIChatPanel = () => {
           <Bot className="h-5 w-5 neon-purple pulse-glow" />
           <h3 className="font-cyber font-semibold neon-green">NEURAL_NET.AI</h3>
         </div>
-        <Badge variant="secondary" className={`border-green-500/30 font-terminal ${canUseAI ? 'bg-green-500/20 neon-green' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
-          <Sparkles className="h-3 w-3 mr-1 flicker" />
-          {canUseAI ? 'QUANTUM_ONLINE' : 'AUTH_REQUIRED'}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {isCloning && (
+            <Badge variant="secondary" className="bg-purple-500/20 text-purple-400 border-purple-500/30 font-terminal animate-pulse">
+              <GitBranch className="h-3 w-3 mr-1" />
+              CLONING...
+            </Badge>
+          )}
+          <Badge variant="secondary" className={`border-green-500/30 font-terminal ${canUseAI ? 'bg-green-500/20 neon-green' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
+            <Sparkles className="h-3 w-3 mr-1 flicker" />
+            {canUseAI ? 'QUANTUM_ONLINE' : 'AUTH_REQUIRED'}
+          </Badge>
+        </div>
       </div>
 
       {/* Auth Required Message */}
@@ -295,6 +395,25 @@ export const AIChatPanel = () => {
                   </div>
                 </div>
               )}
+
+              {isCloning && (
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <GitBranch className="h-4 w-4 neon-purple pulse-glow" />
+                    <span className="text-sm font-cyber font-medium">CLONE_AGENT</span>
+                    <Badge variant="secondary" className="text-xs text-purple-400 font-terminal animate-pulse">
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      cloning_repo...
+                    </Badge>
+                  </div>
+                  <div className="p-3 rounded-lg cyber-border bg-purple-500/10 terminal-glow">
+                    <div className="flex items-center space-x-2">
+                      <Loader2 className="h-4 w-4 neon-purple animate-spin" />
+                      <span className="text-sm font-terminal matrix-text">Materializing files from the GitHub matrix...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
 
@@ -305,20 +424,25 @@ export const AIChatPanel = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Input neural commands or natural language queries..."
+                placeholder="Paste GitHub URL or enter neural commands..."
                 className="flex-1 cyber-border bg-studio-terminal matrix-text font-terminal placeholder:text-muted-foreground"
+                disabled={isCloning}
               />
               <Button 
                 onClick={sendMessage} 
-                disabled={!input.trim() || isTyping}
+                disabled={!input.trim() || isTyping || isCloning}
                 size="sm"
                 className="neon-glow pulse-glow"
               >
-                <Send className="h-4 w-4 neon-green" />
+                {isCloning ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 neon-green" />
+                )}
               </Button>
             </div>
             <p className="text-xs matrix-text mt-2 font-terminal">
-              Neural Interface Active | Enter: Send | Shift+Enter: New Line
+              🔮 Agentic Mode Active | Paste GitHub URL to clone | Enter: Send
             </p>
           </div>
         </>

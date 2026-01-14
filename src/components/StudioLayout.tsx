@@ -195,7 +195,10 @@ export const StudioLayout = () => {
                 <>
                   <ResizableHandle />
                   <ResizablePanel defaultSize={30} minSize={25} maxSize={50}>
-                    <AIChatPanel />
+                    <AIChatPanel 
+                      onProjectCreated={loadProject}
+                      currentProjectId={currentProject?.id}
+                    />
                   </ResizablePanel>
                 </>
               )}
