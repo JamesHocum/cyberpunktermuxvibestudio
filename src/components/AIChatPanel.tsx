@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, Zap } from "lucide-react";
+import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, Zap, LogIn, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
+import { Link } from "react-router-dom";
 
 interface Message {
   id: string;
@@ -17,7 +18,7 @@ interface Message {
 }
 
 export const AIChatPanel = () => {
-  const { session } = useAuth();
+  const { session, isAuthenticated, isDevBypass } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -179,6 +180,9 @@ export const AIChatPanel = () => {
     }
   };
 
+  // Check if user is authenticated
+  const canUseAI = isAuthenticated || isDevBypass;
+
   return (
     <div className="flex flex-col h-full bg-studio-sidebar terminal-glow">
       {/* Header */}
@@ -187,99 +191,138 @@ export const AIChatPanel = () => {
           <Bot className="h-5 w-5 neon-purple pulse-glow" />
           <h3 className="font-cyber font-semibold neon-green">NEURAL_NET.AI</h3>
         </div>
-        <Badge variant="secondary" className="bg-green-500/20 neon-green border-green-500/30 font-terminal">
+        <Badge variant="secondary" className={`border-green-500/30 font-terminal ${canUseAI ? 'bg-green-500/20 neon-green' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
           <Sparkles className="h-3 w-3 mr-1 flicker" />
-          QUANTUM_ONLINE
+          {canUseAI ? 'QUANTUM_ONLINE' : 'AUTH_REQUIRED'}
         </Badge>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 p-4 cyber-scrollbar">
-        <div className="space-y-4">
-          {messages.map(message => (
-            <div key={message.id} className="space-y-2">
-              <div className="flex items-center space-x-2">
-                {message.role === 'user' ? (
-                  <User className="h-4 w-4 neon-green" />
-                ) : (
-                  <Bot className="h-4 w-4 neon-purple" />
-                )}
-                <span className="text-sm font-cyber font-medium">
-                  {message.role === 'user' ? 'USER_001' : 'SYSTEM_AI'}
-                </span>
-                <span className="text-xs matrix-text font-terminal">
-                  {message.timestamp.toLocaleTimeString()}
-                </span>
-              </div>
+      {/* Auth Required Message */}
+      {!canUseAI ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-6">
+          <div className="relative">
+            <Lock className="h-16 w-16 neon-purple pulse-glow" />
+            <div className="absolute -top-2 -right-2 h-6 w-6 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+              <span className="text-white text-xs font-bold">!</span>
+            </div>
+          </div>
+          
+          <div className="text-center space-y-2">
+            <h3 className="font-cyber text-xl neon-purple">Neural Interface Locked</h3>
+            <p className="font-terminal text-sm matrix-text max-w-sm">
+              Authentication required to activate the AI neural network. Connect to the matrix to unlock Lady Violet.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <Link to="/auth">
+              <Button className="neon-glow pulse-glow font-cyber w-full" size="lg">
+                <LogIn className="h-5 w-5 mr-2" />
+                Log In to Activate
+              </Button>
+            </Link>
+            <p className="text-xs matrix-text text-center font-terminal">
+              New to the matrix? Sign up for free access.
+            </p>
+          </div>
+
+          <div className="mt-8 p-4 bg-studio-terminal rounded-lg cyber-border max-w-sm">
+            <p className="text-xs font-terminal matrix-text text-center">
+              <span className="neon-green">TIP:</span> Once authenticated, you'll have access to Lady Violet AI, terminal commands, and all neural processing features.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Messages */}
+          <ScrollArea className="flex-1 p-4 cyber-scrollbar">
+            <div className="space-y-4">
+              {messages.map(message => (
+                <div key={message.id} className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    {message.role === 'user' ? (
+                      <User className="h-4 w-4 neon-green" />
+                    ) : (
+                      <Bot className="h-4 w-4 neon-purple" />
+                    )}
+                    <span className="text-sm font-cyber font-medium">
+                      {message.role === 'user' ? 'USER_001' : 'SYSTEM_AI'}
+                    </span>
+                    <span className="text-xs matrix-text font-terminal">
+                      {message.timestamp.toLocaleTimeString()}
+                    </span>
+                  </div>
+                  
+                  <div className={`p-3 rounded-lg cyber-border ${
+                    message.role === 'user' 
+                      ? 'bg-primary/10 neon-glow' 
+                      : 'bg-muted/20 terminal-glow'
+                  }`}>
+                    <pre className="whitespace-pre-wrap text-sm font-terminal matrix-text">
+                      {message.content}
+                    </pre>
+                  </div>
+                  
+                  {message.role === 'assistant' && (
+                    <div className="flex items-center space-x-2">
+                      <Button variant="ghost" size="sm" className="h-6 px-2 neon-green hover:neon-glow">
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 neon-purple hover:neon-glow">
+                        <ThumbsUp className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 neon-green hover:neon-glow">
+                        <ThumbsDown className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
               
-              <div className={`p-3 rounded-lg cyber-border ${
-                message.role === 'user' 
-                  ? 'bg-primary/10 neon-glow' 
-                  : 'bg-muted/20 terminal-glow'
-              }`}>
-                <pre className="whitespace-pre-wrap text-sm font-terminal matrix-text">
-                  {message.content}
-                </pre>
-              </div>
-              
-              {message.role === 'assistant' && (
-                <div className="flex items-center space-x-2">
-                  <Button variant="ghost" size="sm" className="h-6 px-2 neon-green hover:neon-glow">
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 neon-purple hover:neon-glow">
-                    <ThumbsUp className="h-3 w-3" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 neon-green hover:neon-glow">
-                    <ThumbsDown className="h-3 w-3" />
-                  </Button>
+              {isTyping && (
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Bot className="h-4 w-4 neon-purple pulse-glow" />
+                    <span className="text-sm font-cyber font-medium">SYSTEM_AI</span>
+                    <Badge variant="secondary" className="text-xs neon-purple font-terminal">neural_processing...</Badge>
+                  </div>
+                  <div className="p-3 rounded-lg cyber-border bg-muted/20 terminal-glow">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 neon-green rounded-full animate-bounce" />
+                      <div className="w-2 h-2 neon-purple rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                      <div className="w-2 h-2 neon-green rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
-          ))}
-          
-          {isTyping && (
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Bot className="h-4 w-4 neon-purple pulse-glow" />
-                <span className="text-sm font-cyber font-medium">SYSTEM_AI</span>
-                <Badge variant="secondary" className="text-xs neon-purple font-terminal">neural_processing...</Badge>
-              </div>
-              <div className="p-3 rounded-lg cyber-border bg-muted/20 terminal-glow">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 neon-green rounded-full animate-bounce" />
-                  <div className="w-2 h-2 neon-purple rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                  <div className="w-2 h-2 neon-green rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+          </ScrollArea>
 
-      {/* Input */}
-      <div className="p-4 border-t cyber-border bg-studio-terminal">
-        <div className="flex space-x-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Input neural commands or natural language queries..."
-            className="flex-1 cyber-border bg-studio-terminal matrix-text font-terminal placeholder:text-muted-foreground"
-          />
-          <Button 
-            onClick={sendMessage} 
-            disabled={!input.trim() || isTyping}
-            size="sm"
-            className="neon-glow pulse-glow"
-          >
-            <Send className="h-4 w-4 neon-green" />
-          </Button>
-        </div>
-        <p className="text-xs matrix-text mt-2 font-terminal">
-          Neural Interface Active | Enter: Send | Shift+Enter: New Line
-        </p>
-      </div>
+          {/* Input */}
+          <div className="p-4 border-t cyber-border bg-studio-terminal">
+            <div className="flex space-x-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Input neural commands or natural language queries..."
+                className="flex-1 cyber-border bg-studio-terminal matrix-text font-terminal placeholder:text-muted-foreground"
+              />
+              <Button 
+                onClick={sendMessage} 
+                disabled={!input.trim() || isTyping}
+                size="sm"
+                className="neon-glow pulse-glow"
+              >
+                <Send className="h-4 w-4 neon-green" />
+              </Button>
+            </div>
+            <p className="text-xs matrix-text mt-2 font-terminal">
+              Neural Interface Active | Enter: Send | Shift+Enter: New Line
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 };
