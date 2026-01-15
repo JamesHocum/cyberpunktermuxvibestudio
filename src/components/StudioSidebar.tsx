@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -16,6 +16,7 @@ import {
   Database,
   Trash2
 } from "lucide-react";
+import { MatrixToolsPanel, ModalType } from "./MatrixToolsPanel";
 import {
   Sidebar,
   SidebarContent,
@@ -39,6 +40,7 @@ interface StudioSidebarProps {
   onCreateFile: (parentPath: string, fileName: string, isFolder?: boolean) => void;
   onDeleteFile: (filePath: string) => void;
   currentProjectName?: string;
+  fileContents?: Record<string, string>;
 }
 
 const getCyberFileIcon = (extension?: string) => {
@@ -75,9 +77,19 @@ export const StudioSidebar = ({
   onToggleFolder,
   onCreateFile,
   onDeleteFile,
-  currentProjectName
+  currentProjectName,
+  fileContents = {}
 }: StudioSidebarProps) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [openModal, setOpenModal] = useState<ModalType>(null);
+
+  const handleOpenModal = useCallback((modal: ModalType) => {
+    setOpenModal(modal);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setOpenModal(null);
+  }, []);
 
   const createNewFile = () => {
     const fileName = prompt("Enter file name (e.g., Component.tsx or foldername/):");
@@ -236,25 +248,37 @@ export const StudioSidebar = ({
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton className="hover:neon-glow matrix-text font-terminal">
+                <SidebarMenuButton 
+                  className="hover:neon-glow matrix-text font-terminal"
+                  onClick={() => handleOpenModal('neural-search')}
+                >
                   <Search className="h-4 w-4 neon-green" />
                   <span>Neural Search</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton className="hover:neon-glow matrix-text font-terminal">
+                <SidebarMenuButton 
+                  className="hover:neon-glow matrix-text font-terminal"
+                  onClick={() => handleOpenModal('quantum-control')}
+                >
                   <GitBranch className="h-4 w-4 neon-purple" />
                   <span>Quantum Control</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton className="hover:neon-glow matrix-text font-terminal">
+                <SidebarMenuButton 
+                  className="hover:neon-glow matrix-text font-terminal"
+                  onClick={() => handleOpenModal('cyber-extensions')}
+                >
                   <Package className="h-4 w-4 neon-green" />
                   <span>Cyber Extensions</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton className="hover:neon-glow matrix-text font-terminal">
+                <SidebarMenuButton 
+                  className="hover:neon-glow matrix-text font-terminal"
+                  onClick={() => handleOpenModal('matrix-config')}
+                >
                   <Settings className="h-4 w-4 neon-purple" />
                   <span>Matrix Config</span>
                 </SidebarMenuButton>
@@ -263,6 +287,13 @@ export const StudioSidebar = ({
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <MatrixToolsPanel
+        openModal={openModal}
+        onClose={handleCloseModal}
+        fileContents={fileContents}
+        onFileSelect={onFileSelect}
+      />
     </Sidebar>
   );
 };
