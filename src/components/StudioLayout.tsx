@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { StudioSidebar } from "./StudioSidebar";
 import { StudioHeader } from "./StudioHeader";
@@ -16,8 +16,10 @@ import { StudioFooter } from "./StudioFooter";
 import { ProjectManagerModal } from "./ProjectManagerModal";
 import { NeonModuleSelector } from "./NeonModuleSelector";
 import { DevModeIndicator } from "./DevModeIndicator";
+import { CommandPalette } from "./CommandPalette";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useProject } from "@/hooks/useProject";
+import { ModalType } from "./MatrixToolsPanel";
 
 export const StudioLayout = () => {
   const {
@@ -64,6 +66,9 @@ export const StudioLayout = () => {
   const [showProjectManager, setShowProjectManager] = useState(false);
   const [apiKey, setApiKey] = useState<string>("DEFAULT");
   const [openFiles, setOpenFiles] = useState<string[]>([]);
+  
+  // Ref for triggering sidebar matrix tools
+  const [matrixModalToOpen, setMatrixModalToOpen] = useState<ModalType>(null);
 
   const handleFileSelect = useCallback((file: string) => {
     setActiveFile(file);
@@ -199,6 +204,7 @@ export const StudioLayout = () => {
                     <AIChatPanel 
                       onProjectCreated={loadProject}
                       currentProjectId={currentProject?.id}
+                      fileContents={fileContents}
                     />
                   </ResizablePanel>
                 </>
@@ -257,6 +263,21 @@ export const StudioLayout = () => {
         <SettingsPanel 
           isVisible={showSettings} 
           onClose={() => setShowSettings(false)} 
+        />
+        
+        <CommandPalette
+          onToggleChat={() => setShowChat(prev => !prev)}
+          onToggleTerminal={() => setShowTerminal(prev => !prev)}
+          onTogglePreview={() => setShowPreview(prev => !prev)}
+          onToggleApiConfig={() => setShowApiConfig(prev => !prev)}
+          onToggleDownloader={() => setShowDownloader(prev => !prev)}
+          onToggleTesting={() => setShowTesting(prev => !prev)}
+          onToggleIntegrations={() => setShowIntegrations(prev => !prev)}
+          onToggleGit={() => setShowGit(prev => !prev)}
+          onToggleSettings={() => setShowSettings(prev => !prev)}
+          onToggleProjectManager={() => setShowProjectManager(prev => !prev)}
+          onSave={handleSave}
+          onNewFile={() => createFile(fileTree.name, 'NewFile.tsx', false)}
         />
         
         <DevModeIndicator />

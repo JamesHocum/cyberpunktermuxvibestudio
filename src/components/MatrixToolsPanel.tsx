@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 
-type ModalType = 'neural-search' | 'quantum-control' | 'cyber-extensions' | 'matrix-config' | null;
+export type ModalType = 'neural-search' | 'quantum-control' | 'cyber-extensions' | 'matrix-config' | null;
 
 interface MatrixToolsPanelProps {
   openModal: ModalType;
@@ -430,4 +430,4 @@ export const MatrixToolsPanel = ({
   );
 };
 
-export type { ModalType };
+
