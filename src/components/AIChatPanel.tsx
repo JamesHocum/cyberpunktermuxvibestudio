@@ -1,9 +1,9 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, Zap, LogIn, Lock, GitBranch, Loader2 } from "lucide-react";
+import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, Zap, LogIn, Lock, GitBranch, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { z } from "zod";
@@ -45,20 +45,110 @@ const isAgenticCommand = (message: string): boolean => {
   return hasGitHubUrl && (hasBuildIntent || !lower.includes('?'));
 };
 
+const WELCOME_MESSAGE: Message = {
+  id: 'welcome',
+  role: 'assistant',
+  content: '✨ **Lady Violet Online** - Agentic Dev Companion Activated\n\nHello darling! I\'m Lady Violet, your AI design and development partner.\n\n**🔮 Agentic Capabilities:**\n• **Clone GitHub repos** - Just paste a URL and say "Build this"\n• Design stunning UI/UX with cyberpunk aesthetics\n• Write production-ready React, TypeScript, and Node.js code\n• Create responsive, accessible interfaces\n• Implement smooth animations and interactions\n\n**Example Commands:**\n• `Build this https://github.com/user/repo`\n• `Clone https://github.com/user/repo`\n• `Create a cyberpunk login page`\n\n**Let\'s create something beautiful together!** What\'s your vision?',
+  timestamp: new Date()
+};
+
 export const AIChatPanel = ({ onProjectCreated, currentProjectId }: AIChatPanelProps) => {
-  const { session, isAuthenticated, isDevBypass } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: '✨ **Lady Violet Online** - Agentic Dev Companion Activated\n\nHello darling! I\'m Lady Violet, your AI design and development partner.\n\n**🔮 Agentic Capabilities:**\n• **Clone GitHub repos** - Just paste a URL and say "Build this"\n• Design stunning UI/UX with cyberpunk aesthetics\n• Write production-ready React, TypeScript, and Node.js code\n• Create responsive, accessible interfaces\n• Implement smooth animations and interactions\n\n**Example Commands:**\n• `Build this https://github.com/user/repo`\n• `Clone https://github.com/user/repo`\n• `Create a cyberpunk login page`\n\n**Let\'s create something beautiful together!** What\'s your vision?',
-      timestamp: new Date()
-    }
-  ]);
+  const { session, user, isAuthenticated, isDevBypass } = useAuth();
+  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isCloning, setIsCloning] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const rateLimiterRef = useRef(new RateLimiter(2000));
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping, isCloning, scrollToBottom]);
+
+  // Load chat history from database
+  const loadChatHistory = useCallback(async () => {
+    if (!user?.id) return;
+    
+    setIsLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('project_id', currentProjectId || null)
+        .order('created_at', { ascending: true })
+        .limit(100);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const loadedMessages: Message[] = data.map((msg) => ({
+          id: msg.id,
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content,
+          timestamp: new Date(msg.created_at || Date.now())
+        }));
+        setMessages([WELCOME_MESSAGE, ...loadedMessages]);
+      }
+    } catch (err) {
+      console.error('[Chat] Failed to load history:', err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [user?.id, currentProjectId]);
+
+  // Load history on mount and when project changes
+  useEffect(() => {
+    if (isAuthenticated && !isDevBypass) {
+      loadChatHistory();
+    }
+  }, [isAuthenticated, isDevBypass, loadChatHistory]);
+
+  // Save message to database
+  const saveMessage = useCallback(async (message: Message) => {
+    if (!user?.id || isDevBypass) return;
+
+    try {
+      await supabase.from('chat_messages').insert({
+        user_id: user.id,
+        project_id: currentProjectId || null,
+        role: message.role,
+        content: message.content
+      });
+    } catch (err) {
+      console.error('[Chat] Failed to save message:', err);
+    }
+  }, [user?.id, currentProjectId, isDevBypass]);
+
+  // Clear chat history
+  const clearHistory = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('project_id', currentProjectId || null);
+
+      if (error) throw error;
+
+      setMessages([WELCOME_MESSAGE]);
+      toast.success('Chat history cleared');
+    } catch (err) {
+      console.error('[Chat] Failed to clear history:', err);
+      toast.error('Failed to clear history');
+    }
+  }, [user?.id, currentProjectId]);
 
   // Handle GitHub clone action
   const handleGitHubClone = async (repoUrl: string): Promise<{ success: boolean; projectId?: string; message: string }> => {
@@ -119,6 +209,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId }: AIChatPanelP
 
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
+    saveMessage(userMessage);
     const currentInput = input;
     setInput('');
 
@@ -154,6 +245,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId }: AIChatPanelP
         const withoutCloning = prev.slice(0, -1);
         return [...withoutCloning, resultMessage];
       });
+      saveMessage(resultMessage);
 
       // Load the project if successful
       if (result.success && result.projectId && onProjectCreated) {
@@ -239,13 +331,16 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId }: AIChatPanelP
                   )
                 );
               }
-              } catch (e) {
-                if (import.meta.env.DEV) {
-                  console.error("Error parsing streaming chunk:", e);
-                }
+            } catch (e) {
+              if (import.meta.env.DEV) {
+                console.error("Error parsing streaming chunk:", e);
               }
+            }
           }
         }
+
+        // Save the complete assistant message
+        saveMessage(assistantMessage);
       }
 
       setIsTyping(false);
@@ -272,6 +367,11 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId }: AIChatPanelP
     }
   };
 
+  const copyMessage = (content: string) => {
+    navigator.clipboard.writeText(content);
+    toast.success('Copied to clipboard');
+  };
+
   // Check if user is authenticated
   const canUseAI = isAuthenticated || isDevBypass;
 
@@ -284,11 +384,28 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId }: AIChatPanelP
           <h3 className="font-cyber font-semibold neon-green">NEURAL_NET.AI</h3>
         </div>
         <div className="flex items-center gap-2">
+          {isLoadingHistory && (
+            <Badge variant="secondary" className="bg-blue-500/20 text-blue-400 border-blue-500/30 font-terminal">
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              LOADING...
+            </Badge>
+          )}
           {isCloning && (
             <Badge variant="secondary" className="bg-purple-500/20 text-purple-400 border-purple-500/30 font-terminal animate-pulse">
               <GitBranch className="h-3 w-3 mr-1" />
               CLONING...
             </Badge>
+          )}
+          {canUseAI && messages.length > 1 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearHistory}
+              className="h-7 px-2 text-muted-foreground hover:text-red-400"
+              title="Clear chat history"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
           )}
           <Badge variant="secondary" className={`border-green-500/30 font-terminal ${canUseAI ? 'bg-green-500/20 neon-green' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
             <Sparkles className="h-3 w-3 mr-1 flicker" />
@@ -335,7 +452,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId }: AIChatPanelP
       ) : (
         <>
           {/* Messages */}
-          <ScrollArea className="flex-1 p-4 cyber-scrollbar">
+          <ScrollArea className="flex-1 p-4 cyber-scrollbar" ref={scrollRef}>
             <div className="space-y-4">
               {messages.map(message => (
                 <div key={message.id} className="space-y-2">
@@ -363,9 +480,14 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId }: AIChatPanelP
                     </pre>
                   </div>
                   
-                  {message.role === 'assistant' && (
+                  {message.role === 'assistant' && message.id !== 'welcome' && (
                     <div className="flex items-center space-x-2">
-                      <Button variant="ghost" size="sm" className="h-6 px-2 neon-green hover:neon-glow">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 px-2 neon-green hover:neon-glow"
+                        onClick={() => copyMessage(message.content)}
+                      >
                         <Copy className="h-3 w-3" />
                       </Button>
                       <Button variant="ghost" size="sm" className="h-6 px-2 neon-purple hover:neon-glow">
@@ -414,6 +536,9 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId }: AIChatPanelP
                   </div>
                 </div>
               )}
+              
+              {/* Scroll anchor */}
+              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
 
@@ -441,12 +566,11 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId }: AIChatPanelP
                 )}
               </Button>
             </div>
-            <p className="text-xs matrix-text mt-2 font-terminal">
-              🔮 Agentic Mode Active | Paste GitHub URL to clone | Enter: Send
-            </p>
           </div>
         </>
       )}
     </div>
   );
 };
+
+export default AIChatPanel;

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import OAuthCallback from "./pages/OAuthCallback";
+import GitHubCallback from "./pages/GitHubCallback";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -21,6 +22,7 @@ const App = () => {
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/oauth/callback" element={<OAuthCallback />} />
+            <Route path="/github/callback" element={<GitHubCallback />} />
             <Route
               path="/"
               element={

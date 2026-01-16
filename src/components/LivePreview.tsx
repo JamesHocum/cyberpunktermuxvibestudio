@@ -11,9 +11,11 @@ import {
   Maximize2,
   Minimize2,
   ExternalLink,
-  AlertTriangle
+  AlertTriangle,
+  Code2
 } from "lucide-react";
 import { toast } from "sonner";
+import { Sandpack, SandpackProvider, SandpackPreview, SandpackThemeProvider } from "@codesandbox/sandpack-react";
 
 interface LivePreviewProps {
   content: string;
@@ -22,6 +24,7 @@ interface LivePreviewProps {
 }
 
 type ViewportSize = "mobile" | "tablet" | "desktop" | "full";
+type PreviewMode = "iframe" | "sandpack";
 
 const viewportSizes: Record<ViewportSize, { width: string; height: string; label: string }> = {
   mobile: { width: "375px", height: "667px", label: "Mobile" },
@@ -30,12 +33,46 @@ const viewportSizes: Record<ViewportSize, { width: string; height: string; label
   full: { width: "100%", height: "100%", label: "Full" },
 };
 
+// Custom cyberpunk theme for Sandpack
+const cyberpunkTheme = {
+  colors: {
+    surface1: "#0d1117",
+    surface2: "#1a1a2e",
+    surface3: "#252539",
+    clickable: "#00ff88",
+    base: "#e6e6e6",
+    disabled: "#4a5568",
+    hover: "#b300ff",
+    accent: "#00ff88",
+    error: "#ff006e",
+    errorSurface: "#1a0a1f",
+  },
+  syntax: {
+    plain: "#e6e6e6",
+    comment: { color: "#4a5568", fontStyle: "italic" as const },
+    keyword: "#b300ff",
+    tag: "#00d4ff",
+    punctuation: "#4a5568",
+    definition: "#00ff88",
+    property: "#00d4ff",
+    static: "#ffbe0b",
+    string: "#ff006e",
+  },
+  font: {
+    body: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    mono: '"JetBrains Mono", "Fira Code", monospace',
+    size: "13px",
+    lineHeight: "1.5",
+  },
+};
+
 export const LivePreview = ({ content, filename, cssContent = "" }: LivePreviewProps) => {
   const [viewport, setViewport] = useState<ViewportSize>("full");
   const [zoom, setZoom] = useState(100);
   const [isMaximized, setIsMaximized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("iframe");
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -44,6 +81,15 @@ export const LivePreview = ({ content, filename, cssContent = "" }: LivePreviewP
   const isJsxFile = filename.endsWith(".tsx") || filename.endsWith(".jsx");
   const isJsonFile = filename.endsWith(".json");
   const isMarkdownFile = filename.endsWith(".md");
+
+  // Switch to Sandpack mode for React files
+  useEffect(() => {
+    if (isJsxFile) {
+      setPreviewMode("sandpack");
+    } else {
+      setPreviewMode("iframe");
+    }
+  }, [isJsxFile]);
 
   const generatePreviewHtml = useCallback(() => {
     setError(null);
@@ -75,71 +121,6 @@ export const LivePreview = ({ content, filename, cssContent = "" }: LivePreviewP
     </div>
     <div style="margin-top: 20px; padding: 16px; border: 1px solid #333; border-radius: 8px;">
       <span>Sample elements to preview your CSS</span>
-    </div>
-  </div>
-</body>
-</html>`;
-    }
-
-    // For JSX/TSX files, show info message
-    if (isJsxFile) {
-      return `<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body {
-      background: linear-gradient(135deg, #0d1117 0%, #1a0a1f 100%);
-      color: #00ff88;
-      font-family: 'JetBrains Mono', monospace;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      padding: 20px;
-      box-sizing: border-box;
-    }
-    .container {
-      text-align: center;
-      max-width: 500px;
-    }
-    h1 {
-      color: #b300ff;
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
-    }
-    p {
-      color: #4a5568;
-      line-height: 1.6;
-      margin-bottom: 1rem;
-    }
-    .code {
-      background: #1a1a2e;
-      border: 1px solid #00ff8830;
-      border-radius: 8px;
-      padding: 16px;
-      margin-top: 20px;
-      text-align: left;
-      font-size: 0.85rem;
-      overflow-x: auto;
-    }
-    .icon {
-      font-size: 3rem;
-      margin-bottom: 1rem;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="icon">⚛️</div>
-    <h1>React Component Preview</h1>
-    <p>
-      Live preview for React/JSX components requires a build step. 
-      The component will render correctly in the full application.
-    </p>
-    <div class="code">
-      <div style="color: #4a5568;">// ${filename}</div>
-      <div style="color: #8c00ff;">export</div> <span style="color: #00d4ff;">Component</span>
     </div>
   </div>
 </body>
@@ -241,10 +222,12 @@ export const LivePreview = ({ content, filename, cssContent = "" }: LivePreviewP
 </head>
 <body>${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</body>
 </html>`;
-  }, [content, cssContent, filename, isHtmlFile, isCssFile, isJsxFile, isJsonFile, isMarkdownFile]);
+  }, [content, cssContent, filename, isHtmlFile, isCssFile, isJsonFile, isMarkdownFile]);
 
-  // Update preview with debounce
+  // Update preview with debounce (for iframe mode)
   useEffect(() => {
+    if (previewMode !== "iframe") return;
+    
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
@@ -262,12 +245,16 @@ export const LivePreview = ({ content, filename, cssContent = "" }: LivePreviewP
         clearTimeout(debounceRef.current);
       }
     };
-  }, [generatePreviewHtml]);
+  }, [generatePreviewHtml, previewMode]);
 
   const handleRefresh = () => {
-    if (iframeRef.current) {
+    if (previewMode === "iframe" && iframeRef.current) {
       const html = generatePreviewHtml();
       iframeRef.current.srcdoc = html;
+      setLastUpdate(new Date());
+      toast.success("Preview refreshed");
+    } else {
+      // For Sandpack, we can force a re-render
       setLastUpdate(new Date());
       toast.success("Preview refreshed");
     }
@@ -280,7 +267,25 @@ export const LivePreview = ({ content, filename, cssContent = "" }: LivePreviewP
     window.open(url, "_blank");
   };
 
+  const togglePreviewMode = () => {
+    setPreviewMode(prev => prev === "iframe" ? "sandpack" : "iframe");
+  };
+
   const currentViewport = viewportSizes[viewport];
+
+  // Generate Sandpack files for React preview
+  const sandpackFiles = isJsxFile ? {
+    "/App.tsx": content,
+    "/styles.css": cssContent || `
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #0d1117 0%, #1a0a1f 100%);
+  min-height: 100vh;
+  color: #e6e6e6;
+}
+    `,
+  } : {};
 
   return (
     <div
@@ -292,7 +297,7 @@ export const LivePreview = ({ content, filename, cssContent = "" }: LivePreviewP
       <div className="flex items-center justify-between bg-studio-header border-b cyber-border px-4 py-2">
         <div className="flex items-center space-x-2">
           <Badge variant="secondary" className="neon-green font-terminal text-xs">
-            LIVE PREVIEW
+            {previewMode === "sandpack" ? "REACT SANDBOX" : "LIVE PREVIEW"}
           </Badge>
           <span className="text-xs text-muted-foreground font-terminal">
             {filename}
@@ -306,6 +311,20 @@ export const LivePreview = ({ content, filename, cssContent = "" }: LivePreviewP
         </div>
 
         <div className="flex items-center space-x-2">
+          {/* Mode Toggle for JSX files */}
+          {isJsxFile && (
+            <Button
+              variant={previewMode === "sandpack" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-7 px-2"
+              onClick={togglePreviewMode}
+              title={previewMode === "sandpack" ? "Using React Sandbox" : "Switch to React Sandbox"}
+            >
+              <Code2 className="h-3 w-3 mr-1" />
+              <span className="text-xs">{previewMode === "sandpack" ? "Sandbox" : "Static"}</span>
+            </Button>
+          )}
+
           {/* Viewport Controls */}
           <div className="flex items-center border cyber-border rounded-md overflow-hidden">
             <Button
@@ -399,25 +418,55 @@ export const LivePreview = ({ content, filename, cssContent = "" }: LivePreviewP
 
       {/* Preview Area */}
       <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-[#1a1a2e]">
-        <div
-          style={{
-            width: currentViewport.width,
-            height: viewport === "full" ? "100%" : currentViewport.height,
-            maxWidth: "100%",
-            maxHeight: "100%",
-            transform: `scale(${zoom / 100})`,
-            transformOrigin: "center center",
-            transition: "transform 0.2s ease",
-          }}
-          className={`relative ${viewport !== "full" ? "shadow-2xl rounded-lg overflow-hidden border cyber-border" : ""}`}
-        >
-          <iframe
-            ref={iframeRef}
-            className="w-full h-full bg-white"
-            sandbox="allow-scripts"
-            title="Live Preview"
-          />
-        </div>
+        {previewMode === "sandpack" && isJsxFile ? (
+          <div
+            style={{
+              width: currentViewport.width,
+              height: viewport === "full" ? "100%" : currentViewport.height,
+              maxWidth: "100%",
+              maxHeight: "100%",
+              transform: `scale(${zoom / 100})`,
+              transformOrigin: "center center",
+              transition: "transform 0.2s ease",
+            }}
+            className={`relative ${viewport !== "full" ? "shadow-2xl rounded-lg overflow-hidden border cyber-border" : ""}`}
+          >
+            <SandpackProvider
+              template="react-ts"
+              files={sandpackFiles}
+              theme={cyberpunkTheme}
+              options={{
+                externalResources: ["https://cdn.tailwindcss.com"],
+              }}
+            >
+              <SandpackPreview 
+                showNavigator={false}
+                showRefreshButton={false}
+                style={{ height: "100%", width: "100%" }}
+              />
+            </SandpackProvider>
+          </div>
+        ) : (
+          <div
+            style={{
+              width: currentViewport.width,
+              height: viewport === "full" ? "100%" : currentViewport.height,
+              maxWidth: "100%",
+              maxHeight: "100%",
+              transform: `scale(${zoom / 100})`,
+              transformOrigin: "center center",
+              transition: "transform 0.2s ease",
+            }}
+            className={`relative ${viewport !== "full" ? "shadow-2xl rounded-lg overflow-hidden border cyber-border" : ""}`}
+          >
+            <iframe
+              ref={iframeRef}
+              className="w-full h-full bg-white"
+              sandbox="allow-scripts"
+              title="Live Preview"
+            />
+          </div>
+        )}
       </div>
 
       {/* Status Bar */}
@@ -427,6 +476,11 @@ export const LivePreview = ({ content, filename, cssContent = "" }: LivePreviewP
             {currentViewport.label}
             {viewport !== "full" && ` (${currentViewport.width} × ${currentViewport.height})`}
           </span>
+          {previewMode === "sandpack" && (
+            <Badge variant="secondary" className="text-xs bg-green-500/20 text-green-400 border-green-500/30">
+              React Runtime Active
+            </Badge>
+          )}
         </div>
         <div className="flex items-center space-x-4">
           <span className="text-muted-foreground font-terminal">
@@ -437,3 +491,5 @@ export const LivePreview = ({ content, filename, cssContent = "" }: LivePreviewP
     </div>
   );
 };
+
+export default LivePreview;
