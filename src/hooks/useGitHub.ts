@@ -55,7 +55,7 @@ export const useGitHub = () => {
     setIsAuthorizing(true);
     
     try {
-      const redirectUri = `${window.location.origin}/`;
+      const redirectUri = `${window.location.origin}/github/callback`;
       
       const { data, error } = await supabase.functions.invoke('github-oauth', {
         body: { 
@@ -118,7 +118,7 @@ export const useGitHub = () => {
 
       sessionStorage.removeItem('github_oauth_state');
 
-      const redirectUri = `${window.location.origin}/`;
+      const redirectUri = `${window.location.origin}/github/callback`;
 
       const { data, error } = await supabase.functions.invoke('github-oauth', {
         body: { 
