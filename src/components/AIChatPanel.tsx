@@ -3,13 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, Zap, LogIn, Lock, GitBranch, Loader2, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, Zap, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { CodebaseAnalyzer } from "./CodebaseAnalyzer";
 
 interface Message {
   id: string;
@@ -21,6 +23,7 @@ interface Message {
 interface AIChatPanelProps {
   onProjectCreated?: (projectId: string) => Promise<void>;
   currentProjectId?: string;
+  fileContents?: Record<string, string>;
 }
 
 // Extract GitHub repo URL from message
@@ -52,8 +55,9 @@ const WELCOME_MESSAGE: Message = {
   timestamp: new Date()
 };
 
-export const AIChatPanel = ({ onProjectCreated, currentProjectId }: AIChatPanelProps) => {
+export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents = {} }: AIChatPanelProps) => {
   const { session, user, isAuthenticated, isDevBypass } = useAuth();
+  const [activeTab, setActiveTab] = useState<string>("chat");
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -377,40 +381,59 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId }: AIChatPanelP
 
   return (
     <div className="flex flex-col h-full bg-studio-sidebar terminal-glow">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b cyber-border bg-studio-header">
-        <div className="flex items-center space-x-2">
-          <Bot className="h-5 w-5 neon-purple pulse-glow" />
-          <h3 className="font-cyber font-semibold neon-green">NEURAL_NET.AI</h3>
-        </div>
-        <div className="flex items-center gap-2">
-          {isLoadingHistory && (
-            <Badge variant="secondary" className="bg-blue-500/20 text-blue-400 border-blue-500/30 font-terminal">
-              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-              LOADING...
-            </Badge>
-          )}
-          {isCloning && (
-            <Badge variant="secondary" className="bg-purple-500/20 text-purple-400 border-purple-500/30 font-terminal animate-pulse">
-              <GitBranch className="h-3 w-3 mr-1" />
-              CLONING...
-            </Badge>
-          )}
-          {canUseAI && messages.length > 1 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearHistory}
-              className="h-7 px-2 text-muted-foreground hover:text-red-400"
-              title="Clear chat history"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          )}
-          <Badge variant="secondary" className={`border-green-500/30 font-terminal ${canUseAI ? 'bg-green-500/20 neon-green' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
-            <Sparkles className="h-3 w-3 mr-1 flicker" />
-            {canUseAI ? 'QUANTUM_ONLINE' : 'AUTH_REQUIRED'}
-          </Badge>
+      {/* Header with Tabs */}
+      <div className="border-b cyber-border bg-studio-header">
+        <div className="flex items-center justify-between p-3">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <div className="flex items-center justify-between w-full">
+              <TabsList className="bg-transparent h-8">
+                <TabsTrigger 
+                  value="chat" 
+                  className="data-[state=active]:bg-primary/20 data-[state=active]:neon-green px-3 py-1 text-xs font-terminal"
+                >
+                  <MessageSquare className="h-3 w-3 mr-1" />
+                  CHAT
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="analyzer" 
+                  className="data-[state=active]:bg-primary/20 data-[state=active]:neon-purple px-3 py-1 text-xs font-terminal"
+                >
+                  <FileSearch className="h-3 w-3 mr-1" />
+                  ANALYZER
+                </TabsTrigger>
+              </TabsList>
+              
+              <div className="flex items-center gap-2">
+                {isLoadingHistory && activeTab === 'chat' && (
+                  <Badge variant="secondary" className="bg-blue-500/20 text-blue-400 border-blue-500/30 font-terminal text-xs">
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    LOADING
+                  </Badge>
+                )}
+                {isCloning && (
+                  <Badge variant="secondary" className="bg-purple-500/20 text-purple-400 border-purple-500/30 font-terminal animate-pulse text-xs">
+                    <GitBranch className="h-3 w-3 mr-1" />
+                    CLONING
+                  </Badge>
+                )}
+                {canUseAI && messages.length > 1 && activeTab === 'chat' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearHistory}
+                    className="h-6 px-2 text-muted-foreground hover:text-red-400"
+                    title="Clear chat history"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                )}
+                <Badge variant="secondary" className={`border-green-500/30 font-terminal text-xs ${canUseAI ? 'bg-green-500/20 neon-green' : 'bg-red-500/20 text-red-400 border-red-500/30'}`}>
+                  <Sparkles className="h-3 w-3 mr-1 flicker" />
+                  {canUseAI ? 'ONLINE' : 'AUTH'}
+                </Badge>
+              </div>
+            </div>
+          </Tabs>
         </div>
       </div>
 
@@ -450,124 +473,137 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId }: AIChatPanelP
           </div>
         </div>
       ) : (
-        <>
-          {/* Messages */}
-          <ScrollArea className="flex-1 p-4 cyber-scrollbar" ref={scrollRef}>
-            <div className="space-y-4">
-              {messages.map(message => (
-                <div key={message.id} className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    {message.role === 'user' ? (
-                      <User className="h-4 w-4 neon-green" />
-                    ) : (
-                      <Bot className="h-4 w-4 neon-purple" />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+          {/* Chat Tab */}
+          <TabsContent value="chat" className="flex-1 flex flex-col m-0 min-h-0 data-[state=inactive]:hidden">
+            {/* Messages */}
+            <ScrollArea className="flex-1 p-4 cyber-scrollbar" ref={scrollRef}>
+              <div className="space-y-4">
+                {messages.map(message => (
+                  <div key={message.id} className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      {message.role === 'user' ? (
+                        <User className="h-4 w-4 neon-green" />
+                      ) : (
+                        <Bot className="h-4 w-4 neon-purple" />
+                      )}
+                      <span className="text-sm font-cyber font-medium">
+                        {message.role === 'user' ? 'USER_001' : 'SYSTEM_AI'}
+                      </span>
+                      <span className="text-xs matrix-text font-terminal">
+                        {message.timestamp.toLocaleTimeString()}
+                      </span>
+                    </div>
+                    
+                    <div className={`p-3 rounded-lg cyber-border ${
+                      message.role === 'user' 
+                        ? 'bg-primary/10 neon-glow' 
+                        : 'bg-muted/20 terminal-glow'
+                    }`}>
+                      <pre className="whitespace-pre-wrap text-sm font-terminal matrix-text">
+                        {message.content}
+                      </pre>
+                    </div>
+                    
+                    {message.role === 'assistant' && message.id !== 'welcome' && (
+                      <div className="flex items-center space-x-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 px-2 neon-green hover:neon-glow"
+                          onClick={() => copyMessage(message.content)}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 neon-purple hover:neon-glow">
+                          <ThumbsUp className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 neon-green hover:neon-glow">
+                          <ThumbsDown className="h-3 w-3" />
+                        </Button>
+                      </div>
                     )}
-                    <span className="text-sm font-cyber font-medium">
-                      {message.role === 'user' ? 'USER_001' : 'SYSTEM_AI'}
-                    </span>
-                    <span className="text-xs matrix-text font-terminal">
-                      {message.timestamp.toLocaleTimeString()}
-                    </span>
                   </div>
-                  
-                  <div className={`p-3 rounded-lg cyber-border ${
-                    message.role === 'user' 
-                      ? 'bg-primary/10 neon-glow' 
-                      : 'bg-muted/20 terminal-glow'
-                  }`}>
-                    <pre className="whitespace-pre-wrap text-sm font-terminal matrix-text">
-                      {message.content}
-                    </pre>
-                  </div>
-                  
-                  {message.role === 'assistant' && message.id !== 'welcome' && (
+                ))}
+                
+                {isTyping && (
+                  <div className="space-y-2">
                     <div className="flex items-center space-x-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-6 px-2 neon-green hover:neon-glow"
-                        onClick={() => copyMessage(message.content)}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-6 px-2 neon-purple hover:neon-glow">
-                        <ThumbsUp className="h-3 w-3" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-6 px-2 neon-green hover:neon-glow">
-                        <ThumbsDown className="h-3 w-3" />
-                      </Button>
+                      <Bot className="h-4 w-4 neon-purple pulse-glow" />
+                      <span className="text-sm font-cyber font-medium">SYSTEM_AI</span>
+                      <Badge variant="secondary" className="text-xs neon-purple font-terminal">neural_processing...</Badge>
                     </div>
-                  )}
-                </div>
-              ))}
-              
-              {isTyping && (
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Bot className="h-4 w-4 neon-purple pulse-glow" />
-                    <span className="text-sm font-cyber font-medium">SYSTEM_AI</span>
-                    <Badge variant="secondary" className="text-xs neon-purple font-terminal">neural_processing...</Badge>
-                  </div>
-                  <div className="p-3 rounded-lg cyber-border bg-muted/20 terminal-glow">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 neon-green rounded-full animate-bounce" />
-                      <div className="w-2 h-2 neon-purple rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                      <div className="w-2 h-2 neon-green rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                    <div className="p-3 rounded-lg cyber-border bg-muted/20 terminal-glow">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 neon-green rounded-full animate-bounce" />
+                        <div className="w-2 h-2 neon-purple rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                        <div className="w-2 h-2 neon-green rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-
-              {isCloning && (
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <GitBranch className="h-4 w-4 neon-purple pulse-glow" />
-                    <span className="text-sm font-cyber font-medium">CLONE_AGENT</span>
-                    <Badge variant="secondary" className="text-xs text-purple-400 font-terminal animate-pulse">
-                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      cloning_repo...
-                    </Badge>
-                  </div>
-                  <div className="p-3 rounded-lg cyber-border bg-purple-500/10 terminal-glow">
-                    <div className="flex items-center space-x-2">
-                      <Loader2 className="h-4 w-4 neon-purple animate-spin" />
-                      <span className="text-sm font-terminal matrix-text">Materializing files from the GitHub matrix...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Scroll anchor */}
-              <div ref={messagesEndRef} />
-            </div>
-          </ScrollArea>
-
-          {/* Input */}
-          <div className="p-4 border-t cyber-border bg-studio-terminal">
-            <div className="flex space-x-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Paste GitHub URL or enter neural commands..."
-                className="flex-1 cyber-border bg-studio-terminal matrix-text font-terminal placeholder:text-muted-foreground"
-                disabled={isCloning}
-              />
-              <Button 
-                onClick={sendMessage} 
-                disabled={!input.trim() || isTyping || isCloning}
-                size="sm"
-                className="neon-glow pulse-glow"
-              >
-                {isCloning ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4 neon-green" />
                 )}
-              </Button>
+
+                {isCloning && (
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <GitBranch className="h-4 w-4 neon-purple pulse-glow" />
+                      <span className="text-sm font-cyber font-medium">CLONE_AGENT</span>
+                      <Badge variant="secondary" className="text-xs text-purple-400 font-terminal animate-pulse">
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        cloning_repo...
+                      </Badge>
+                    </div>
+                    <div className="p-3 rounded-lg cyber-border bg-purple-500/10 terminal-glow">
+                      <div className="flex items-center space-x-2">
+                        <Loader2 className="h-4 w-4 neon-purple animate-spin" />
+                        <span className="text-sm font-terminal matrix-text">Materializing files from the GitHub matrix...</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Scroll anchor */}
+                <div ref={messagesEndRef} />
+              </div>
+            </ScrollArea>
+
+            {/* Input */}
+            <div className="p-4 border-t cyber-border bg-studio-terminal">
+              <div className="flex space-x-2">
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Paste GitHub URL or enter neural commands..."
+                  className="flex-1 cyber-border bg-studio-terminal matrix-text font-terminal placeholder:text-muted-foreground"
+                  disabled={isCloning}
+                />
+                <Button 
+                  onClick={sendMessage} 
+                  disabled={!input.trim() || isTyping || isCloning}
+                  size="sm"
+                  className="neon-glow pulse-glow"
+                >
+                  {isCloning ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4 neon-green" />
+                  )}
+                </Button>
+              </div>
             </div>
-          </div>
-        </>
+          </TabsContent>
+
+          {/* Analyzer Tab */}
+          <TabsContent value="analyzer" className="flex-1 m-0 overflow-auto data-[state=inactive]:hidden">
+            <ScrollArea className="h-full">
+              <CodebaseAnalyzer 
+                fileContents={fileContents} 
+                projectId={currentProjectId} 
+              />
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );
