@@ -19,8 +19,8 @@ import { DevModeIndicator } from "./DevModeIndicator";
 import { CommandPalette } from "./CommandPalette";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useProject } from "@/hooks/useProject";
+import { useRecentFiles } from "@/hooks/useRecentFiles";
 import { ModalType } from "./MatrixToolsPanel";
-
 export const StudioLayout = () => {
   const {
     currentProject,
@@ -70,12 +70,32 @@ export const StudioLayout = () => {
   // Ref for triggering sidebar matrix tools
   const [matrixModalToOpen, setMatrixModalToOpen] = useState<ModalType>(null);
 
+  // Recent files tracking
+  const { recentFiles, addRecentFile, clearRecentFiles } = useRecentFiles(10);
+
   const handleFileSelect = useCallback((file: string) => {
     setActiveFile(file);
+    addRecentFile(file); // Track in recent files
     if (!openFiles.includes(file)) {
       setOpenFiles(prev => [...prev, file]);
     }
-  }, [openFiles]);
+  }, [openFiles, addRecentFile]);
+
+  // Global keyboard shortcuts for recent files (Alt+1 through Alt+9)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && /^[1-9]$/.test(e.key)) {
+        const index = parseInt(e.key) - 1;
+        if (recentFiles[index]) {
+          e.preventDefault();
+          handleFileSelect(recentFiles[index].path);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [recentFiles, handleFileSelect]);
 
   const handleCloseFile = useCallback((file: string) => {
     setOpenFiles(prev => prev.filter(f => f !== file));
@@ -278,6 +298,9 @@ export const StudioLayout = () => {
           onToggleProjectManager={() => setShowProjectManager(prev => !prev)}
           onSave={handleSave}
           onNewFile={() => createFile(fileTree.name, 'NewFile.tsx', false)}
+          recentFiles={recentFiles}
+          onOpenRecentFile={handleFileSelect}
+          onClearRecentFiles={clearRecentFiles}
         />
         
         <DevModeIndicator />
