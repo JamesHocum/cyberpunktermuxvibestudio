@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   CommandDialog,
   CommandEmpty,
@@ -21,17 +21,17 @@ import {
   Key,
   Search,
   Zap,
-  Brain,
   Cpu,
   FileText,
   Save,
-  Play,
-  Square,
   FileSearch,
-  Palette,
   Layers,
-  Code,
+  Trash2,
+  Clock,
 } from 'lucide-react';
+import { SHORTCUTS, getRecentFileShortcut, matchesShortcut } from '@/lib/shortcuts';
+import { FileIcon } from '@/components/FileIcon';
+import type { RecentFile } from '@/hooks/useRecentFiles';
 
 interface Command {
   id: string;
@@ -60,6 +60,10 @@ interface CommandPaletteProps {
   onOpenQuantumControl?: () => void;
   onOpenCyberExtensions?: () => void;
   onOpenMatrixConfig?: () => void;
+  // Recent files props
+  recentFiles?: RecentFile[];
+  onOpenRecentFile?: (path: string) => void;
+  onClearRecentFiles?: () => void;
 }
 
 export const CommandPalette = ({
@@ -79,17 +83,59 @@ export const CommandPalette = ({
   onOpenQuantumControl,
   onOpenCyberExtensions,
   onOpenMatrixConfig,
+  recentFiles = [],
+  onOpenRecentFile,
+  onClearRecentFiles,
 }: CommandPaletteProps) => {
   const [open, setOpen] = useState(false);
 
-  // Define all commands with fuzzy search keywords
-  const commands = useMemo<Command[]>(() => [
+  // Generate recent file commands dynamically
+  const recentFileCommands = useMemo<Command[]>(() => {
+    if (recentFiles.length === 0) return [];
+    
+    const fileCommands = recentFiles.map((file, index) => {
+      const shortcut = getRecentFileShortcut(index);
+      return {
+        id: `recent-${file.path}`,
+        label: file.name,
+        shortcut: shortcut?.display,
+        icon: <FileIcon extension={file.extension} className="h-4 w-4 text-primary" />,
+        category: 'Recent Files',
+        action: () => { 
+          onOpenRecentFile?.(file.path); 
+          setOpen(false); 
+        },
+        keywords: [file.name, 'recent', 'history', file.extension, file.path],
+      };
+    });
+
+    // Add clear recent files command if there are files
+    if (onClearRecentFiles && recentFiles.length > 0) {
+      fileCommands.push({
+        id: 'clear-recent-files',
+        label: 'Clear Recent Files',
+        shortcut: undefined,
+        icon: <Trash2 className="h-4 w-4 text-destructive" />,
+        category: 'Recent Files',
+        action: () => { 
+          onClearRecentFiles(); 
+          setOpen(false); 
+        },
+        keywords: ['clear', 'remove', 'delete', 'history'],
+      });
+    }
+
+    return fileCommands;
+  }, [recentFiles, onOpenRecentFile, onClearRecentFiles]);
+
+  // Define all static commands with shortcuts from config
+  const staticCommands = useMemo<Command[]>(() => [
     // Panel Commands
     {
       id: 'toggle-terminal',
       label: 'Toggle Terminal',
-      shortcut: '⌘T',
-      icon: <Terminal className="h-4 w-4 neon-green" />,
+      shortcut: SHORTCUTS.TOGGLE_TERMINAL.display,
+      icon: <Terminal className="h-4 w-4 text-primary" />,
       category: 'Panels',
       action: () => { onToggleTerminal(); setOpen(false); },
       keywords: ['console', 'shell', 'cmd', 'command line'],
@@ -97,8 +143,8 @@ export const CommandPalette = ({
     {
       id: 'toggle-chat',
       label: 'Toggle AI Chat',
-      shortcut: '⌘⇧C',
-      icon: <MessageSquare className="h-4 w-4 neon-purple" />,
+      shortcut: SHORTCUTS.TOGGLE_CHAT.display,
+      icon: <MessageSquare className="h-4 w-4 text-accent" />,
       category: 'Panels',
       action: () => { onToggleChat(); setOpen(false); },
       keywords: ['assistant', 'lady violet', 'ai', 'neural'],
@@ -106,8 +152,8 @@ export const CommandPalette = ({
     {
       id: 'toggle-preview',
       label: 'Toggle Live Preview',
-      shortcut: '⌘⇧V',
-      icon: <Eye className="h-4 w-4 neon-green" />,
+      shortcut: SHORTCUTS.TOGGLE_PREVIEW.display,
+      icon: <Eye className="h-4 w-4 text-primary" />,
       category: 'Panels',
       action: () => { onTogglePreview(); setOpen(false); },
       keywords: ['view', 'render', 'sandbox'],
@@ -115,8 +161,8 @@ export const CommandPalette = ({
     {
       id: 'toggle-git',
       label: 'Toggle Git Panel',
-      shortcut: '⌘G',
-      icon: <GitBranch className="h-4 w-4 neon-purple" />,
+      shortcut: SHORTCUTS.TOGGLE_GIT.display,
+      icon: <GitBranch className="h-4 w-4 text-accent" />,
       category: 'Panels',
       action: () => { onToggleGit(); setOpen(false); },
       keywords: ['github', 'version control', 'commit', 'push'],
@@ -126,8 +172,8 @@ export const CommandPalette = ({
     {
       id: 'save-file',
       label: 'Save File',
-      shortcut: '⌘S',
-      icon: <Save className="h-4 w-4 neon-green" />,
+      shortcut: SHORTCUTS.SAVE.display,
+      icon: <Save className="h-4 w-4 text-primary" />,
       category: 'File',
       action: () => { onSave(); setOpen(false); },
       keywords: ['write', 'store', 'persist'],
@@ -135,8 +181,8 @@ export const CommandPalette = ({
     {
       id: 'new-file',
       label: 'New File',
-      shortcut: '⌘N',
-      icon: <FileText className="h-4 w-4 neon-purple" />,
+      shortcut: SHORTCUTS.NEW_FILE.display,
+      icon: <FileText className="h-4 w-4 text-accent" />,
       category: 'File',
       action: () => { onNewFile?.(); setOpen(false); },
       keywords: ['create', 'add'],
@@ -144,7 +190,7 @@ export const CommandPalette = ({
     {
       id: 'download-project',
       label: 'Download Project',
-      icon: <Download className="h-4 w-4 neon-green" />,
+      icon: <Download className="h-4 w-4 text-primary" />,
       category: 'File',
       action: () => { onToggleDownloader(); setOpen(false); },
       keywords: ['export', 'zip', 'backup'],
@@ -152,8 +198,8 @@ export const CommandPalette = ({
     {
       id: 'project-manager',
       label: 'Open Project Manager',
-      shortcut: '⌘P',
-      icon: <FolderPlus className="h-4 w-4 neon-purple" />,
+      shortcut: SHORTCUTS.PROJECT_MANAGER.display,
+      icon: <FolderPlus className="h-4 w-4 text-accent" />,
       category: 'File',
       action: () => { onToggleProjectManager(); setOpen(false); },
       keywords: ['projects', 'switch', 'open'],
@@ -163,8 +209,8 @@ export const CommandPalette = ({
     {
       id: 'neural-search',
       label: 'Neural Search',
-      shortcut: '⌘⇧F',
-      icon: <Search className="h-4 w-4 neon-green" />,
+      shortcut: SHORTCUTS.NEURAL_SEARCH.display,
+      icon: <Search className="h-4 w-4 text-primary" />,
       category: 'Matrix Tools',
       action: () => { onOpenNeuralSearch?.(); setOpen(false); },
       keywords: ['find', 'search files', 'grep'],
@@ -172,7 +218,7 @@ export const CommandPalette = ({
     {
       id: 'quantum-control',
       label: 'Quantum Control',
-      icon: <Zap className="h-4 w-4 neon-purple" />,
+      icon: <Zap className="h-4 w-4 text-accent" />,
       category: 'Matrix Tools',
       action: () => { onOpenQuantumControl?.(); setOpen(false); },
       keywords: ['settings', 'ai model', 'preferences'],
@@ -180,7 +226,7 @@ export const CommandPalette = ({
     {
       id: 'cyber-extensions',
       label: 'Cyber Extensions',
-      icon: <Layers className="h-4 w-4 neon-green" />,
+      icon: <Layers className="h-4 w-4 text-primary" />,
       category: 'Matrix Tools',
       action: () => { onOpenCyberExtensions?.(); setOpen(false); },
       keywords: ['plugins', 'features', 'toggles'],
@@ -188,7 +234,7 @@ export const CommandPalette = ({
     {
       id: 'matrix-config',
       label: 'Matrix Config',
-      icon: <Cpu className="h-4 w-4 neon-purple" />,
+      icon: <Cpu className="h-4 w-4 text-accent" />,
       category: 'Matrix Tools',
       action: () => { onOpenMatrixConfig?.(); setOpen(false); },
       keywords: ['environment', 'env', 'variables', 'secrets'],
@@ -198,7 +244,7 @@ export const CommandPalette = ({
     {
       id: 'testing-suite',
       label: 'Open Testing Suite',
-      icon: <TestTube className="h-4 w-4 neon-green" />,
+      icon: <TestTube className="h-4 w-4 text-primary" />,
       category: 'Tools',
       action: () => { onToggleTesting(); setOpen(false); },
       keywords: ['test', 'unit test', 'jest', 'vitest'],
@@ -206,7 +252,7 @@ export const CommandPalette = ({
     {
       id: 'integrations',
       label: 'Open Integrations',
-      icon: <Plug className="h-4 w-4 neon-purple" />,
+      icon: <Plug className="h-4 w-4 text-accent" />,
       category: 'Tools',
       action: () => { onToggleIntegrations(); setOpen(false); },
       keywords: ['connect', 'apis', 'services'],
@@ -214,7 +260,7 @@ export const CommandPalette = ({
     {
       id: 'api-config',
       label: 'API Configuration',
-      icon: <Key className="h-4 w-4 neon-green" />,
+      icon: <Key className="h-4 w-4 text-primary" />,
       category: 'Tools',
       action: () => { onToggleApiConfig(); setOpen(false); },
       keywords: ['keys', 'tokens', 'auth'],
@@ -222,8 +268,8 @@ export const CommandPalette = ({
     {
       id: 'settings',
       label: 'Open Settings',
-      shortcut: '⌘,',
-      icon: <Settings className="h-4 w-4 neon-purple" />,
+      shortcut: SHORTCUTS.SETTINGS.display,
+      icon: <Settings className="h-4 w-4 text-accent" />,
       category: 'Tools',
       action: () => { onToggleSettings(); setOpen(false); },
       keywords: ['preferences', 'options', 'configure'],
@@ -231,7 +277,7 @@ export const CommandPalette = ({
     {
       id: 'codebase-analyzer',
       label: 'Analyze Codebase',
-      icon: <FileSearch className="h-4 w-4 neon-green" />,
+      icon: <FileSearch className="h-4 w-4 text-primary" />,
       category: 'Tools',
       action: () => { onToggleChat(); setOpen(false); },
       keywords: ['analysis', 'scan', 'review', 'code quality'],
@@ -243,23 +289,31 @@ export const CommandPalette = ({
     onOpenNeuralSearch, onOpenQuantumControl, onOpenCyberExtensions, onOpenMatrixConfig,
   ]);
 
+  // Combine all commands - recent files first
+  const allCommands = useMemo(() => [
+    ...recentFileCommands,
+    ...staticCommands,
+  ], [recentFileCommands, staticCommands]);
+
   // Group commands by category
   const groupedCommands = useMemo(() => {
     const groups: Record<string, Command[]> = {};
-    commands.forEach(cmd => {
+    allCommands.forEach(cmd => {
       if (!groups[cmd.category]) {
         groups[cmd.category] = [];
       }
       groups[cmd.category].push(cmd);
     });
     return groups;
-  }, [commands]);
+  }, [allCommands]);
+
+  // Define category order (Recent Files first)
+  const categoryOrder = ['Recent Files', 'Panels', 'File', 'Matrix Tools', 'Tools'];
 
   // Keyboard shortcut listener
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      // Ctrl+Shift+P or Cmd+Shift+P
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
+      if (matchesShortcut(e, SHORTCUTS.COMMAND_PALETTE)) {
         e.preventDefault();
         setOpen(prev => !prev);
       }
@@ -278,31 +332,43 @@ export const CommandPalette = ({
       <CommandList>
         <CommandEmpty>No commands found.</CommandEmpty>
         
-        {Object.entries(groupedCommands).map(([category, cmds], idx) => (
-          <div key={category}>
-            {idx > 0 && <CommandSeparator />}
-            <CommandGroup heading={category}>
-              {cmds.map(cmd => (
-                <CommandItem
-                  key={cmd.id}
-                  onSelect={cmd.action}
-                  className="flex items-center justify-between cursor-pointer"
-                  keywords={cmd.keywords}
-                >
-                  <div className="flex items-center gap-2">
-                    {cmd.icon}
-                    <span>{cmd.label}</span>
-                  </div>
-                  {cmd.shortcut && (
-                    <span className="text-xs text-muted-foreground font-terminal">
-                      {cmd.shortcut}
-                    </span>
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </div>
-        ))}
+        {categoryOrder.map((category, idx) => {
+          const cmds = groupedCommands[category];
+          if (!cmds || cmds.length === 0) return null;
+          
+          return (
+            <div key={category}>
+              {idx > 0 && <CommandSeparator />}
+              <CommandGroup 
+                heading={
+                  <span className="flex items-center gap-2">
+                    {category === 'Recent Files' && <Clock className="h-3 w-3" />}
+                    {category}
+                  </span>
+                }
+              >
+                {cmds.map(cmd => (
+                  <CommandItem
+                    key={cmd.id}
+                    onSelect={cmd.action}
+                    className="flex items-center justify-between cursor-pointer"
+                    keywords={cmd.keywords}
+                  >
+                    <div className="flex items-center gap-2">
+                      {cmd.icon}
+                      <span>{cmd.label}</span>
+                    </div>
+                    {cmd.shortcut && (
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {cmd.shortcut}
+                      </span>
+                    )}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </div>
+          );
+        })}
       </CommandList>
     </CommandDialog>
   );
