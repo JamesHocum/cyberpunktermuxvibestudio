@@ -29,3 +29,6 @@ verify_jwt = true
 
 [functions.github-clone]
 verify_jwt = false
+
+[functions.codex-chat]
+verify_jwt = false

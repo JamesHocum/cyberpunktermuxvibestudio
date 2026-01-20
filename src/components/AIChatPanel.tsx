@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, Zap, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare } from "lucide-react";
+import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare, Paperclip, Camera, Image } from "lucide-react";
 import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { z } from "zod";
@@ -12,12 +12,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CodebaseAnalyzer } from "./CodebaseAnalyzer";
+import { useChatAttachments, ChatAttachment } from "@/hooks/useChatAttachments";
+import { AttachmentPreview, MessageAttachments } from "./AttachmentPreview";
+import { CodexActionBar, CodexAction } from "./CodexActionBar";
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  attachments?: ChatAttachment[];
+  action?: CodexAction;
 }
 
 interface AIChatPanelProps {
@@ -51,8 +56,19 @@ const isAgenticCommand = (message: string): boolean => {
 const WELCOME_MESSAGE: Message = {
   id: 'welcome',
   role: 'assistant',
-  content: '✨ **Lady Violet Online** - Agentic Dev Companion Activated\n\nHello darling! I\'m Lady Violet, your AI design and development partner.\n\n**🔮 Agentic Capabilities:**\n• **Clone GitHub repos** - Just paste a URL and say "Build this"\n• Design stunning UI/UX with cyberpunk aesthetics\n• Write production-ready React, TypeScript, and Node.js code\n• Create responsive, accessible interfaces\n• Implement smooth animations and interactions\n\n**Example Commands:**\n• `Build this https://github.com/user/repo`\n• `Clone https://github.com/user/repo`\n• `Create a cyberpunk login page`\n\n**Let\'s create something beautiful together!** What\'s your vision?',
+  content: '✨ **Lady Violet Codex Online** - Agentic Dev Companion Activated\n\nHello darling! I\'m Lady Violet Codex, your AI design and development partner.\n\n**🔮 Codex Capabilities:**\n• **Generate** - Create code from descriptions\n• **Refactor** - Improve and optimize code\n• **Debug** - Find and fix bugs\n• **Explain** - Understand code step by step\n• **Test** - Generate unit tests\n\n**📎 Upload Features:**\n• Drag & drop files or images\n• Paste screenshots (Ctrl+V)\n• Attach code snippets\n• Visual UI analysis\n\n**Let\'s create something beautiful together!** What\'s your vision?',
   timestamp: new Date()
+};
+
+const getPlaceholder = (action: CodexAction): string => {
+  switch (action) {
+    case 'generate': return 'Describe what you want to build...';
+    case 'refactor': return 'Paste code to refactor or describe improvements...';
+    case 'debug': return 'Describe the bug or paste code to debug...';
+    case 'explain': return 'Paste code you want explained...';
+    case 'test': return 'Paste code to generate tests for...';
+    default: return 'Enter neural commands or paste GitHub URL...';
+  }
 };
 
 export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents = {} }: AIChatPanelProps) => {
@@ -63,9 +79,25 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
   const [isTyping, setIsTyping] = useState(false);
   const [isCloning, setIsCloning] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [currentAction, setCurrentAction] = useState<CodexAction>('chat');
+  const [isDragOver, setIsDragOver] = useState(false);
+  
   const rateLimiterRef = useRef(new RateLimiter(2000));
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // Attachments hook
+  const {
+    attachments,
+    isUploading,
+    addFiles,
+    handlePaste,
+    handleDrop,
+    removeAttachment,
+    clearAttachments,
+  } = useChatAttachments();
 
   // Auto-scroll to bottom when messages change
   const scrollToBottom = useCallback(() => {
@@ -77,6 +109,42 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping, isCloning, scrollToBottom]);
+
+  // Paste handler for screenshots
+  useEffect(() => {
+    const handlePasteEvent = async (e: ClipboardEvent) => {
+      if (!user?.id) return;
+      const handled = await handlePaste(e, user.id);
+      if (handled) {
+        e.preventDefault();
+      }
+    };
+
+    const container = chatContainerRef.current;
+    if (container) {
+      container.addEventListener('paste', handlePasteEvent);
+      return () => container.removeEventListener('paste', handlePasteEvent);
+    }
+  }, [handlePaste, user?.id]);
+
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDropEvent = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (user?.id) {
+      await handleDrop(e.nativeEvent, user.id);
+    }
+  }, [handleDrop, user?.id]);
 
   // Load chat history from database
   const loadChatHistory = useCallback(async () => {
@@ -99,7 +167,8 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
           id: msg.id,
           role: msg.role as 'user' | 'assistant',
           content: msg.content,
-          timestamp: new Date(msg.created_at || Date.now())
+          timestamp: new Date(msg.created_at || Date.now()),
+          attachments: (msg.attachments as unknown as ChatAttachment[]) || []
         }));
         setMessages([WELCOME_MESSAGE, ...loadedMessages]);
       }
@@ -126,7 +195,8 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
         user_id: user.id,
         project_id: currentProjectId || null,
         role: message.role,
-        content: message.content
+        content: message.content,
+        attachments: (message.attachments || []) as unknown as Record<string, unknown>[]
       });
     } catch (err) {
       console.error('[Chat] Failed to save message:', err);
@@ -184,17 +254,31 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
     }
   };
 
+  // Handle file selection
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0 && user?.id) {
+      await addFiles(files, user.id);
+    }
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [addFiles, user?.id]);
+
   const sendMessage = async () => {
-    if (!input.trim() || isTyping || isCloning) return;
+    if ((!input.trim() && attachments.length === 0) || isTyping || isCloning) return;
 
     // Validate input
-    try {
-      validateMessage(input);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        toast.error(error.errors[0].message);
+    if (input.trim()) {
+      try {
+        validateMessage(input);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          toast.error(error.errors[0].message);
+        }
+        return;
       }
-      return;
     }
 
     // Check rate limit
@@ -208,7 +292,9 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
       id: Date.now().toString(),
       role: 'user',
       content: input,
-      timestamp: new Date()
+      timestamp: new Date(),
+      attachments: [...attachments],
+      action: currentAction
     };
 
     const updatedMessages = [...messages, userMessage];
@@ -216,6 +302,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
     saveMessage(userMessage);
     const currentInput = input;
     setInput('');
+    clearAttachments();
 
     // Check for agentic GitHub clone command
     const repoUrl = extractRepoUrl(currentInput);
@@ -265,14 +352,31 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
       return;
     }
 
-    // Regular AI chat flow
+    // Regular AI chat flow - use codex-chat endpoint
     setIsTyping(true);
 
     try {
       const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       
+      // Format messages for API
+      const apiMessages = updatedMessages
+        .filter(m => m.id !== 'welcome')
+        .map(m => ({
+          role: m.role,
+          content: m.content,
+          attachments: m.attachments?.map(a => ({
+            id: a.id,
+            type: a.type,
+            name: a.name,
+            url: a.url,
+            content: a.content,
+            base64: a.base64,
+            mimeType: a.mimeType
+          }))
+        }));
+      
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/lady-violet-chat`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/codex-chat`,
         {
           method: "POST",
           headers: {
@@ -280,10 +384,8 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
             Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify({
-            messages: updatedMessages.map(m => ({
-              role: m.role,
-              content: m.content
-            }))
+            messages: apiMessages,
+            action: currentAction
           }),
         }
       );
@@ -380,7 +482,23 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
   const canUseAI = isAuthenticated || isDevBypass;
 
   return (
-    <div className="flex flex-col h-full bg-studio-sidebar terminal-glow">
+    <div 
+      ref={chatContainerRef}
+      className={`flex flex-col h-full bg-studio-sidebar terminal-glow ${isDragOver ? 'ring-2 ring-matrix-green ring-inset' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDropEvent}
+    >
+      {/* Drag overlay */}
+      {isDragOver && (
+        <div className="absolute inset-0 bg-matrix-green/10 flex items-center justify-center z-50 pointer-events-none">
+          <div className="bg-studio-terminal p-6 rounded-lg cyber-border text-center">
+            <Image className="h-12 w-12 neon-green mx-auto mb-2" />
+            <p className="text-matrix-green font-terminal">Drop files here</p>
+          </div>
+        </div>
+      )}
+
       {/* Header with Tabs */}
       <div className="border-b cyber-border bg-studio-header">
         <div className="flex items-center justify-between p-3">
@@ -392,7 +510,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                   className="data-[state=active]:bg-primary/20 data-[state=active]:neon-green px-3 py-1 text-xs font-terminal"
                 >
                   <MessageSquare className="h-3 w-3 mr-1" />
-                  CHAT
+                  CODEX
                 </TabsTrigger>
                 <TabsTrigger 
                   value="analyzer" 
@@ -488,8 +606,13 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                         <Bot className="h-4 w-4 neon-purple" />
                       )}
                       <span className="text-sm font-cyber font-medium">
-                        {message.role === 'user' ? 'USER_001' : 'SYSTEM_AI'}
+                        {message.role === 'user' ? 'USER_001' : 'CODEX_AI'}
                       </span>
+                      {message.action && message.action !== 'chat' && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 border-matrix-green/50 text-matrix-green">
+                          {message.action.toUpperCase()}
+                        </Badge>
+                      )}
                       <span className="text-xs matrix-text font-terminal">
                         {message.timestamp.toLocaleTimeString()}
                       </span>
@@ -500,7 +623,12 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                         ? 'bg-primary/10 neon-glow' 
                         : 'bg-muted/20 terminal-glow'
                     }`}>
-                      <pre className="whitespace-pre-wrap text-sm font-terminal matrix-text">
+                      {/* Message attachments */}
+                      {message.attachments && message.attachments.length > 0 && (
+                        <MessageAttachments attachments={message.attachments} />
+                      )}
+                      
+                      <pre className="whitespace-pre-wrap text-sm font-terminal matrix-text mt-2">
                         {message.content}
                       </pre>
                     </div>
@@ -530,7 +658,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <Bot className="h-4 w-4 neon-purple pulse-glow" />
-                      <span className="text-sm font-cyber font-medium">SYSTEM_AI</span>
+                      <span className="text-sm font-cyber font-medium">CODEX_AI</span>
                       <Badge variant="secondary" className="text-xs neon-purple font-terminal">neural_processing...</Badge>
                     </div>
                     <div className="p-3 rounded-lg cyber-border bg-muted/20 terminal-glow">
@@ -567,30 +695,88 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
               </div>
             </ScrollArea>
 
-            {/* Input */}
-            <div className="p-4 border-t cyber-border bg-studio-terminal">
-              <div className="flex space-x-2">
+            {/* Input Area */}
+            <div className="p-4 border-t cyber-border bg-studio-terminal space-y-3">
+              {/* Codex Action Bar */}
+              <CodexActionBar
+                currentAction={currentAction}
+                onAction={setCurrentAction}
+                disabled={isTyping || isCloning}
+              />
+
+              {/* Attachment Previews */}
+              {attachments.length > 0 && (
+                <AttachmentPreview
+                  attachments={attachments}
+                  onRemove={removeAttachment}
+                  isEditable
+                />
+              )}
+
+              {/* Input Row */}
+              <div className="flex items-center space-x-2">
+                {/* Upload Button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-muted-foreground hover:text-matrix-green hover:bg-matrix-green/10"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading || isCloning}
+                  title="Attach files"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
+
+                {/* Hidden File Input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,.txt,.md,.json,.js,.ts,.tsx,.jsx,.py,.css,.html,.xml,.yaml,.yml"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+
+                {/* Screenshot hint */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-muted-foreground hover:text-matrix-green hover:bg-matrix-green/10"
+                  title="Paste screenshot (Ctrl+V)"
+                  disabled={isCloning}
+                >
+                  <Camera className="h-4 w-4" />
+                </Button>
+
+                {/* Text Input */}
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Paste GitHub URL or enter neural commands..."
+                  placeholder={getPlaceholder(currentAction)}
                   className="flex-1 cyber-border bg-studio-terminal matrix-text font-terminal placeholder:text-muted-foreground"
                   disabled={isCloning}
                 />
+
+                {/* Send Button */}
                 <Button 
                   onClick={sendMessage} 
-                  disabled={!input.trim() || isTyping || isCloning}
+                  disabled={(!input.trim() && attachments.length === 0) || isTyping || isCloning}
                   size="sm"
                   className="neon-glow pulse-glow"
                 >
-                  {isCloning ? (
+                  {isCloning || isUploading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Send className="h-4 w-4 neon-green" />
                   )}
                 </Button>
               </div>
+
+              {/* Upload hint */}
+              <p className="text-[10px] text-muted-foreground text-center font-terminal">
+                📎 Drop files • 📷 Ctrl+V for screenshots • Supports images, code, and text files
+              </p>
             </div>
           </TabsContent>
 
