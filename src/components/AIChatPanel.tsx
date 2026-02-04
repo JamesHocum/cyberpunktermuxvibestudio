@@ -196,7 +196,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
         project_id: currentProjectId || null,
         role: message.role,
         content: message.content,
-        attachments: (message.attachments || []) as unknown as Record<string, unknown>[]
+        attachments: message.attachments?.length ? JSON.parse(JSON.stringify(message.attachments)) : null
       });
     } catch (err) {
       console.error('[Chat] Failed to save message:', err);
