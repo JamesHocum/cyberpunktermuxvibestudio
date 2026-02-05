@@ -1,47 +1,28 @@
 
+# Update GitHub OAuth Secrets
 
-# Quick Fix: TypeScript Type Error in AIChatPanel
+## Problem
+The GitHub OAuth 404 error is caused by an invalid or mismatched `GITHUB_CLIENT_ID` stored in Lovable Cloud secrets. The current secret value doesn't match your OAuth App registered at GitHub.
 
-## The Problem
+## Solution
+Update the two GitHub OAuth secrets to match your registered OAuth App:
 
-Line 195-199 in `src/components/AIChatPanel.tsx` has a type casting issue:
+| Secret | New Value |
+|--------|-----------|
+| `GITHUB_CLIENT_ID` | `Ov23lithJ8qJNvVP42mj` |
+| `GITHUB_CLIENT_SECRET` | `65afef8ae82da7f326f81d9cd300574da228c43f` |
 
-```typescript
-await supabase.from('chat_messages').insert({
-  user_id: user.id,
-  project_id: currentProjectId || null,
-  role: message.role,
-  content: message.content,
-  attachments: (message.attachments || []) as unknown as Record<string, unknown>[]  // ❌ Wrong cast
-});
-```
+## Implementation Steps
 
-The `attachments` field expects `Json | null` (from Supabase types), but we're casting to `Record<string, unknown>[]` which doesn't match.
+1. **Update GITHUB_CLIENT_ID secret** - Replace with your OAuth App's Client ID
+2. **Update GITHUB_CLIENT_SECRET secret** - Replace with your OAuth App's Client Secret
+3. **Redeploy the github-oauth edge function** - Ensure it picks up the new secret values
 
-## The Fix
+## Expected Result
+After updating the secrets:
+- Clicking "Connect GitHub" will open GitHub's authorize page correctly (no 404)
+- The OAuth flow will complete and redirect back to `https://cyberpunk-termux.spell-weaver-studio.com/github/callback`
+- Your GitHub account will be linked successfully
 
-**File: `src/components/AIChatPanel.tsx`** - Line 199
-
-Change the type cast from:
-```typescript
-attachments: (message.attachments || []) as unknown as Record<string, unknown>[]
-```
-
-To:
-```typescript
-attachments: message.attachments ? JSON.parse(JSON.stringify(message.attachments)) : null
-```
-
-Or simpler using the Json type:
-```typescript
-attachments: (message.attachments || null) as Json
-```
-
-## Changes Summary
-
-| File | Line | Change |
-|------|------|--------|
-| `src/components/AIChatPanel.tsx` | 199 | Fix type cast for attachments to use `Json` type |
-
-This is a one-line fix that will resolve the build error.
-
+## No Code Changes Required
+This fix only requires updating the secret values - no code modifications needed.
