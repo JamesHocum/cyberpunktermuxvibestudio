@@ -1,0 +1,23 @@
+[
+  {
+    "id": "terminal-clock",
+    "name": "Matrix Terminal Clock",
+    "description": "Displays the current time in cyberpunk style in the terminal header.",
+    "author": "Synth Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/terminalClock.js"
+  },
+  {
+    "id": "rain-controller",
+    "name": "Rain Intensity Slider",
+    "description": "Lets you adjust the matrix rain effect intensity and color.",
+    "author": "Synth Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/rainSlider.js"
+  },
+  {
+    "id": "code-stats",
+    "name": "Code Statistics",
+    "description": "Shows line counts, character counts, and file metrics for your project.",
+    "author": "Neon Coder",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/codeStats.js"
+  }
+]
