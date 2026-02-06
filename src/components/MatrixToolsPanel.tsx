@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, GitBranch, Package, Settings, X, Zap, Moon, Sun, Clock, Terminal as TerminalIcon, Key, Download, Upload } from 'lucide-react';
+import { Search, GitBranch, Package, Settings, X, Zap, Clock, Terminal as TerminalIcon, Key, Download, Upload } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { ExtensionManager } from '@/components/extensions';
 
 export type ModalType = 'neural-search' | 'quantum-control' | 'cyber-extensions' | 'matrix-config' | null;
 
@@ -51,13 +52,6 @@ export const MatrixToolsPanel = ({
   const [terminalHistorySize, setTerminalHistorySize] = useState([100]);
   const [devMode, setDevMode] = useState(false);
 
-  // Cyber Extensions state
-  const [extensions, setExtensions] = useState({
-    livePreview: true,
-    aiAutocomplete: false,
-    gitIntegration: true,
-    testingSuite: true,
-  });
 
   // Matrix Config state
   const [envVars, setEnvVars] = useState<{ key: string; value: string }[]>([]);
@@ -287,48 +281,18 @@ export const MatrixToolsPanel = ({
 
       {/* Cyber Extensions Modal */}
       <Dialog open={openModal === 'cyber-extensions'} onOpenChange={() => onClose()}>
-        <DialogContent className="cyber-border bg-studio-sidebar max-w-md">
+        <DialogContent className="cyber-border bg-studio-sidebar max-w-lg max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="font-cyber neon-green flex items-center gap-2">
               <Package className="h-5 w-5" />
               CYBER_EXTENSIONS.PKG
             </DialogTitle>
             <DialogDescription className="matrix-text">
-              Enable or disable IDE features
+              Browse, install, and manage community extensions
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            {Object.entries(extensions).map(([key, enabled]) => (
-              <div key={key} className="flex items-center justify-between p-3 cyber-border rounded-md">
-                <div>
-                  <Label className="matrix-text capitalize">
-                    {key.replace(/([A-Z])/g, ' $1').trim()}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {key === 'livePreview' && 'Real-time preview of your code'}
-                    {key === 'aiAutocomplete' && 'AI-powered code suggestions'}
-                    {key === 'gitIntegration' && 'GitHub sync and version control'}
-                    {key === 'testingSuite' && 'Run and manage tests'}
-                  </p>
-                </div>
-                <Switch
-                  checked={enabled}
-                  onCheckedChange={(checked) => 
-                    setExtensions(prev => ({ ...prev, [key]: checked }))
-                  }
-                />
-              </div>
-            ))}
-
-            <div className="p-3 cyber-border rounded-md opacity-50">
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 neon-purple" />
-                <span className="matrix-text">Extension Marketplace</span>
-                <Badge variant="outline" className="text-xs">Coming Soon</Badge>
-              </div>
-            </div>
-          </div>
+          <ExtensionManager />
         </DialogContent>
       </Dialog>
 

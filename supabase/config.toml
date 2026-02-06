@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.codex-chat]
 verify_jwt = false
+
+[functions.submit-extension]
+verify_jwt = false

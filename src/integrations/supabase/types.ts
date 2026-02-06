@@ -79,6 +79,45 @@ export type Database = {
           },
         ]
       }
+      extensions: {
+        Row: {
+          author: string | null
+          created_at: string | null
+          description: string | null
+          downloads: number | null
+          id: string
+          is_approved: boolean | null
+          is_enabled: boolean | null
+          name: string
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          author?: string | null
+          created_at?: string | null
+          description?: string | null
+          downloads?: number | null
+          id?: string
+          is_approved?: boolean | null
+          is_enabled?: boolean | null
+          name: string
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          author?: string | null
+          created_at?: string | null
+          description?: string | null
+          downloads?: number | null
+          id?: string
+          is_approved?: boolean | null
+          is_enabled?: boolean | null
+          name?: string
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       file_tree: {
         Row: {
           id: string
