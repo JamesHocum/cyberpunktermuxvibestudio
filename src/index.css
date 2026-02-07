@@ -283,6 +283,16 @@
   .cyber-scrollbar::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--neon-green) / 0.8);
   }
+  
+  /* Hide horizontal scrollbar for toolbar but keep scroll */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Cyberpunk Landing Animations */

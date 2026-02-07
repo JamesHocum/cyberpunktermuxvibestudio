@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Package, Plus, RefreshCw, Search } from 'lucide-react';
+import { Package, Plus, RefreshCw, Search, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExtensionCard } from './ExtensionCard';
 import { ExtensionSubmitForm } from './ExtensionSubmitForm';
+import { AdminExtensionPanel } from './AdminExtensionPanel';
+import { RoleGuard } from '@/components/RoleGuard';
+import { useUserRole } from '@/hooks/useUserRole';
 import { toast } from 'sonner';
-
 export interface Extension {
   id: string;
   name: string;
@@ -37,7 +39,8 @@ export function ExtensionManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showSubmitForm, setShowSubmitForm] = useState(false);
-
+  const { hasRole } = useUserRole();
+  const isAdmin = hasRole('admin');
   // Load installed extensions from localStorage
   useEffect(() => {
     const installed = localStorage.getItem('installed_extensions');
@@ -181,6 +184,12 @@ export function ExtensionManager() {
           <TabsTrigger value="installed" className="flex-1">
             Installed ({installedExtensions.length})
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="admin" className="flex-1 text-secondary">
+              <Shield className="h-3 w-3 mr-1" />
+              Admin
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="browse">
@@ -230,6 +239,15 @@ export function ExtensionManager() {
             )}
           </ScrollArea>
         </TabsContent>
+
+        {/* Admin Panel Tab */}
+        {isAdmin && (
+          <TabsContent value="admin">
+            <RoleGuard requiredRole="admin">
+              <AdminExtensionPanel />
+            </RoleGuard>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
