@@ -293,6 +293,20 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+  
+  /* Drag-to-scroll container styles */
+  .drag-scroll-container {
+    cursor: grab;
+    user-select: none;
+  }
+  
+  .drag-scroll-container.is-dragging {
+    cursor: grabbing;
+  }
+  
+  .drag-scroll-container.is-dragging * {
+    pointer-events: none;
+  }
 }
 
 /* Cyberpunk Landing Animations */
