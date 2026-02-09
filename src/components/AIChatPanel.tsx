@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare, Paperclip, Camera, Image } from "lucide-react";
+import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare, Paperclip, Camera, Image, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { z } from "zod";
@@ -15,6 +15,8 @@ import { CodebaseAnalyzer } from "./CodebaseAnalyzer";
 import { useChatAttachments, ChatAttachment } from "@/hooks/useChatAttachments";
 import { AttachmentPreview, MessageAttachments } from "./AttachmentPreview";
 import { CodexActionBar, CodexAction } from "./CodexActionBar";
+import { VoiceSelector } from "./VoiceSelector";
+import { useVoicePlayback } from "@/hooks/useVoicePlayback";
 
 interface Message {
   id: string;
@@ -98,6 +100,9 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
     removeAttachment,
     clearAttachments,
   } = useChatAttachments();
+
+  // Voice playback hook
+  const voicePlayback = useVoicePlayback();
 
   // Auto-scroll to bottom when messages change
   const scrollToBottom = useCallback(() => {
@@ -522,6 +527,18 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
               </TabsList>
               
               <div className="flex items-center gap-2">
+                {/* Voice Controls */}
+                <VoiceSelector
+                  voices={voicePlayback.voices}
+                  currentVoice={voicePlayback.currentVoice}
+                  voiceEnabled={voicePlayback.voiceEnabled}
+                  isSpeaking={voicePlayback.isSpeaking}
+                  isLoading={voicePlayback.isLoading}
+                  onVoiceChange={voicePlayback.setCurrentVoice}
+                  onToggle={voicePlayback.setVoiceEnabled}
+                  onStop={voicePlayback.stop}
+                />
+                
                 {isLoadingHistory && activeTab === 'chat' && (
                   <Badge variant="secondary" className="bg-blue-500/20 text-blue-400 border-blue-500/30 font-terminal text-xs">
                     <Loader2 className="h-3 w-3 mr-1 animate-spin" />
@@ -642,6 +659,16 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                           onClick={() => copyMessage(message.content)}
                         >
                           <Copy className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 px-2 neon-purple hover:neon-glow"
+                          onClick={() => voicePlayback.speak(message.content)}
+                          disabled={voicePlayback.isSpeaking || voicePlayback.isLoading}
+                          title="Read aloud"
+                        >
+                          <Volume2 className="h-3 w-3" />
                         </Button>
                         <Button variant="ghost" size="sm" className="h-6 px-2 neon-purple hover:neon-glow">
                           <ThumbsUp className="h-3 w-3" />

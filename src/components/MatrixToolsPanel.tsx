@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, GitBranch, Package, Settings, X, Zap, Clock, Terminal as TerminalIcon, Key, Download, Upload } from 'lucide-react';
+import { Search, GitBranch, Package, Settings, X, Zap, Clock, Terminal as TerminalIcon, Key, Download, Upload, Box } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -17,8 +17,9 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { ExtensionManager } from '@/components/extensions';
+import { BuildInfoPanel } from '@/components/BuildInfoPanel';
 
-export type ModalType = 'neural-search' | 'quantum-control' | 'cyber-extensions' | 'matrix-config' | null;
+export type ModalType = 'neural-search' | 'quantum-control' | 'cyber-extensions' | 'matrix-config' | 'electron-builder' | null;
 
 interface MatrixToolsPanelProps {
   openModal: ModalType;
@@ -388,6 +389,23 @@ export const MatrixToolsPanel = ({
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Electron Builder Modal */}
+      <Dialog open={openModal === 'electron-builder'} onOpenChange={() => onClose()}>
+        <DialogContent className="cyber-border bg-studio-sidebar max-w-lg max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="font-cyber neon-purple flex items-center gap-2">
+              <Box className="h-5 w-5" />
+              ELECTRON_BUILDER.SYS
+            </DialogTitle>
+            <DialogDescription className="matrix-text">
+              Build desktop applications for Windows, macOS, and Linux
+            </DialogDescription>
+          </DialogHeader>
+          
+          <BuildInfoPanel />
         </DialogContent>
       </Dialog>
     </>
