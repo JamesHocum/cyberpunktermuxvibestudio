@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useDragScroll } from '@/hooks/useDragScroll';
 import { 
   Play, 
   Square, 
-  Settings, 
+  Settings,
   MessageSquare, 
   Terminal as TerminalIcon,
   FolderPlus,
@@ -85,6 +86,7 @@ export const StudioHeader = ({
   const isMobile = useIsMobile();
   const { canInstall, isInstalled, isStandalone } = usePWA();
   const [showPWAPrompt, setShowPWAPrompt] = useState(false);
+  const { ref: scrollRef, isDragging, handlers: dragHandlers } = useDragScroll<HTMLDivElement>();
   const { 
     connected: githubConnected, 
     username: githubUsername, 
@@ -202,8 +204,12 @@ export const StudioHeader = ({
           )}
         </div>
       ) : (
-        /* Desktop toolbar with horizontal scroll */
-        <div className="flex items-center space-x-2 overflow-x-auto scrollbar-hide max-w-[60vw] px-2">
+        /* Desktop toolbar with horizontal scroll and drag-to-scroll */
+        <div 
+          ref={scrollRef}
+          className={`flex items-center space-x-2 overflow-x-auto scrollbar-hide max-w-[60vw] px-2 drag-scroll-container ${isDragging ? 'is-dragging' : ''}`}
+          {...dragHandlers}
+        >
           <Button 
             variant={showTerminal ? "secondary" : "ghost"} 
             size="sm"
