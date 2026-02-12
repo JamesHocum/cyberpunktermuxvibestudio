@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { StudioSidebar } from "./StudioSidebar";
 import { StudioHeader } from "./StudioHeader";
@@ -22,6 +23,7 @@ import { useProject } from "@/hooks/useProject";
 import { useRecentFiles } from "@/hooks/useRecentFiles";
 import { ModalType } from "./MatrixToolsPanel";
 export const StudioLayout = () => {
+  const navigate = useNavigate();
   const {
     currentProject,
     fileTree,
@@ -52,6 +54,13 @@ export const StudioLayout = () => {
         .catch(err => console.log('[PWA] SW failed:', err));
     }
   }, []);
+
+  // Redirect to /projects if no project is loaded
+  useEffect(() => {
+    if (!isLoading && !currentProject) {
+      navigate('/projects', { replace: true });
+    }
+  }, [isLoading, currentProject, navigate]);
 
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [showChat, setShowChat] = useState(false);
