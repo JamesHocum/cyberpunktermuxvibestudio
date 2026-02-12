@@ -44,7 +44,7 @@ export const StudioLayout = () => {
 
   useEffect(() => {
     document.body.style.background = '#111';
-    document.body.style.overflow = 'auto';
+    document.body.style.overflow = 'hidden';
     
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
@@ -140,6 +140,7 @@ export const StudioLayout = () => {
             onDeleteFile={deleteFile}
             currentProjectName={currentProject?.name}
             fileContents={fileContents}
+            onDownload={() => setShowDownloader(true)}
           />
           
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">

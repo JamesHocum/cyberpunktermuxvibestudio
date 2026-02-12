@@ -62,7 +62,11 @@ const OUTPUT_FILES = [
   { platform: 'Linux', file: 'Cyberpunk Termux Studio-{version}-linux-x64.AppImage', type: 'AppImage' },
 ];
 
-export const BuildInfoPanel = () => {
+interface BuildInfoPanelProps {
+  onDownload?: () => void;
+}
+
+export const BuildInfoPanel = ({ onDownload }: BuildInfoPanelProps) => {
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
 
   const copyCommand = (command: string) => {
@@ -222,6 +226,31 @@ export const BuildInfoPanel = () => {
             </pre>
           </div>
         </div>
+
+        {/* Download Project Files */}
+        {onDownload && (
+          <div className="space-y-3">
+            <h3 className="font-cyber text-sm neon-green flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              RETRIEVE PROJECT FILES
+            </h3>
+            <div className="p-3 rounded-lg cyber-border bg-studio-terminal">
+              <p className="text-xs font-terminal matrix-text mb-3">
+                Download your project files as a ZIP archive to build the Electron app locally.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full neon-green"
+                onClick={onDownload}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Project Files (.zip)
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <Separator className="bg-primary/20" />
 
         {/* Action Buttons */}
         <div className="flex gap-2">

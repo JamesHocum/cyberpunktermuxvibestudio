@@ -26,6 +26,7 @@ interface MatrixToolsPanelProps {
   onClose: () => void;
   fileContents: Record<string, string>;
   onFileSelect?: (file: string) => void;
+  onDownload?: () => void;
 }
 
 interface SearchResult {
@@ -39,7 +40,8 @@ export const MatrixToolsPanel = ({
   openModal, 
   onClose, 
   fileContents,
-  onFileSelect 
+  onFileSelect,
+  onDownload
 }: MatrixToolsPanelProps) => {
   // Neural Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -405,7 +407,7 @@ export const MatrixToolsPanel = ({
             </DialogDescription>
           </DialogHeader>
           
-          <BuildInfoPanel />
+          <BuildInfoPanel onDownload={onDownload} />
         </DialogContent>
       </Dialog>
     </>
