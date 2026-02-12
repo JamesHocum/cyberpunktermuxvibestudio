@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useDragScroll } from '@/hooks/useDragScroll';
 import { 
@@ -8,6 +9,7 @@ import {
   MessageSquare, 
   Terminal as TerminalIcon,
   FolderPlus,
+  FolderKanban,
   Download,
   Key,
   TestTube,
@@ -81,6 +83,7 @@ export const StudioHeader = ({
   showTesting,
   showIntegrations
 }: StudioHeaderProps) => {
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -132,6 +135,10 @@ export const StudioHeader = ({
       
       {/* Primary Actions - Always visible */}
       <div className="flex items-center space-x-1 md:space-x-2">
+        <Button variant="ghost" size="sm" className="neon-purple flex-shrink-0" onClick={() => navigate('/projects')}>
+          <FolderKanban className="h-4 w-4 md:mr-2" />
+          <span className="hidden md:inline">Projects</span>
+        </Button>
         <Button variant="ghost" size="sm" className="neon-green" onClick={handleClick}>
           <Play className="h-4 w-4 md:mr-2" />
           <span className="hidden md:inline">Run</span>

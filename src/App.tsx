@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import OAuthCallback from "./pages/OAuthCallback";
 import GitHubCallback from "./pages/GitHubCallback";
 import NotFound from "./pages/NotFound";
+import Projects from "./pages/Projects";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,14 @@ const App = () => {
             <Route path="/auth" element={<Auth />} />
             <Route path="/oauth/callback" element={<OAuthCallback />} />
             <Route path="/github/callback" element={<GitHubCallback />} />
+            <Route
+              path="/projects"
+              element={
+                <ProtectedRoute>
+                  <Projects />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/"
               element={
