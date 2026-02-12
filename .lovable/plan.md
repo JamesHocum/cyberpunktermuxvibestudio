@@ -1,65 +1,42 @@
 
+# Projects Dashboard Page
 
-# Fix: Disappearing Header Buttons + File Retrieval After Electron Build
+## Overview
+Create a dedicated `/projects` page that shows all your projects in a card grid layout -- similar to how Lovable shows a list of projects when you first log in. When you click a project, it opens it in the IDE. The current `/` route will check if a project is loaded and redirect to `/projects` if not.
 
-## Problem 1: Header Buttons Disappearing During Chat/Scrolling
+## What You'll See
+- A full-page dashboard with your project cards in a responsive grid
+- Each card shows the project name, description, last updated time, and action buttons (Open, Delete)
+- A "New Project" card/button to create projects inline
+- Clicking a project navigates to the IDE (`/`) with that project loaded
 
-**Root Cause:** In `StudioLayout.tsx` (line 47), the body overflow is set to `auto`:
-```
-document.body.style.overflow = 'auto';
-```
+## Technical Approach
 
-This allows the entire page body to scroll, which means as content grows (chat messages, terminal output), the whole page scrolls up -- pushing the header toolbar off-screen with no way to get it back.
+### 1. Create `/projects` route and page
+New file: `src/pages/Projects.tsx`
+- Full-page layout with cyberpunk styling
+- Header with "CYBERPUNK TERMUX" branding and user controls
+- Responsive grid of project cards (1 col mobile, 2 col tablet, 3 col desktop)
+- "Create New Project" card with inline name/description inputs
+- Uses `useProject` hook for data (already fetches from database on mount)
+- On project click: call `loadProject(id)` then navigate to `/`
 
-**Fix:**
-- Change `document.body.style.overflow = 'auto'` to `'hidden'` so the body never scrolls
-- Add `sticky top-0 z-50` to the header element in `StudioHeader.tsx` as a safety net
-- This ensures the header always remains pinned at the top regardless of content growth
+### 2. Update routing in App.tsx
+- Add `/projects` route (protected)
+- Both `/` and `/projects` are behind `ProtectedRoute`
+
+### 3. Update StudioLayout to redirect when no project
+- If no `currentProject` is loaded and the user hits `/`, show a prompt or redirect to `/projects`
+- Add a "Back to Projects" button in the header
+
+### Files to Create
+| File | Purpose |
+|------|---------|
+| `src/pages/Projects.tsx` | Projects dashboard page with card grid |
 
 ### Files to Modify
-- `src/components/StudioLayout.tsx` -- Change body overflow from `auto` to `hidden`
-- `src/components/StudioHeader.tsx` -- Add `sticky top-0 z-50` and a solid background color to the header element
-
----
-
-## Problem 2: Retrieving Files After Electron Build
-
-The IDE already has a **Download** button in the header toolbar and a `ProjectDownloader` component. The enhancement is to add a "Download Project Files" section directly into the `BuildInfoPanel` so users can grab their project files from the same place they see build instructions.
-
-**Approach:**
-- Add a "Download Project" button inside `BuildInfoPanel.tsx` that triggers the existing project downloader
-- Accept `onDownload` callback prop from the parent to trigger the download modal
-- Add the download trigger in `MatrixToolsPanel.tsx` when opening the Electron Builder modal
-
-### Files to Modify
-- `src/components/BuildInfoPanel.tsx` -- Add a "Download Project Files" section with a button
-- `src/components/MatrixToolsPanel.tsx` -- Pass download handler to BuildInfoPanel
-
----
-
-## Technical Details
-
-### StudioLayout.tsx Change
-Line 47: `document.body.style.overflow = 'auto'` changes to `document.body.style.overflow = 'hidden'`
-
-### StudioHeader.tsx Change
-Line 127: Add `sticky top-0 z-50` and replace `bg-transparent` with a solid dark background so the header doesn't show content bleeding through:
-```
-<header className="sticky top-0 z-50 flex items-center justify-between bg-[#111]/95 py-2 md:py-4 px-3 md:px-6 border-b border-purple-600/20 backdrop-blur-md shadow-[0_0_30px_rgba(179,0,255,0.25)]">
-```
-
-### BuildInfoPanel.tsx Change
-Add a new section with a "Download Project Files" button that calls an `onDownload` prop. This gives users a clear path to retrieve their project files right from the build instructions panel.
-
-### MatrixToolsPanel.tsx Change
-Pass an `onDownload` callback to `BuildInfoPanel` that triggers the existing project downloader.
-
----
-
-## Summary
-
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| Header disappears on scroll | `body.overflow = 'auto'` allows page scroll | Set to `hidden` + make header `sticky` |
-| No file retrieval after build | Download exists but not in build panel | Add download button to BuildInfoPanel |
-
+| File | Change |
+|------|--------|
+| `src/App.tsx` | Add `/projects` route |
+| `src/components/StudioHeader.tsx` | Add "Projects" navigation button |
+| `src/components/StudioLayout.tsx` | Redirect to `/projects` if no project loaded |
