@@ -41,6 +41,7 @@ interface StudioSidebarProps {
   onDeleteFile: (filePath: string) => void;
   currentProjectName?: string;
   fileContents?: Record<string, string>;
+  onDownload?: () => void;
 }
 
 const getCyberFileIcon = (extension?: string) => {
@@ -78,7 +79,8 @@ export const StudioSidebar = ({
   onCreateFile,
   onDeleteFile,
   currentProjectName,
-  fileContents = {}
+  fileContents = {},
+  onDownload
 }: StudioSidebarProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [openModal, setOpenModal] = useState<ModalType>(null);
@@ -293,6 +295,7 @@ export const StudioSidebar = ({
         onClose={handleCloseModal}
         fileContents={fileContents}
         onFileSelect={onFileSelect}
+        onDownload={onDownload}
       />
     </Sidebar>
   );
