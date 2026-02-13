@@ -60,30 +60,6 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
-## Desktop (Electron) build notes
-
-This project includes Electron packaging support.
-
-### Build commands
-
-```sh
-# Windows (NSIS + portable)
-npm run electron:build:win
-
-# macOS
-npm run electron:build:mac
-
-# Linux
-npm run electron:build:linux
-```
-
-### Build outputs
-
-- Packaged installers/binaries are generated under `release/`.
-- Local experimental outputs may appear in `release-fixed/`.
-
-These output directories are ignored in Git and should not be committed.
-
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/15e65a9d-509d-4b44-b9a8-3b8385c5ef52) and click on Share -> Publish.
