@@ -7,7 +7,7 @@
  * - npm run electron:build:mac  -> macOS DMG
  * - npm run electron:build:linux -> Linux AppImage
  */
-module.exports = {
+export default {
   appId: 'app.lovable.cyberpunk-termux',
   productName: 'Cyberpunk Termux Studio',
   copyright: 'Copyright © 2024 Lovable',
@@ -72,7 +72,6 @@ module.exports = {
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
     shortcutName: 'Cyberpunk Termux',
-    license: 'LICENSE',
   },
   
   // Linux configuration

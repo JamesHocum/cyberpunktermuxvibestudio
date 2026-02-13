@@ -8,8 +8,9 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/favicon.png',
-  '/favicon.svg'
+  '/favicon.ico',
+  '/icons/termux-cyberpunk-192.png',
+  '/icons/termux-cyberpunk-512.png'
 ];
 
 // Install event - cache static assets

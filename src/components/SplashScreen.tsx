@@ -24,7 +24,7 @@ export const SplashScreen = ({ onComplete }: SplashScreenProps) => {
     >
       <div className="flex flex-col items-center space-y-6">
         <img
-          src="/termux-logo.jpg"
+          src="/icons/termux-cyberpunk-192.png"
           alt="Cyberpunk Termux"
           className="logo-glow w-32 h-32 animate-pulse rounded-full"
         />
