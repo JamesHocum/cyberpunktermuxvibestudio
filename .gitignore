@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Electron build artifacts
+release/
+release-fixed/
+
+# One-off local assets (do not commit)
+public/download.jfif
+public/favicon (1).png
+public/termux-cyberpunk-logo.svg
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
