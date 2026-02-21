@@ -53,7 +53,7 @@ const config: PantheonConfig = {
       name: 'Lady Violet',
       systemPrompt: 'Creative UI/UX and design specialist with full-stack development expertise',
       temperature: 0.7,
-      model: 'google/gemini-2.5-flash',
+      model: 'google/gemini-3-flash-preview',
       capabilities: ['ui_design', 'ux_patterns', 'animations', 'code_generation', 'debugging', 'architecture']
     }
   ],

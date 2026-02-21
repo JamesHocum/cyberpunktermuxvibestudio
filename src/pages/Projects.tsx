@@ -1,16 +1,27 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useProject } from '@/hooks/useProject';
+import { useProjectContext } from '@/contexts/ProjectContext';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, FolderOpen, Loader2, LogOut, Clock } from 'lucide-react';
+import { Plus, Trash2, FolderOpen, Loader2, LogOut, Clock, Code2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+
+// Generate a unique gradient from project name
+const getProjectGradient = (name: string) => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h1 = Math.abs(hash % 360);
+  const h2 = (h1 + 40 + Math.abs((hash >> 8) % 60)) % 360;
+  return `linear-gradient(135deg, hsl(${h1}, 70%, 25%), hsl(${h2}, 80%, 15%))`;
+};
 
 const Projects = () => {
   const navigate = useNavigate();
-  const { projects, isLoading, createProject, deleteProject, loadProject } = useProject();
+  const { projects, isLoading, createProject, deleteProject, loadProject } = useProjectContext();
   const { user, signOut } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
@@ -129,10 +140,19 @@ const Projects = () => {
               {projects.map((project) => (
                 <Card
                   key={project.id}
-                  className="group cursor-pointer border-border/50 bg-card/60 backdrop-blur-sm hover:border-primary/50 hover:shadow-[0_0_20px_hsl(var(--neon-green)/0.15)] transition-all duration-300"
+                  className="group cursor-pointer border-border/50 bg-card/60 backdrop-blur-sm hover:border-primary/50 hover:shadow-[0_0_20px_hsl(var(--neon-green)/0.15)] transition-all duration-300 overflow-hidden"
                   onClick={() => handleOpen(project.id)}
                 >
-                  <CardHeader className="pb-2">
+                  {/* Gradient thumbnail */}
+                  <div
+                    className="h-24 flex items-center justify-center relative"
+                    style={{ background: getProjectGradient(project.name) }}
+                  >
+                    <Code2 className="h-10 w-10 text-white/20" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent" />
+                  </div>
+
+                  <CardHeader className="pb-2 pt-3">
                     <CardTitle className="text-base text-foreground group-hover:text-primary transition-colors truncate">
                       {project.name}
                     </CardTitle>

@@ -10,6 +10,7 @@ import GitHubCallback from "./pages/GitHubCallback";
 import NotFound from "./pages/NotFound";
 import Projects from "./pages/Projects";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ProjectProvider } from "./contexts/ProjectContext";
 
 const queryClient = new QueryClient();
 
@@ -20,29 +21,31 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/oauth/callback" element={<OAuthCallback />} />
-            <Route path="/github/callback" element={<GitHubCallback />} />
-            <Route
-              path="/projects"
-              element={
-                <ProtectedRoute>
-                  <Projects />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Index />
-                </ProtectedRoute>
-              }
-            />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <ProjectProvider>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/oauth/callback" element={<OAuthCallback />} />
+              <Route path="/github/callback" element={<GitHubCallback />} />
+              <Route
+                path="/projects"
+                element={
+                  <ProtectedRoute>
+                    <Projects />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                }
+              />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ProjectProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
