@@ -105,16 +105,35 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
   // Voice playback hook
   const voicePlayback = useVoicePlayback();
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll guard: only scroll when user is near the bottom
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
+
   const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, []);
 
+  // Detect if user has scrolled away from bottom
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping, isCloning, scrollToBottom]);
+    const container = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+    if (!container) return;
+
+    const handleUserScroll = () => {
+      const threshold = 80;
+      const atBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+      setAutoScrollEnabled(atBottom);
+    };
+
+    container.addEventListener('scroll', handleUserScroll);
+    return () => container.removeEventListener('scroll', handleUserScroll);
+  }, []);
+
+  useEffect(() => {
+    if (autoScrollEnabled) {
+      scrollToBottom();
+    }
+  }, [messages, isTyping, isCloning, autoScrollEnabled, scrollToBottom]);
 
   // Paste handler for screenshots
   useEffect(() => {
