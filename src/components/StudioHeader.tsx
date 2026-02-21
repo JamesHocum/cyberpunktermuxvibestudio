@@ -214,7 +214,7 @@ export const StudioHeader = ({
         /* Desktop toolbar with horizontal scroll and drag-to-scroll */
         <div 
           ref={scrollRef}
-          className={`flex items-center space-x-2 overflow-x-auto scrollbar-hide max-w-[60vw] px-2 drag-scroll-container ${isDragging ? 'is-dragging' : ''}`}
+          className={`flex items-center space-x-2 overflow-x-auto scrollbar-thin scrollbar-thumb-neon max-w-[60vw] px-2 drag-scroll-container ${isDragging ? 'is-dragging' : ''}`}
           {...dragHandlers}
         >
           <Button 

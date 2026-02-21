@@ -59,7 +59,7 @@ export const useProject = () => {
   const [fileTree, setFileTree] = useState<FileNode>(DEFAULT_PROJECT);
   const [fileContents, setFileContents] = useState<Record<string, string>>({});
   const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [history, setHistory] = useState<ProjectHistory[]>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -89,6 +89,8 @@ export const useProject = () => {
       setProjects((data || []) as Project[]);
     } catch (error) {
       console.error('Error loading projects:', error);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
