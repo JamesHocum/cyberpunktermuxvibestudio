@@ -17,6 +17,7 @@ import { AttachmentPreview, MessageAttachments } from "./AttachmentPreview";
 import { CodexActionBar, CodexAction } from "./CodexActionBar";
 import { VoiceSelector } from "./VoiceSelector";
 import { useVoicePlayback } from "@/hooks/useVoicePlayback";
+import { loadPersonaSettings } from "./SettingsPanel";
 
 interface Message {
   id: string;
@@ -390,7 +391,9 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
           },
           body: JSON.stringify({
             messages: apiMessages,
-            action: currentAction
+            action: currentAction,
+            model: loadPersonaSettings().model,
+            systemPrompt: loadPersonaSettings().systemPrompt
           }),
         }
       );

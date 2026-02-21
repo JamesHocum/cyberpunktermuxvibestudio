@@ -19,5 +19,54 @@
     "description": "Shows line counts, character counts, and file metrics for your project.",
     "author": "Neon Coder",
     "url": "https://cdn.jsdelivr.net/gh/example/extensions/codeStats.js"
+  },
+  {
+    "id": "syntax-highlighter-pro",
+    "name": "Syntax Highlighter Pro",
+    "description": "Enhanced syntax highlighting with 20+ language themes and custom color palettes.",
+    "author": "Neon Coder",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/syntaxHighlighterPro.js"
+  },
+  {
+    "id": "file-diff-viewer",
+    "name": "File Diff Viewer",
+    "description": "Compare file versions side by side with highlighted changes and merge support.",
+    "author": "Cypher Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/fileDiffViewer.js"
+  },
+  {
+    "id": "snippet-manager",
+    "name": "Snippet Manager",
+    "description": "Save, organize, and reuse code snippets across all your projects.",
+    "author": "Synth Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/snippetManager.js"
+  },
+  {
+    "id": "project-notes",
+    "name": "Project Notes",
+    "description": "Attach markdown notes and TODO lists to any project for quick reference.",
+    "author": "Cypher Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/projectNotes.js"
+  },
+  {
+    "id": "color-picker",
+    "name": "Color Picker",
+    "description": "Inline color picker for CSS values with hex, RGB, and HSL support.",
+    "author": "Neon Coder",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/colorPicker.js"
+  },
+  {
+    "id": "terminal-themes",
+    "name": "Terminal Themes",
+    "description": "Custom terminal color schemes, fonts, and prompt styles for your console.",
+    "author": "Synth Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/terminalThemes.js"
+  },
+  {
+    "id": "auto-formatter",
+    "name": "Auto Formatter",
+    "description": "Automatically format code on save with configurable Prettier rules.",
+    "author": "Cypher Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/autoFormatter.js"
   }
 ]

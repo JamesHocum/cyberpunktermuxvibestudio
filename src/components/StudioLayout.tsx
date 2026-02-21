@@ -19,7 +19,7 @@ import { NeonModuleSelector } from "./NeonModuleSelector";
 import { DevModeIndicator } from "./DevModeIndicator";
 import { CommandPalette } from "./CommandPalette";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { useProject } from "@/hooks/useProject";
+import { useProjectContext } from "@/contexts/ProjectContext";
 import { useRecentFiles } from "@/hooks/useRecentFiles";
 import { ModalType } from "./MatrixToolsPanel";
 export const StudioLayout = () => {
@@ -42,7 +42,7 @@ export const StudioLayout = () => {
     deleteFile,
     clearProject,
     toggleFolder
-  } = useProject();
+  } = useProjectContext();
 
   useEffect(() => {
     document.body.style.background = '#111';

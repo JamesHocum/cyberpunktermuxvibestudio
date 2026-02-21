@@ -203,9 +203,11 @@ serve(async (req) => {
 
     console.log(`[CodexChat] Authenticated user: ${user.id}`);
 
-    const { messages, action = 'chat' } = await req.json() as { 
+    const { messages, action = 'chat', model: requestedModel, systemPrompt: customSystemPrompt } = await req.json() as { 
       messages: ChatMessage[]; 
       action?: CodexAction;
+      model?: string;
+      systemPrompt?: string;
     };
 
     if (!messages || !Array.isArray(messages)) {
@@ -227,10 +229,15 @@ serve(async (req) => {
 
     console.log(`[CodexChat] Action: ${action}, Has images: ${hasImages}`);
 
-    // Use vision model if images are present
-    const model = hasImages ? 'google/gemini-2.5-flash' : 'google/gemini-2.5-flash';
+    // Use requested model or default to gemini-3-flash-preview
+    const SUPPORTED_MODELS = [
+      'google/gemini-3-flash-preview', 'google/gemini-2.5-flash', 'google/gemini-2.5-pro',
+      'google/gemini-3-pro-preview', 'openai/gpt-5', 'openai/gpt-5-mini', 'openai/gpt-5.2'
+    ];
+    const defaultModel = 'google/gemini-3-flash-preview';
+    const model = requestedModel && SUPPORTED_MODELS.includes(requestedModel) ? requestedModel : defaultModel;
     
-    const systemPrompt = getSystemPrompt(action, hasImages);
+    const systemPrompt = customSystemPrompt || getSystemPrompt(action, hasImages);
     const formattedMessages = formatMessagesForAI(messages, hasImages);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
