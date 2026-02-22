@@ -150,12 +150,16 @@ export const useProject = () => {
     
     setIsSaving(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
       // Update file tree
       await supabase
         .from('file_tree')
         .upsert({
           project_id: currentProject.id,
-          tree_structure: fileTree as any
+          tree_structure: fileTree as any,
+          user_id: user.id
         });
 
       // Save all files
@@ -169,7 +173,8 @@ export const useProject = () => {
             path,
             content,
             file_type: extension,
-            is_folder: false
+            is_folder: false,
+            user_id: user.id
           });
       }
 
@@ -194,9 +199,12 @@ export const useProject = () => {
   const createProject = useCallback(async (name: string, description?: string) => {
     setIsLoading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
       const { data: project, error } = await supabase
         .from('projects')
-        .insert({ name, description })
+        .insert({ name, description, user_id: user.id })
         .select()
         .single();
 
@@ -207,7 +215,8 @@ export const useProject = () => {
         .from('file_tree')
         .insert({
           project_id: project.id,
-          tree_structure: DEFAULT_PROJECT as any
+          tree_structure: DEFAULT_PROJECT as any,
+          user_id: user.id
         });
 
       setCurrentProject(project as Project);
