@@ -1,78 +1,75 @@
 
 
-# Fix: "Failed to Create New Project" - Missing user_id in Database Operations
+# Fix Scroll Drift, Agentic Code Application, and Live Preview
 
-## Root Cause
+## Issues Identified
 
-In `src/hooks/useProject.ts`, the `createProject` function (line 199) inserts a row into the `projects` table without including `user_id`:
+### 1. Scroll Drift (Header Moves Off Screen)
+The screenshot shows the header has scrolled off the top. The root layout in `StudioLayout.tsx` uses `h-screen overflow-hidden`, which should prevent this. However, the `AIChatPanel` uses a `ScrollArea` that can grow unbounded. The issue is that the chat content pushes the outer layout, causing the entire page to scroll despite `overflow-hidden` on the root.
 
-```
-.insert({ name, description })  // missing user_id!
-```
+**Root cause:** The `AIChatPanel` outer div has `h-full` but no `overflow-hidden`, and the `ScrollArea` can expand beyond its container. When the Radix ScrollArea viewport grows, it can push the parent flex container, causing the header to shift.
 
-The RLS policy on `projects` requires `user_id = auth.uid()` for INSERT. Without `user_id`, the insert is rejected. The same issue affects `file_tree` inserts and `saveProject` upserts that are also missing `user_id`.
+**Fix:** Add `overflow-hidden` and `min-h-0` to the `AIChatPanel` outer container, and ensure the chat `TabsContent` uses proper flex containment so the `ScrollArea` stays within bounds.
 
-Compare with `src/lib/projectManager.ts` which correctly includes `user_id: user.id` (line 28).
+### 2. AI Should Apply Code to Files (Agentic Behavior)
+Currently the Codex AI just streams text responses with code blocks. It does NOT:
+- Parse code blocks from its response and apply them to project files
+- Offer deployment options (Vercel, Netlify, etc.)
 
-## Fix
+**Fix:** After the AI response finishes streaming, parse any fenced code blocks with filenames (e.g., `` ```jsx ``, `` ```json ``), and when code blocks are detected:
+- Add an "Apply to Project" button on each code block that creates/updates the file in the project
+- Add an "Apply All" button that applies all code blocks at once
+- This makes the AI agentic -- it generates code AND the user can one-click apply it
 
-Modify `src/hooks/useProject.ts` to fetch the current user and include `user_id` in all database operations:
+### 3. Live Preview Should Render Current File
+The Live Preview currently shows the content of `activeFile` only. When the AI generates code and the user applies it, the preview should auto-update.
 
-### 1. `createProject` function (line 194-230)
-- Get `auth.uid()` before inserting
-- Add `user_id` to the `projects` insert
-- Add `user_id` to the `file_tree` insert
+**Fix:** This is already wired -- `LivePreview` receives `fileContents[activeFile]`. Once code application works (issue 2), the preview will update automatically when the user applies generated code and switches to that file.
 
-### 2. `saveProject` function (line 148-191)
-- Get `auth.uid()` before upserting
-- Add `user_id` to `file_tree` upsert
-- Add `user_id` to `project_files` upsert
+---
 
-### File to Modify
+## Technical Plan
+
+### File: `src/components/AIChatPanel.tsx`
+
+**A. Fix scroll containment:**
+- Add `overflow-hidden min-h-0` to the outer chat container div (line 514)
+- Ensure TabsContent for chat has `overflow-hidden` so ScrollArea stays bounded
+
+**B. Add code block detection and "Apply" buttons:**
+- Create a `parseCodeBlocks(content: string)` utility that extracts fenced code blocks with optional filenames
+- Replace the plain `<pre>` message renderer with a new `MessageContent` component that:
+  - Renders normal text as before
+  - Renders code blocks with syntax highlighting AND an "Apply to File" button
+  - The "Apply" button calls `createFile` + `updateFileContent` from the project context
+- Add `onCodeApply` callback prop to `AIChatPanel` that creates/updates files
+
+### File: `src/components/StudioLayout.tsx`
+
+- Pass `createFile` and `updateFileContent` callbacks to `AIChatPanel` so it can apply code to the project
+- Auto-open Live Preview when code is applied
+
+### File: `src/components/LivePreview.tsx`
+
+- No changes needed -- it already reacts to `fileContents` changes
+
+---
+
+## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/hooks/useProject.ts` | Add `user_id` from `auth.getUser()` to `createProject`, `saveProject`, and `file_tree`/`project_files` upserts |
+| `src/components/AIChatPanel.tsx` | Fix scroll containment; add code block parser; add "Apply to Project" buttons on AI-generated code blocks; accept file manipulation callbacks |
+| `src/components/StudioLayout.tsx` | Pass `createFile`, `updateFileContent`, and `handleFileSelect` to AIChatPanel |
 
-### Technical Detail
+## Implementation Order
 
-In `createProject`:
-```typescript
-const { data: { user } } = await supabase.auth.getUser();
-if (!user) throw new Error('Not authenticated');
+| Step | Task |
+|------|------|
+| 1 | Fix scroll containment in AIChatPanel (overflow-hidden + min-h-0) |
+| 2 | Create `parseCodeBlocks` utility to extract filename + code from fenced blocks |
+| 3 | Build `CodeBlockWithApply` component that renders code + "Apply to File" button |
+| 4 | Replace plain `<pre>` rendering with the new component |
+| 5 | Update StudioLayout to pass file manipulation callbacks to AIChatPanel |
+| 6 | Test: send a "build me a PWA" message, verify code blocks have Apply buttons, click Apply, verify file appears in sidebar and Live Preview |
 
-const { data: project, error } = await supabase
-  .from('projects')
-  .insert({ name, description, user_id: user.id })  // add user_id
-  .select()
-  .single();
-
-await supabase.from('file_tree').insert({
-  project_id: project.id,
-  tree_structure: DEFAULT_PROJECT as any,
-  user_id: user.id  // add user_id
-});
-```
-
-In `saveProject`:
-```typescript
-const { data: { user } } = await supabase.auth.getUser();
-if (!user) throw new Error('Not authenticated');
-
-// file_tree upsert needs user_id
-await supabase.from('file_tree').upsert({
-  project_id: currentProject.id,
-  tree_structure: fileTree as any,
-  user_id: user.id
-});
-
-// project_files upsert needs user_id
-await supabase.from('project_files').upsert({
-  project_id: currentProject.id,
-  path, content, file_type: extension,
-  is_folder: false,
-  user_id: user.id
-});
-```
-
-This is the exact same pattern already used in `src/lib/projectManager.ts` (lines 23-28), which works correctly.
