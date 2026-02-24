@@ -61,6 +61,20 @@ export const loadPersonaSettings = (): PersonaSettings => {
   return DEFAULT_PERSONA;
 };
 
+export const loadStackProfile = (projectId?: string): StackProfile => {
+  try {
+    if (projectId) {
+      const perProject = localStorage.getItem(`codex-stack-profile-${projectId}`);
+      if (perProject) return { ...DEFAULT_STACK, ...JSON.parse(perProject) };
+    }
+    const global = localStorage.getItem('codex-stack-profile');
+    if (global) return { ...DEFAULT_STACK, ...JSON.parse(global) };
+  } catch {}
+  return DEFAULT_STACK;
+};
+
+export { DEFAULT_STACK };
+
 export const SettingsPanel = ({ isVisible, onClose }: SettingsPanelProps) => {
   const [fontSize, setFontSize] = useState([14]);
   const [tabSize, setTabSize] = useState('2');
@@ -86,7 +100,9 @@ export const SettingsPanel = ({ isVisible, onClose }: SettingsPanelProps) => {
 
   const savePersona = () => {
     localStorage.setItem('codex-persona', JSON.stringify(persona));
+    // Save stack profile both globally and per-project if a project is active
     localStorage.setItem('codex-stack-profile', JSON.stringify(stack));
+    // Note: per-project saving happens when projectId is available via the wizard
     toast.success('Persona & stack settings saved');
   };
 
