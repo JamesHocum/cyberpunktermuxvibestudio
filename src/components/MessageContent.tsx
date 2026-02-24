@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, FileDown, FileCode, Rocket, Globe, Download, ExternalLink } from "lucide-react";
+import { Copy, Check, FileDown, FileCode, Rocket, Globe, Download, ExternalLink, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { parseMessageContent, ParsedSegment, ParsedCodeBlock } from "@/lib/parseCodeBlocks";
 import { highlightCode } from "@/lib/neonSyntaxHighlighter";
@@ -10,6 +10,7 @@ interface MessageContentProps {
   content: string;
   onApplyCode?: (filename: string, code: string) => void;
   onDeploy?: (target: 'vercel' | 'netlify' | 'zip') => void;
+  onUndoFile?: (filename: string) => void;
 }
 
 const CodeBlockWithApply: React.FC<{
@@ -116,7 +117,7 @@ const DeploymentOptions: React.FC<{ onDeploy?: (target: 'vercel' | 'netlify' | '
   );
 };
 
-export const MessageContent: React.FC<MessageContentProps> = ({ content, onApplyCode, onDeploy }) => {
+export const MessageContent: React.FC<MessageContentProps> = ({ content, onApplyCode, onDeploy, onUndoFile }) => {
   const segments = parseMessageContent(content);
   const codeBlocks = segments.filter(s => s.type === 'code' && s.codeBlock);
   const [allApplied, setAllApplied] = useState(false);
@@ -186,6 +187,21 @@ export const MessageContent: React.FC<MessageContentProps> = ({ content, onApply
           {appliedFiles.map(fn => (
             <Badge key={fn} variant="outline" className="text-[10px] px-2 py-0 font-terminal border-primary/30 text-primary gap-1">
               <Check className="h-2.5 w-2.5" />{fn}
+              {onUndoFile && (
+                <button
+                  type="button"
+                  className="ml-1 text-[10px] uppercase tracking-wide text-destructive hover:text-destructive/80"
+                  onClick={() => {
+                    onUndoFile(fn);
+                    setAppliedFiles(prev => prev.filter(name => name !== fn));
+                    if (appliedFiles.length === 1) {
+                      setAllApplied(false);
+                    }
+                  }}
+                >
+                  <Undo2 className="h-2.5 w-2.5" />
+                </button>
+              )}
             </Badge>
           ))}
           <Button variant="ghost" size="sm" className="ml-auto h-5 px-2 text-[10px] uppercase tracking-wide font-terminal text-muted-foreground hover:text-foreground" onClick={handleClearApplied}>
