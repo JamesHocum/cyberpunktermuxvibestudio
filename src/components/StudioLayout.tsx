@@ -235,6 +235,9 @@ export const StudioLayout = () => {
                       onProjectCreated={loadProject}
                       currentProjectId={currentProject?.id}
                       fileContents={fileContents}
+                      onCreateFile={(parentPath, name, isFolder) => createFile(parentPath || fileTree.name, name, isFolder)}
+                      onUpdateFileContent={updateFileContent}
+                      onSelectFile={handleFileSelect}
                     />
                   </ResizablePanel>
                 </>
