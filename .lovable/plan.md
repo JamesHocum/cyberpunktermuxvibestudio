@@ -1,122 +1,45 @@
 
 
-# Project Creation Wizard with Stack Profile + Manifest Update
+# Upgrade MessageContent with Applied Files Tracking
 
-## Overview
+## What Changes
 
-Two changes:
-1. **Project Creation Wizard** -- Replace the simple name/description form on `/projects` with a multi-step wizard that includes stack profile selection (Supabase Fullstack / SQLite / Frontend Only). The selected stack is saved to `localStorage` keyed by project ID, so each project remembers its stack.
-2. **Manifest update** -- Add `id` field and version the `start_url` to force PWA cache refresh.
+Update `src/components/MessageContent.tsx` to add:
 
----
+1. **Applied files tracking** -- Track which individual files have been applied using `appliedFiles` state array, with a `recordApplied` helper
+2. **Applied files indicator** -- Show a list of applied filenames as styled pills/badges below the code blocks (e.g. "Applied files: checkmark filename.tsx")
+3. **Re-apply support** -- Change "Apply All" button text to "Re-apply All" after first application, and keep it enabled for re-application
+4. **Individual apply callback wiring** -- Route individual code block applies through `handleApplySingle` which both calls `onApplyCode` and records the filename
 
-## 1. Project Creation Wizard
+## Technical Details
 
-### Current State
-The `/projects` page has a simple inline card form with two text inputs (name, description) and a Create button. Stack profile is only configurable after project creation via Settings > Stack tab, which is a global setting (not per-project).
+### Changes to `src/components/MessageContent.tsx`
 
-### Changes to `src/pages/Projects.tsx`
+**State additions (inside `MessageContent`):**
+- Add `appliedFiles` state (`string[]`) to track which files have been applied
+- Add `recordApplied(filename)` helper that deduplicates
 
-Replace the inline create form with a 2-step wizard:
+**Updated handlers:**
+- `handleApplySingle(filename, code)` -- calls `onApplyCode`, records the file, sets `allApplied = true`
+- `handleApplyAll()` -- applies all code blocks, records all filenames, sets `allApplied = true`, shows toast
 
-**Step 1: Name and Description**
-- Project name (required)
-- Description (optional)
-- "Next" button to proceed
+**Updated JSX:**
+- Pass `handleApplySingle` (not raw `onApplyCode`) to `CodeBlockWithApply`
+- Change "Apply All" button to show "Re-apply All" after first use and remain enabled
+- Add applied files indicator section showing checkmarked filename pills when `appliedFiles.length > 0`
+- Keep deployment options appearing after any apply
 
-**Step 2: Stack Profile Selection**
-- Three visual cards to pick from:
-  - **Supabase Fullstack** -- Full backend with database, auth, edge functions, and middleware. Default choice, highlighted.
-  - **SQLite (Self-hosted)** -- Lightweight local database with JWT auth. Good for offline-first apps.
-  - **Frontend Only** -- No backend. Static site or client-side only app.
-- Auto-wire Backend and Auto-wire Middleware toggles (pre-checked for Supabase/SQLite, unchecked for Frontend Only)
-- "Create Project" button
+### No other files need changes
 
-**On create:**
-- Call `createProject(name, description)` as before
-- Save the selected stack profile to `localStorage` with key `codex-stack-profile-{projectId}` so it's per-project
-- Also save to the global `codex-stack-profile` key for backward compatibility
-- Navigate to IDE
+This is a self-contained enhancement to `MessageContent.tsx` only. The props interface stays the same. `CodeBlockWithApply` already handles its own `applied` state for the per-block button -- the new `appliedFiles` state in the parent is for the summary indicator.
 
-### Changes to `src/components/SettingsPanel.tsx`
-
-- Update the Stack tab to load/save per-project stack profile when a project ID is available
-- Export a helper `loadStackProfile(projectId?)` that checks per-project key first, then falls back to global key
-
-### Changes to `src/components/AIChatPanel.tsx`
-
-- Use the per-project stack profile loader instead of the global one, passing `currentProjectId`
-
----
-
-## 2. Manifest Update
-
-### Changes to `public/manifest.json`
-
-- Add `"id": "/cyberpunk-termux-v2"` field
-- Change `"start_url"` to `"/?v=2"` to bust PWA cache
-
----
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/Projects.tsx` | Replace inline form with 2-step wizard including stack profile card selector |
-| `src/components/SettingsPanel.tsx` | Export `loadStackProfile(projectId?)` helper; update Stack tab to use per-project key |
-| `src/components/AIChatPanel.tsx` | Use per-project `loadStackProfile` with `currentProjectId` |
-| `public/manifest.json` | Add `id` field, update `start_url` to `/?v=2` |
-
-## Implementation Details
-
-### Wizard UI (Projects.tsx)
-
-```text
-+---------------------------------------------+
-| Create New Project                          |
-|                                             |
-| Step 1 of 2: Project Info                   |
-| [Project name___________]                   |
-| [Description (optional)_]                   |
-|                          [Cancel] [Next ->] |
-+---------------------------------------------+
-
-+---------------------------------------------+
-| Create New Project                          |
-|                                             |
-| Step 2 of 2: Choose Your Stack              |
-|                                             |
-| [Supabase Fullstack]  [SQLite]  [Frontend]  |
-|  * DB + Auth + Edge    * Local    * No       |
-|  * Auto-wire all       * JWT      * backend  |
-|  (RECOMMENDED)         * Offline             |
-|                                             |
-| [x] Auto-wire Backend                       |
-| [x] Auto-wire Middleware                    |
-|                                             |
-|                   [<- Back] [Create Project] |
-+---------------------------------------------+
-```
-
-### Stack Profile Storage
-
-Per-project key: `codex-stack-profile-{projectId}`
-Global fallback: `codex-stack-profile`
-
-The `loadStackProfile` helper:
-```text
-function loadStackProfile(projectId?: string): StackProfile
-  1. If projectId, check localStorage for `codex-stack-profile-{projectId}`
-  2. Fall back to `codex-stack-profile` (global)
-  3. Fall back to DEFAULT_STACK
-```
-
-### Implementation Order
+## Implementation Order
 
 | Step | Task |
 |------|------|
-| 1 | Add `loadStackProfile` helper to SettingsPanel.tsx |
-| 2 | Build the 2-step wizard in Projects.tsx with stack card selector |
-| 3 | Update AIChatPanel to use per-project stack loading |
-| 4 | Update manifest.json with id and start_url |
+| 1 | Add `appliedFiles` state and `recordApplied` helper |
+| 2 | Create `handleApplySingle` wrapper and update `handleApplyAll` |
+| 3 | Wire `handleApplySingle` to `CodeBlockWithApply` |
+| 4 | Add applied files indicator UI |
+| 5 | Update Apply All button to support re-apply |
 
