@@ -120,23 +120,40 @@ export const MessageContent: React.FC<MessageContentProps> = ({ content, onApply
   const segments = parseMessageContent(content);
   const codeBlocks = segments.filter(s => s.type === 'code' && s.codeBlock);
   const [allApplied, setAllApplied] = useState(false);
+  const [appliedFiles, setAppliedFiles] = useState<string[]>([]);
+
+  const recordApplied = (filename: string) => {
+    setAppliedFiles(prev => prev.includes(filename) ? prev : [...prev, filename]);
+  };
+
+  const handleApplySingle = (filename: string, code: string) => {
+    if (!onApplyCode) return;
+    onApplyCode(filename, code);
+    recordApplied(filename);
+    setAllApplied(true);
+  };
 
   const handleApplyAll = () => {
     if (!onApplyCode) return;
+    const appliedNow: string[] = [];
     codeBlocks.forEach(s => {
       if (s.codeBlock) {
         onApplyCode(s.codeBlock.filename, s.codeBlock.code);
+        appliedNow.push(s.codeBlock.filename);
       }
     });
-    setAllApplied(true);
-    toast.success(`Applied ${codeBlocks.length} files to project`);
+    if (appliedNow.length > 0) {
+      setAppliedFiles(prev => [...prev, ...appliedNow.filter(f => !prev.includes(f))]);
+      setAllApplied(true);
+      toast.success(`Applied ${appliedNow.length} files to project`);
+    }
   };
 
   return (
     <div>
       {segments.map((segment, idx) => {
         if (segment.type === 'code' && segment.codeBlock) {
-          return <CodeBlockWithApply key={idx} block={segment.codeBlock} onApply={onApplyCode} />;
+          return <CodeBlockWithApply key={idx} block={segment.codeBlock} onApply={onApplyCode ? handleApplySingle : undefined} />;
         }
         return (
           <pre key={idx} className="whitespace-pre-wrap text-sm font-terminal text-muted-foreground">
@@ -150,16 +167,25 @@ export const MessageContent: React.FC<MessageContentProps> = ({ content, onApply
           <Button
             variant="outline"
             size="sm"
-            className={`text-xs font-terminal gap-1.5 cyber-border ${allApplied ? 'text-green-400 border-green-500/30' : 'text-primary border-primary/30 hover:bg-primary/10'}`}
+            className={`text-xs font-terminal gap-1.5 cyber-border ${allApplied ? 'text-primary border-primary/30 hover:bg-primary/10' : 'text-primary border-primary/30 hover:bg-primary/10'}`}
             onClick={handleApplyAll}
-            disabled={allApplied}
           >
-            {allApplied ? (<><Check className="h-3 w-3" />All Applied</>) : (<><Rocket className="h-3 w-3" />Apply All ({codeBlocks.length} files)</>)}
+            {allApplied ? (<><Rocket className="h-3 w-3" />Re-apply All ({codeBlocks.length} files)</>) : (<><Rocket className="h-3 w-3" />Apply All ({codeBlocks.length} files)</>)}
           </Button>
         </div>
       )}
 
-      {/* Show deployment options after applying code */}
+      {appliedFiles.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+          <span className="uppercase tracking-wide text-muted-foreground/70">Applied files:</span>
+          {appliedFiles.map(fn => (
+            <Badge key={fn} variant="outline" className="text-[10px] px-2 py-0 font-terminal border-primary/30 text-primary gap-1">
+              <Check className="h-2.5 w-2.5" />{fn}
+            </Badge>
+          ))}
+        </div>
+      )}
+
       {allApplied && <DeploymentOptions onDeploy={onDeploy} />}
     </div>
   );
