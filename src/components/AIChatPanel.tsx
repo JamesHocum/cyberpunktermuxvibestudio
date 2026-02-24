@@ -36,6 +36,7 @@ interface AIChatPanelProps {
   onCreateFile?: (parentPath: string, name: string, isFolder: boolean) => void;
   onUpdateFileContent?: (path: string, content: string) => void;
   onSelectFile?: (path: string) => void;
+  onDeploy?: (target: 'vercel' | 'netlify' | 'zip') => void;
 }
 
 // Extract GitHub repo URL from message
@@ -78,7 +79,7 @@ const getPlaceholder = (action: CodexAction): string => {
   }
 };
 
-export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents = {}, onCreateFile, onUpdateFileContent, onSelectFile }: AIChatPanelProps) => {
+export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents = {}, onCreateFile, onUpdateFileContent, onSelectFile, onDeploy }: AIChatPanelProps) => {
   const { session, user, isAuthenticated, isDevBypass } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("chat");
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
@@ -412,11 +413,12 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
             "Content-Type": "application/json",
             Authorization: `Bearer ${authToken}`,
           },
-          body: JSON.stringify({
+      body: JSON.stringify({
             messages: apiMessages,
             action: currentAction,
             model: loadPersonaSettings().model,
-            systemPrompt: loadPersonaSettings().systemPrompt
+            systemPrompt: loadPersonaSettings().systemPrompt,
+            stackProfile: JSON.parse(localStorage.getItem('codex-stack-profile') || '{"backend":"supabase","auth":"supabase_auth","autoWireBackend":true,"autoWireMiddleware":true}')
           }),
         }
       );
@@ -522,6 +524,19 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
       onSelectFile(filename.startsWith('/') ? filename.slice(1) : filename);
     }
   }, [onCreateFile, onUpdateFileContent, onSelectFile]);
+
+  const handleDeploy = useCallback((target: 'vercel' | 'netlify' | 'zip') => {
+    if (onDeploy) {
+      onDeploy(target);
+    } else {
+      if (target === 'vercel') {
+        window.open('https://vercel.com/new', '_blank');
+      } else if (target === 'netlify') {
+        window.open('https://app.netlify.com/start', '_blank');
+      }
+      toast.info(`Connect your GitHub repo first, then deploy to ${target}`);
+    }
+  }, [onDeploy]);
 
   // Check if user is authenticated
   const canUseAI = isAuthenticated || isDevBypass;
@@ -650,9 +665,9 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
       ) : (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           {/* Chat Tab */}
-          <TabsContent value="chat" className="flex-1 flex flex-col m-0 min-h-0 data-[state=inactive]:hidden">
+          <TabsContent value="chat" className="flex-1 flex flex-col m-0 min-h-0 overflow-hidden data-[state=inactive]:hidden">
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4 cyber-scrollbar" ref={scrollRef}>
+            <ScrollArea className="h-0 flex-grow p-4 cyber-scrollbar" ref={scrollRef}>
               <div className="space-y-4">
                 {messages.map(message => (
                   <div key={message.id} className="space-y-2">
@@ -688,6 +703,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                       <MessageContent 
                         content={message.content}
                         onApplyCode={message.role === 'assistant' ? handleApplyCode : undefined}
+                        onDeploy={message.role === 'assistant' ? handleDeploy : undefined}
                       />
                     </div>
                     

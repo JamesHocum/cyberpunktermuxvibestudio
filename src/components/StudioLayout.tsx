@@ -238,6 +238,15 @@ export const StudioLayout = () => {
                       onCreateFile={(parentPath, name, isFolder) => createFile(parentPath || fileTree.name, name, isFolder)}
                       onUpdateFileContent={updateFileContent}
                       onSelectFile={handleFileSelect}
+                      onDeploy={(target) => {
+                        if (target === 'zip') {
+                          setShowDownloader(true);
+                        } else if (target === 'vercel') {
+                          window.open('https://vercel.com/new', '_blank');
+                        } else if (target === 'netlify') {
+                          window.open('https://app.netlify.com/start', '_blank');
+                        }
+                      }}
                     />
                   </ResizablePanel>
                 </>

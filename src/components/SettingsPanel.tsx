@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, X, Palette, Type, Keyboard, Zap, Bot } from 'lucide-react';
+import { Settings, X, Palette, Type, Keyboard, Zap, Bot, Server } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SettingsPanelProps {
@@ -22,11 +22,25 @@ export interface PersonaSettings {
   model: string;
 }
 
+export interface StackProfile {
+  backend: 'supabase' | 'sqlite' | 'none';
+  auth: 'supabase_auth' | 'jwt' | 'none';
+  autoWireBackend: boolean;
+  autoWireMiddleware: boolean;
+}
+
 const DEFAULT_PERSONA: PersonaSettings = {
   name: 'Lady Violet',
   systemPrompt: 'Creative UI/UX and design specialist with full-stack development expertise. You speak with technical precision but maintain a mysterious, elegant persona.',
   temperature: 0.7,
   model: 'google/gemini-3-flash-preview',
+};
+
+const DEFAULT_STACK: StackProfile = {
+  backend: 'supabase',
+  auth: 'supabase_auth',
+  autoWireBackend: true,
+  autoWireMiddleware: true,
 };
 
 const AVAILABLE_MODELS = [
@@ -58,12 +72,22 @@ export const SettingsPanel = ({ isVisible, onClose }: SettingsPanelProps) => {
 
   // Persona settings
   const [persona, setPersona] = useState<PersonaSettings>(loadPersonaSettings);
+  
+  // Stack profile settings
+  const [stack, setStack] = useState<StackProfile>(() => {
+    try {
+      const stored = localStorage.getItem('codex-stack-profile');
+      if (stored) return { ...DEFAULT_STACK, ...JSON.parse(stored) };
+    } catch {}
+    return DEFAULT_STACK;
+  });
 
   if (!isVisible) return null;
 
   const savePersona = () => {
     localStorage.setItem('codex-persona', JSON.stringify(persona));
-    toast.success('Persona settings saved');
+    localStorage.setItem('codex-stack-profile', JSON.stringify(stack));
+    toast.success('Persona & stack settings saved');
   };
 
   return (
@@ -83,7 +107,7 @@ export const SettingsPanel = ({ isVisible, onClose }: SettingsPanelProps) => {
         {/* Content */}
         <div className="flex-1 overflow-auto p-4">
           <Tabs defaultValue="appearance" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 cyber-border">
+            <TabsList className="grid w-full grid-cols-6 cyber-border">
               <TabsTrigger value="appearance" className="font-terminal text-xs">
                 <Palette className="h-4 w-4 mr-1" />
                 Theme
@@ -95,6 +119,10 @@ export const SettingsPanel = ({ isVisible, onClose }: SettingsPanelProps) => {
               <TabsTrigger value="persona" className="font-terminal text-xs">
                 <Bot className="h-4 w-4 mr-1" />
                 Persona
+              </TabsTrigger>
+              <TabsTrigger value="stack" className="font-terminal text-xs">
+                <Server className="h-4 w-4 mr-1" />
+                Stack
               </TabsTrigger>
               <TabsTrigger value="keybindings" className="font-terminal text-xs">
                 <Keyboard className="h-4 w-4 mr-1" />
@@ -220,6 +248,60 @@ export const SettingsPanel = ({ isVisible, onClose }: SettingsPanelProps) => {
                 <Button onClick={savePersona} className="w-full neon-glow cyber-border font-terminal">
                   <Bot className="h-4 w-4 mr-2" />
                   Save Persona Configuration
+                </Button>
+              </div>
+            </TabsContent>
+
+            {/* Stack Profile */}
+            <TabsContent value="stack" className="space-y-6 mt-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="font-terminal neon-green">Backend Stack</Label>
+                  <Select value={stack.backend} onValueChange={(v: StackProfile['backend']) => setStack(s => ({ ...s, backend: v }))}>
+                    <SelectTrigger className="cyber-border bg-studio-terminal matrix-text font-terminal">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="cyber-border bg-studio-sidebar">
+                      <SelectItem value="supabase" className="font-terminal">Supabase (Fullstack)</SelectItem>
+                      <SelectItem value="sqlite" className="font-terminal">SQLite (Self-hosted)</SelectItem>
+                      <SelectItem value="none" className="font-terminal">Frontend Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-terminal neon-green">Authentication</Label>
+                  <Select value={stack.auth} onValueChange={(v: StackProfile['auth']) => setStack(s => ({ ...s, auth: v }))}>
+                    <SelectTrigger className="cyber-border bg-studio-terminal matrix-text font-terminal">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="cyber-border bg-studio-sidebar">
+                      <SelectItem value="supabase_auth" className="font-terminal">Supabase Auth</SelectItem>
+                      <SelectItem value="jwt" className="font-terminal">JWT (Custom)</SelectItem>
+                      <SelectItem value="none" className="font-terminal">No Auth</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label className="font-terminal matrix-text">Auto-wire Backend</Label>
+                  <Switch checked={stack.autoWireBackend} onCheckedChange={(v) => setStack(s => ({ ...s, autoWireBackend: v }))} className="cyber-switch" />
+                </div>
+                <p className="text-[10px] text-muted-foreground font-terminal">
+                  When enabled, AI will automatically generate DB schemas, API routes, and auth wiring without asking.
+                </p>
+
+                <div className="flex items-center justify-between">
+                  <Label className="font-terminal matrix-text">Auto-wire Middleware</Label>
+                  <Switch checked={stack.autoWireMiddleware} onCheckedChange={(v) => setStack(s => ({ ...s, autoWireMiddleware: v }))} className="cyber-switch" />
+                </div>
+                <p className="text-[10px] text-muted-foreground font-terminal">
+                  When enabled, AI will include auth middleware, rate limiting, and logging automatically.
+                </p>
+
+                <Button onClick={savePersona} className="w-full neon-glow cyber-border font-terminal">
+                  <Server className="h-4 w-4 mr-2" />
+                  Save Stack Profile
                 </Button>
               </div>
             </TabsContent>
