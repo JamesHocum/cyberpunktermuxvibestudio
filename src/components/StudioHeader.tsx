@@ -127,7 +127,7 @@ export const StudioHeader = ({
   };
 
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between bg-[hsl(0,0%,7%)]/95 py-2 md:py-4 px-3 md:px-6 border-b border-purple-600/20 backdrop-blur-md shadow-[0_0_30px_rgba(179,0,255,0.25)]">
+    <header className="flex-shrink-0 z-50 flex items-center justify-between bg-[hsl(0,0%,7%)]/95 py-2 md:py-4 px-3 md:px-6 border-b border-purple-600/20 backdrop-blur-md shadow-[0_0_30px_rgba(179,0,255,0.25)]">
       {/* Logo - Always visible */}
       <h1 className="text-lg md:text-3xl font-extrabold neon-text whitespace-nowrap">
         {isMobile ? 'CYBER·T' : 'CYBERPUNK TERMUX'}

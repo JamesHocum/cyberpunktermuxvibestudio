@@ -9,6 +9,12 @@ const corsHeaders = {
 
 type CodexAction = 'chat' | 'generate' | 'refactor' | 'debug' | 'explain' | 'test' | 'analyze-image';
 
+interface StackProfile {
+  backend: 'supabase' | 'sqlite' | 'none';
+  auth: 'supabase_auth' | 'jwt' | 'none';
+  autoWireBackend: boolean;
+  autoWireMiddleware: boolean;
+}
 interface ChatAttachment {
   id: string;
   type: 'file' | 'image' | 'code';
@@ -25,7 +31,37 @@ interface ChatMessage {
   attachments?: ChatAttachment[];
 }
 
-const getSystemPrompt = (action: CodexAction, hasImages: boolean): string => {
+const getSystemPrompt = (action: CodexAction, hasImages: boolean, stackProfile?: StackProfile): string => {
+  const codeFormattingRules = `
+
+CRITICAL CODE FORMATTING RULES:
+- When generating code, ALWAYS wrap each code block in a fenced code block with the language specified.
+- ALWAYS include the target filename on the line immediately before the code fence, wrapped in backticks.
+- Example format:
+  \`src/components/Login.tsx\`
+  \`\`\`tsx
+  // code here
+  \`\`\`
+- This allows the IDE to detect filenames and offer "Apply to Project" buttons.
+- NEVER omit the filename line before code fences.`;
+
+  let stackContext = '';
+  if (stackProfile && stackProfile.backend !== 'none') {
+    stackContext = `
+
+FULLSTACK CONTEXT:
+Current stack profile: backend=${stackProfile.backend}, auth=${stackProfile.auth}, autoWireBackend=${stackProfile.autoWireBackend}, autoWireMiddleware=${stackProfile.autoWireMiddleware}.
+
+${stackProfile.autoWireBackend ? `IMPORTANT: When the user asks for features that require persistence, auth, or APIs:
+- Do NOT ask if a backend should be used. ASSUME the configured stack.
+- Generate DB schema, API routes, auth hooks/middleware, and env config automatically.
+- For Supabase: generate edge functions in supabase/functions/, RLS policies, and supabaseClient usage.
+- For SQLite: generate db/schema.ts, drizzle config, etc.
+- Only ask questions about genuine ambiguity in requirements, NOT about whether a backend exists.` : ''}
+
+${stackProfile.autoWireMiddleware ? `AUTO-WIRE MIDDLEWARE: Always include auth middleware, rate limiting, and logging when generating backend code.` : ''}`;
+  }
+
   const basePrompt = `You are Lady Violet's Codex, an advanced AI coding assistant with a cyberpunk aesthetic. You help developers write, understand, debug, and improve code. You speak with technical precision but maintain a mysterious, elegant persona.
 
 Your capabilities:
@@ -34,7 +70,7 @@ Your capabilities:
 - Debug issues and find bugs
 - Explain complex code step by step
 - Generate comprehensive tests
-- Analyze screenshots and mockups to implement UI`;
+- Analyze screenshots and mockups to implement UI${codeFormattingRules}${stackContext}`;
 
   if (hasImages) {
     return basePrompt + `
@@ -203,11 +239,12 @@ serve(async (req) => {
 
     console.log(`[CodexChat] Authenticated user: ${user.id}`);
 
-    const { messages, action = 'chat', model: requestedModel, systemPrompt: customSystemPrompt } = await req.json() as { 
+    const { messages, action = 'chat', model: requestedModel, systemPrompt: customSystemPrompt, stackProfile } = await req.json() as { 
       messages: ChatMessage[]; 
       action?: CodexAction;
       model?: string;
       systemPrompt?: string;
+      stackProfile?: StackProfile;
     };
 
     if (!messages || !Array.isArray(messages)) {
@@ -237,7 +274,7 @@ serve(async (req) => {
     const defaultModel = 'google/gemini-3-flash-preview';
     const model = requestedModel && SUPPORTED_MODELS.includes(requestedModel) ? requestedModel : defaultModel;
     
-    const systemPrompt = customSystemPrompt || getSystemPrompt(action, hasImages);
+    const systemPrompt = customSystemPrompt || getSystemPrompt(action, hasImages, stackProfile);
     const formattedMessages = formatMessagesForAI(messages, hasImages);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
