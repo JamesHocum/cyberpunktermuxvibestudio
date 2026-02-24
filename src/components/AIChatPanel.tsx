@@ -18,7 +18,7 @@ import { AttachmentPreview, MessageAttachments } from "./AttachmentPreview";
 import { CodexActionBar, CodexAction } from "./CodexActionBar";
 import { VoiceSelector } from "./VoiceSelector";
 import { useVoicePlayback } from "@/hooks/useVoicePlayback";
-import { loadPersonaSettings } from "./SettingsPanel";
+import { loadPersonaSettings, loadStackProfile } from "./SettingsPanel";
 
 interface Message {
   id: string;
@@ -418,7 +418,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
             action: currentAction,
             model: loadPersonaSettings().model,
             systemPrompt: loadPersonaSettings().systemPrompt,
-            stackProfile: JSON.parse(localStorage.getItem('codex-stack-profile') || '{"backend":"supabase","auth":"supabase_auth","autoWireBackend":true,"autoWireMiddleware":true}')
+            stackProfile: loadStackProfile(currentProjectId)
           }),
         }
       );
