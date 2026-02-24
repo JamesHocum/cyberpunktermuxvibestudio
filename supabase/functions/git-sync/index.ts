@@ -79,8 +79,12 @@ serve(async (req) => {
     const body = await req.json();
     const { action = 'push', projectId, message, files, repo, branch } = requestSchema.parse(body);
 
-    // Get user's GitHub token from profile
-    const { data: profile, error: profileError } = await supabaseClient
+    // Get user's GitHub token via service role (tokens not exposed to client)
+    const serviceClientForToken = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
+    const { data: profile, error: profileError } = await serviceClientForToken
       .from('profiles')
       .select('github_access_token, github_username')
       .eq('id', user.id)
