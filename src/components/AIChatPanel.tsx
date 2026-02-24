@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { MessageContent } from "./MessageContent";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +33,9 @@ interface AIChatPanelProps {
   onProjectCreated?: (projectId: string) => Promise<void>;
   currentProjectId?: string;
   fileContents?: Record<string, string>;
+  onCreateFile?: (parentPath: string, name: string, isFolder: boolean) => void;
+  onUpdateFileContent?: (path: string, content: string) => void;
+  onSelectFile?: (path: string) => void;
 }
 
 // Extract GitHub repo URL from message
@@ -74,7 +78,7 @@ const getPlaceholder = (action: CodexAction): string => {
   }
 };
 
-export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents = {} }: AIChatPanelProps) => {
+export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents = {}, onCreateFile, onUpdateFileContent, onSelectFile }: AIChatPanelProps) => {
   const { session, user, isAuthenticated, isDevBypass } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("chat");
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
@@ -505,13 +509,27 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
     toast.success('Copied to clipboard');
   };
 
+  // Handle applying code from AI response to project files
+  const handleApplyCode = useCallback((filename: string, code: string) => {
+    if (!onCreateFile || !onUpdateFileContent) return;
+    // Derive the parent path - use project root
+    const parts = filename.split('/');
+    const name = parts.pop() || filename;
+    const parentPath = parts.length > 0 ? parts.join('/') : '';
+    onCreateFile(parentPath, name, false);
+    onUpdateFileContent(filename.startsWith('/') ? filename.slice(1) : filename, code);
+    if (onSelectFile) {
+      onSelectFile(filename.startsWith('/') ? filename.slice(1) : filename);
+    }
+  }, [onCreateFile, onUpdateFileContent, onSelectFile]);
+
   // Check if user is authenticated
   const canUseAI = isAuthenticated || isDevBypass;
 
   return (
     <div 
       ref={chatContainerRef}
-      className={`flex flex-col h-full bg-studio-sidebar terminal-glow ${isDragOver ? 'ring-2 ring-matrix-green ring-inset' : ''}`}
+      className={`flex flex-col h-full min-h-0 overflow-hidden bg-studio-sidebar terminal-glow ${isDragOver ? 'ring-2 ring-matrix-green ring-inset' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDropEvent}
@@ -667,9 +685,10 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                         <MessageAttachments attachments={message.attachments} />
                       )}
                       
-                      <pre className="whitespace-pre-wrap text-sm font-terminal matrix-text mt-2">
-                        {message.content}
-                      </pre>
+                      <MessageContent 
+                        content={message.content}
+                        onApplyCode={message.role === 'assistant' ? handleApplyCode : undefined}
+                      />
                     </div>
                     
                     {message.role === 'assistant' && message.id !== 'welcome' && (
