@@ -149,6 +149,11 @@ export const MessageContent: React.FC<MessageContentProps> = ({ content, onApply
     }
   };
 
+  const handleClearApplied = () => {
+    setAppliedFiles([]);
+    setAllApplied(false);
+  };
+
   return (
     <div>
       {segments.map((segment, idx) => {
@@ -183,6 +188,9 @@ export const MessageContent: React.FC<MessageContentProps> = ({ content, onApply
               <Check className="h-2.5 w-2.5" />{fn}
             </Badge>
           ))}
+          <Button variant="ghost" size="sm" className="ml-auto h-5 px-2 text-[10px] uppercase tracking-wide font-terminal text-muted-foreground hover:text-foreground" onClick={handleClearApplied}>
+            Clear
+          </Button>
         </div>
       )}
 
