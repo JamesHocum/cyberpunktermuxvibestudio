@@ -97,14 +97,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Log the action
+    // Log the action via secure RPC function
     const { error: auditError } = await supabase
-      .from('admin_audit_log')
-      .insert({
-        admin_id: user.id,
-        action: `Assigned role: ${role}`,
-        target_user_id: user_id,
-        details: { role },
+      .rpc('log_admin_action', {
+        _action: `Assigned role: ${role}`,
+        _target_user_id: user_id,
+        _details: { role, assigned_at: new Date().toISOString() },
       });
 
     if (auditError) {
