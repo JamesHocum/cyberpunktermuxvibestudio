@@ -339,6 +339,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_github_info: {
+        Args: { _user_id: string }
+        Returns: {
+          github_access_token: string
+          github_username: string
+        }[]
+      }
+      get_github_token: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

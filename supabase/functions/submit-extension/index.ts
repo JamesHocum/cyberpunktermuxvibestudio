@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { checkRateLimit, createRateLimitHeaders } from '../_shared/rateLimiter.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,7 +8,6 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -15,22 +15,55 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    
-    // Get the authorization header to pass user context
+
+    // Enforce authentication
     const authHeader = req.headers.get('Authorization');
-    
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: {
-        headers: authHeader ? { Authorization: authHeader } : {}
+        headers: { Authorization: authHeader }
       }
     });
 
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication token' }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    // Rate limiting
+    const rateLimit = checkRateLimit(user.id, { maxRequests: 5, windowMs: 60000 });
+    if (!rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+        { status: 429, headers: { ...corsHeaders, ...createRateLimitHeaders(rateLimit.resetAt, rateLimit.remaining) } }
+      );
+    }
+
     const { name, description, url, author } = await req.json();
 
-    // Validate required fields
+    // Validate required fields with length limits
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return new Response(
         JSON.stringify({ error: 'Name is required' }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    if (name.trim().length > 100) {
+      return new Response(
+        JSON.stringify({ error: 'Name too long (max 100 characters)' }),
         { status: 400, headers: corsHeaders }
       );
     }
@@ -42,9 +75,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate URL format
+    // Validate URL format and enforce HTTPS
     try {
-      new URL(url);
+      const parsedUrl = new URL(url);
+
+      if (parsedUrl.protocol !== 'https:') {
+        return new Response(
+          JSON.stringify({ error: 'Only HTTPS URLs are allowed' }),
+          { status: 400, headers: corsHeaders }
+        );
+      }
     } catch {
       return new Response(
         JSON.stringify({ error: 'Invalid URL format' }),
@@ -52,7 +92,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Insert the extension (requires auth due to RLS)
+    // Validate optional fields length
+    if (description && typeof description === 'string' && description.trim().length > 500) {
+      return new Response(
+        JSON.stringify({ error: 'Description too long (max 500 characters)' }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    if (author && typeof author === 'string' && author.trim().length > 100) {
+      return new Response(
+        JSON.stringify({ error: 'Author name too long (max 100 characters)' }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
     const { data, error } = await supabase
       .from('extensions')
       .insert({
@@ -60,7 +114,7 @@ Deno.serve(async (req) => {
         description: description?.trim() || null,
         url: url.trim(),
         author: author?.trim() || null,
-        is_approved: false // Requires admin approval
+        is_approved: false
       })
       .select()
       .single();
@@ -68,7 +122,7 @@ Deno.serve(async (req) => {
     if (error) {
       console.error('Insert error:', error);
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ error: 'Failed to submit extension' }),
         { status: 500, headers: corsHeaders }
       );
     }

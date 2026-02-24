@@ -128,8 +128,12 @@ serve(async (req) => {
     const { owner, repo } = repoInfo;
     console.log(`[GITHUB_CLONE] Cloning ${owner}/${repo} for user ${user.id}`);
 
-    // Get user's GitHub token if available for private repos
-    const { data: profile } = await supabaseClient
+    // Get user's GitHub token via service role (tokens not exposed to client)
+    const serviceClientForToken = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
+    const { data: profile } = await serviceClientForToken
       .from('profiles')
       .select('github_access_token')
       .eq('id', user.id)

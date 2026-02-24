@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.75.0';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
+import { checkRateLimit, createRateLimitHeaders } from '../_shared/rateLimiter.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,7 +15,6 @@ const requestSchema = z.object({
   parameters: z.record(z.any()).optional()
 });
 
-// Default models for different tasks
 const defaultModels: Record<string, string> = {
   'text-generation': 'mistralai/Mistral-7B-Instruct-v0.2',
   'image-generation': 'stabilityai/stable-diffusion-xl-base-1.0',
@@ -29,7 +29,40 @@ serve(async (req) => {
   }
 
   try {
-    // Get HuggingFace token
+    // Enforce authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    );
+
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Rate limiting
+    const rateLimit = checkRateLimit(user.id, { maxRequests: 10, windowMs: 60000 });
+    if (!rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+        { status: 429, headers: { ...corsHeaders, ...createRateLimitHeaders(rateLimit.resetAt, rateLimit.remaining), 'Content-Type': 'application/json' } }
+      );
+    }
+
     const hfToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
     if (!hfToken) {
       return new Response(
@@ -47,15 +80,13 @@ serve(async (req) => {
     const selectedModel = model || defaultModels[task];
     console.log(`[HuggingFace] Task: ${task}, Model: ${selectedModel}`);
 
-    // Construct API URL based on task
-    let apiUrl = `https://api-inference.huggingface.co/models/${selectedModel}`;
+    const apiUrl = `https://api-inference.huggingface.co/models/${selectedModel}`;
     
     const requestBody: any = {
       inputs,
       ...parameters
     };
 
-    // For image generation, we need different handling
     if (task === 'image-generation') {
       requestBody.options = { wait_for_model: true };
     }
@@ -86,7 +117,6 @@ serve(async (req) => {
       throw new Error(`HuggingFace API error: ${response.status}`);
     }
 
-    // Handle different response types
     if (task === 'image-generation') {
       const imageBuffer = await response.arrayBuffer();
       const base64Image = btoa(
@@ -105,7 +135,6 @@ serve(async (req) => {
 
     const data = await response.json();
     
-    // Normalize response format
     let result: any = { task, model: selectedModel };
     
     if (task === 'text-generation' || task === 'code-generation') {
