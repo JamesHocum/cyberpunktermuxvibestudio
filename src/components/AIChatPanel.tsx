@@ -89,7 +89,12 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [currentAction, setCurrentAction] = useState<CodexAction>('chat');
   const [isDragOver, setIsDragOver] = useState(false);
-  
+
+  // Per-message apply history for undo
+  type AppliedFileHistory = { filename: string; previousContent: string };
+  type ApplyHistory = Record<string, AppliedFileHistory[]>;
+  const [applyHistory, setApplyHistory] = useState<ApplyHistory>({});
+
   const rateLimiterRef = useRef(new RateLimiter(2000));
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -511,19 +516,55 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
     toast.success('Copied to clipboard');
   };
 
-  // Handle applying code from AI response to project files
-  const handleApplyCode = useCallback((filename: string, code: string) => {
+  // Per-message apply handler with snapshot for undo
+  const makeHandleApplyCode = useCallback((messageId: string) => (filename: string, code: string) => {
     if (!onCreateFile || !onUpdateFileContent) return;
-    // Derive the parent path - use project root
-    const parts = filename.split('/');
-    const name = parts.pop() || filename;
+
+    const normalized = filename.startsWith('/') ? filename.slice(1) : filename;
+
+    // Snapshot previous content BEFORE overwriting
+    const prevContent = typeof fileContents[normalized] === 'string' ? fileContents[normalized] : '';
+
+    const parts = normalized.split('/');
+    const name = parts.pop() || normalized;
     const parentPath = parts.length > 0 ? parts.join('/') : '';
+
     onCreateFile(parentPath, name, false);
-    onUpdateFileContent(filename.startsWith('/') ? filename.slice(1) : filename, code);
-    if (onSelectFile) {
-      onSelectFile(filename.startsWith('/') ? filename.slice(1) : filename);
-    }
-  }, [onCreateFile, onUpdateFileContent, onSelectFile]);
+    onUpdateFileContent(normalized, code);
+    if (onSelectFile) onSelectFile(normalized);
+
+    // Store history for undo
+    setApplyHistory(prev => {
+      const prevList = prev[messageId] || [];
+      const already = prevList.find(h => h.filename === normalized);
+      const nextList = already ? prevList : [...prevList, { filename: normalized, previousContent: prevContent }];
+      return { ...prev, [messageId]: nextList };
+    });
+  }, [onCreateFile, onUpdateFileContent, onSelectFile, fileContents]);
+
+  // Per-message undo handler
+  const makeHandleUndoFile = useCallback((messageId: string) => (filename: string) => {
+    if (!onUpdateFileContent) return;
+
+    const normalized = filename.startsWith('/') ? filename.slice(1) : filename;
+
+    setApplyHistory(prev => {
+      const historyForMessage = prev[messageId] || [];
+      const entry = historyForMessage.find(h => h.filename === normalized);
+      if (!entry) return prev;
+
+      onUpdateFileContent(normalized, entry.previousContent);
+
+      const nextHistory = historyForMessage.filter(h => h.filename !== normalized);
+      const next = { ...prev };
+      if (nextHistory.length > 0) {
+        next[messageId] = nextHistory;
+      } else {
+        delete next[messageId];
+      }
+      return next;
+    });
+  }, [onUpdateFileContent]);
 
   const handleDeploy = useCallback((target: 'vercel' | 'netlify' | 'zip') => {
     if (onDeploy) {
@@ -702,8 +743,9 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                       
                       <MessageContent 
                         content={message.content}
-                        onApplyCode={message.role === 'assistant' ? handleApplyCode : undefined}
+                        onApplyCode={message.role === 'assistant' ? makeHandleApplyCode(message.id) : undefined}
                         onDeploy={message.role === 'assistant' ? handleDeploy : undefined}
+                        onUndoFile={message.role === 'assistant' ? makeHandleUndoFile(message.id) : undefined}
                       />
                     </div>
                     
