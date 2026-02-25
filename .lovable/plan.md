@@ -1,77 +1,42 @@
 
 
-# Add ElevenLabs & OpenAI API Key Inputs + Verify HF Token Flow
+# Fix Integration Connection Failures
 
-## Overview
+## Root Cause
 
-Add per-user API key input sections for ElevenLabs and OpenAI (ChatGPT) in the Integration Panel, following the same pattern as the existing HuggingFace token input. Also update the `elevenlabs-tts` edge function to check for user-specific keys, and create a generic `save-api-key` edge function to replace the HF-specific one.
+The HuggingFace "Test Connection" fails because HuggingFace has **deprecated** their old API URL. The edge function currently calls `https://api-inference.huggingface.co/models/...` which returns a **410 Gone** error:
+
+> "https://api-inference.huggingface.co is no longer supported. Please use https://router.huggingface.co instead."
+
+The token **saving works fine** (confirmed by the "Token Saved" toast in screenshots). The issue is purely in the test/inference call.
+
+For ElevenLabs, the test also likely fails because the `save-api-key` edge function clears the input after save, so when testing there's no immediate way to confirm the key was persisted -- but the underlying issue may also be that no ElevenLabs key exists yet (the toggle is off in the screenshots).
 
 ## Changes
 
-### 1. New Edge Function: `supabase/functions/save-api-key/index.ts`
+### 1. Fix HuggingFace API URL (`supabase/functions/huggingface-inference/index.ts`)
 
-A generic version of `save-hf-token` that accepts `{ service, token }` so it works for any integration (huggingface, elevenlabs, openai). Requires authentication, validates input, upserts into `user_api_keys`.
-
-### 2. Update `supabase/functions/elevenlabs-tts/index.ts`
-
-Add a lookup for user-specific ElevenLabs API key from `user_api_keys` (service = 'elevenlabs') before falling back to the server-level `ELEVENLABS_API_KEY` secret -- same pattern already used in `huggingface-inference`.
-
-### 3. Update `src/components/IntegrationPanel.tsx`
-
-**New state variables:**
-- `elTokenInput`, `showElToken`, `isSavingElToken` -- for ElevenLabs
-- `openaiTokenInput`, `showOpenaiToken`, `isSavingOpenaiToken` -- for OpenAI
-- `isTestingEl` -- for ElevenLabs test connection
-- Add `elevenlabs` and `openai` to integrations state object
-
-**New handler functions:**
-- `saveApiKey(service, token, setLoading)` -- generic save function calling the new `save-api-key` edge function
-- `testElevenLabsConnection()` -- sends a short TTS test via the `elevenlabs-tts` function
-- `testOpenAIConnection()` -- sends a test prompt via `codex-chat` (which already uses Lovable AI gateway)
-
-**New UI sections (inserted after HuggingFace, before GitHub):**
-
-- **ElevenLabs** card with:
-  - Toggle switch
-  - Password input + show/hide toggle + Save button
-  - Test Connection button
-  - "Get Token" link to `https://elevenlabs.io/app/settings/api-keys`
-
-- **OpenAI / ChatGPT** card with:
-  - Toggle switch  
-  - Password input + show/hide toggle + Save button
-  - "Get API Key" link to `https://platform.openai.com/api-keys`
-  - Description: "Connect your ChatGPT/OpenAI account for direct GPT model access"
-
-**Also:** Update the existing `saveHuggingFaceToken` to use the new generic `save-api-key` function instead of `save-hf-token`.
-
-### 4. Update `supabase/config.toml`
-
-Add entry for the new `save-api-key` function with `verify_jwt = false` (auth handled in code).
-
-## Technical Details
-
-### Generic save-api-key edge function
+Update the API endpoint from the deprecated URL to the new one:
 
 ```text
-POST /save-api-key
-Body: { service: "huggingface" | "elevenlabs" | "openai", token: string }
-Auth: Required (Bearer token)
-Action: Upserts into user_api_keys table
+Old: https://api-inference.huggingface.co/models/{model}
+New: https://router.huggingface.co/hf-inference/models/{model}
 ```
 
-Validates `service` against an allowlist of known services. Validates token length (1-500 chars).
+This is the only change needed to fix HuggingFace test connections.
 
-### ElevenLabs TTS user key lookup
+### 2. Improve error handling in test connection
 
-Uses `SUPABASE_SERVICE_ROLE_KEY` to query `user_api_keys` for the authenticated user's ElevenLabs key, then falls back to the env secret.
+Update the `testHuggingFaceConnection` function in `IntegrationPanel.tsx` to surface more specific error messages from the edge function response (e.g., "API deprecated", "token invalid") instead of the generic "Connection Failed" message. This will use `supabase.functions.invoke` response data to check for error details.
 
-### Files Modified
+### 3. Verify save-api-key works for all services
+
+The `save-api-key` edge function already handles `huggingface`, `elevenlabs`, and `openai`. The save flow works (confirmed by screenshots showing success toasts). No changes needed there.
+
+## Files Modified
 
 | File | Change |
 |------|--------|
-| `supabase/functions/save-api-key/index.ts` | New generic API key save function |
-| `supabase/functions/elevenlabs-tts/index.ts` | Add user key lookup before env fallback |
-| `src/components/IntegrationPanel.tsx` | Add ElevenLabs + OpenAI sections with token inputs |
-| `supabase/config.toml` | Add `save-api-key` function config |
+| `supabase/functions/huggingface-inference/index.ts` | Update API URL from `api-inference.huggingface.co` to `router.huggingface.co/hf-inference` |
+| `src/components/IntegrationPanel.tsx` | Improve error messages in test handlers to surface backend error details |
 
