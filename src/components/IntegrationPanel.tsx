@@ -47,14 +47,18 @@ const ApiKeyCard: React.FC<{
   onToggleShow: () => void;
   isSaving: boolean;
   onSave: () => void;
+  keySaved?: boolean;
   children?: React.ReactNode;
-}> = ({ icon, label, description, enabled, onToggle, verified, tokenInput, onTokenChange, showToken, onToggleShow, isSaving, onSave, children }) => (
+}> = ({ icon, label, description, enabled, onToggle, verified, tokenInput, onTokenChange, showToken, onToggleShow, isSaving, onSave, keySaved, children }) => (
   <div className="p-4 rounded-lg bg-studio-terminal cyber-border space-y-3">
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
         {icon}
         <div>
-          <Label className="font-terminal matrix-text">{label}</Label>
+          <div className="flex items-center gap-2">
+            <Label className="font-terminal matrix-text">{label}</Label>
+            {keySaved && <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-neon-green/50 text-neon-green font-terminal">KEY SAVED</Badge>}
+          </div>
           <p className="text-xs text-muted-foreground font-terminal">{description}</p>
         </div>
       </div>
@@ -104,7 +108,6 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
     chime: false
   });
 
-  // Token inputs
   const [hfTokenInput, setHfTokenInput] = useState('');
   const [showHfToken, setShowHfToken] = useState(false);
   const [isSavingHf, setIsSavingHf] = useState(false);
@@ -120,12 +123,34 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
   const [isSavingOpenai, setIsSavingOpenai] = useState(false);
   const [isTestingOpenai, setIsTestingOpenai] = useState(false);
 
+  const [savedKeys, setSavedKeys] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     setIntegrations(prev => ({
       ...prev,
       github: { ...prev.github, enabled: github.connected }
     }));
   }, [github.connected]);
+
+  // Fetch which API keys are already saved when panel opens
+  useEffect(() => {
+    if (!isVisible) return;
+    const fetchSavedKeys = async () => {
+      try {
+        const { data } = await supabase
+          .from('user_api_keys')
+          .select('service');
+        if (data) {
+          const keys: Record<string, boolean> = {};
+          data.forEach((row: { service: string }) => { keys[row.service] = true; });
+          setSavedKeys(keys);
+        }
+      } catch (e) {
+        console.error('[Fetch saved keys]:', e);
+      }
+    };
+    fetchSavedKeys();
+  }, [isVisible]);
 
   if (!isVisible) return null;
 
@@ -156,6 +181,7 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
       });
       if (error) throw error;
       toast({ title: "Token Saved ✓", description: `${service} token stored securely` });
+      setSavedKeys(prev => ({ ...prev, [service]: true }));
       setInput('');
     } catch (error) {
       console.error(`[${service} Save Error]:`, error);
@@ -293,6 +319,7 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
               onToggleShow={() => setShowHfToken(!showHfToken)}
               isSaving={isSavingHf}
               onSave={() => saveApiKey('huggingface', hfTokenInput, setIsSavingHf, setHfTokenInput)}
+              keySaved={!!savedKeys['huggingface']}
             >
               <div className="flex gap-2">
                 <Button size="sm" onClick={testHuggingFaceConnection} disabled={isTestingHf} className="cyber-border bg-neon-purple/20 hover:bg-neon-purple/30">
@@ -317,6 +344,7 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
               onToggleShow={() => setShowElToken(!showElToken)}
               isSaving={isSavingEl}
               onSave={() => saveApiKey('elevenlabs', elTokenInput, setIsSavingEl, setElTokenInput)}
+              keySaved={!!savedKeys['elevenlabs']}
             >
               <div className="flex gap-2">
                 <Button size="sm" onClick={testElevenLabsConnection} disabled={isTestingEl} className="cyber-border bg-neon-purple/20 hover:bg-neon-purple/30">
@@ -341,6 +369,7 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
               onToggleShow={() => setShowOpenaiToken(!showOpenaiToken)}
               isSaving={isSavingOpenai}
               onSave={() => saveApiKey('openai', openaiTokenInput, setIsSavingOpenai, setOpenaiTokenInput)}
+              keySaved={!!savedKeys['openai']}
             >
               <div className="flex gap-2">
                 <Button size="sm" onClick={testOpenAIConnection} disabled={isTestingOpenai} className="cyber-border bg-neon-purple/20 hover:bg-neon-purple/30">
