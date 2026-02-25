@@ -175,10 +175,11 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
       if (data?.loading) { toast({ title: "Model Loading", description: "HuggingFace model is warming up. Try again shortly." }); return; }
       setIntegrations(prev => ({ ...prev, huggingface: { ...prev.huggingface, verified: true, enabled: true } }));
       toast({ title: "Connection Verified! ✓", description: "HuggingFace integration is working correctly" });
-    } catch (error) {
+    } catch (error: any) {
       console.error('[HuggingFace Test Error]:', error);
       setIntegrations(prev => ({ ...prev, huggingface: { ...prev.huggingface, verified: false } }));
-      toast({ title: "Connection Failed", description: "Could not connect to HuggingFace. Check your token.", variant: "destructive" });
+      const msg = error?.message || error?.context?.message || 'Could not connect to HuggingFace. Check your token.';
+      toast({ title: "Connection Failed", description: msg, variant: "destructive" });
     } finally {
       setIsTestingHf(false);
     }
@@ -202,10 +203,11 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
       if (!response.ok) throw new Error(`Status ${response.status}`);
       setIntegrations(prev => ({ ...prev, elevenlabs: { ...prev.elevenlabs, verified: true, enabled: true } }));
       toast({ title: "Connection Verified! ✓", description: "ElevenLabs TTS is working correctly" });
-    } catch (error) {
+    } catch (error: any) {
       console.error('[ElevenLabs Test Error]:', error);
       setIntegrations(prev => ({ ...prev, elevenlabs: { ...prev.elevenlabs, verified: false } }));
-      toast({ title: "Connection Failed", description: "Could not connect to ElevenLabs. Check your token.", variant: "destructive" });
+      const msg = error?.message || 'Could not connect to ElevenLabs. Check your token.';
+      toast({ title: "Connection Failed", description: msg, variant: "destructive" });
     } finally {
       setIsTestingEl(false);
     }
