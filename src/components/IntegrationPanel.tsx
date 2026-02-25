@@ -118,6 +118,7 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
   const [openaiTokenInput, setOpenaiTokenInput] = useState('');
   const [showOpenaiToken, setShowOpenaiToken] = useState(false);
   const [isSavingOpenai, setIsSavingOpenai] = useState(false);
+  const [isTestingOpenai, setIsTestingOpenai] = useState(false);
 
   useEffect(() => {
     setIntegrations(prev => ({
@@ -210,6 +211,25 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
       toast({ title: "Connection Failed", description: msg, variant: "destructive" });
     } finally {
       setIsTestingEl(false);
+    }
+  };
+
+  const testOpenAIConnection = async () => {
+    setIsTestingOpenai(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('codex-chat', {
+        body: { messages: [{ role: 'user', content: 'Reply with OK' }], action: 'chat' }
+      });
+      if (error) throw error;
+      setIntegrations(prev => ({ ...prev, openai: { ...prev.openai, verified: true, enabled: true } }));
+      toast({ title: "Connection Verified! ✓", description: "OpenAI/ChatGPT integration is working correctly" });
+    } catch (error: any) {
+      console.error('[OpenAI Test Error]:', error);
+      setIntegrations(prev => ({ ...prev, openai: { ...prev.openai, verified: false } }));
+      const msg = error?.message || 'Could not connect to OpenAI. Check your token.';
+      toast({ title: "Connection Failed", description: msg, variant: "destructive" });
+    } finally {
+      setIsTestingOpenai(false);
     }
   };
 
@@ -323,6 +343,10 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
               onSave={() => saveApiKey('openai', openaiTokenInput, setIsSavingOpenai, setOpenaiTokenInput)}
             >
               <div className="flex gap-2">
+                <Button size="sm" onClick={testOpenAIConnection} disabled={isTestingOpenai} className="cyber-border bg-neon-purple/20 hover:bg-neon-purple/30">
+                  {isTestingOpenai ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <MessageSquare className="h-4 w-4 mr-2" />}
+                  Test Connection
+                </Button>
                 <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-xs text-neon-cyan underline font-terminal self-center">Get API Key →</a>
               </div>
             </ApiKeyCard>
