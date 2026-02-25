@@ -1,68 +1,77 @@
 
 
-# Add HuggingFace Token Input to Integration Panel
+# Add ElevenLabs & OpenAI API Key Inputs + Verify HF Token Flow
 
-## Problem
-The HuggingFace integration section has a "Get Token" link and a "Test Connection" button, but no input field for the user to enter/update their token.
+## Overview
 
-## Solution
-Add a token input field with show/hide toggle and a "Save Token" button to the HuggingFace section. When the user saves, it will call a new edge function that securely stores the token as a backend secret (via Vault).
+Add per-user API key input sections for ElevenLabs and OpenAI (ChatGPT) in the Integration Panel, following the same pattern as the existing HuggingFace token input. Also update the `elevenlabs-tts` edge function to check for user-specific keys, and create a generic `save-api-key` edge function to replace the HF-specific one.
 
 ## Changes
 
-### 1. New Edge Function: `supabase/functions/save-hf-token/index.ts`
-- Accepts POST with `{ token: string }`
-- Requires authentication (admin only via `has_role` check)
-- Stores the token in Vault using `vault.create_secret` or updates the `HUGGING_FACE_ACCESS_TOKEN` environment variable via the `supabase_functions.update_secret` approach
-- Since we cannot directly update Deno env secrets from an edge function, the function will store the token in a `integration_secrets` table that the `huggingface-inference` function reads as a fallback
+### 1. New Edge Function: `supabase/functions/save-api-key/index.ts`
 
-### Revised approach (simpler):
-Instead of a new edge function, add a `user_api_keys` table to store per-user API keys. The `huggingface-inference` edge function already has the server-level secret; this UI field lets users provide their own key as an override.
+A generic version of `save-hf-token` that accepts `{ service, token }` so it works for any integration (huggingface, elevenlabs, openai). Requires authentication, validates input, upserts into `user_api_keys`.
 
-**Actually, the simplest approach**: The `HUGGING_FACE_ACCESS_TOKEN` secret is already configured in the backend. The UI just needs to clearly communicate this. But since the user wants to input a token from the UI, we will:
+### 2. Update `supabase/functions/elevenlabs-tts/index.ts`
 
-### Final Approach
-1. **Add a token input field** to the HuggingFace section in `IntegrationPanel.tsx`
-2. **Create a new edge function** `save-hf-token` that accepts the token and stores it in a `user_api_keys` table
-3. **Update `huggingface-inference`** to check for a user-specific token in `user_api_keys` before falling back to the server-level secret
-4. **Create the `user_api_keys` table** with RLS so users can only manage their own keys
+Add a lookup for user-specific ElevenLabs API key from `user_api_keys` (service = 'elevenlabs') before falling back to the server-level `ELEVENLABS_API_KEY` secret -- same pattern already used in `huggingface-inference`.
 
-### File: `src/components/IntegrationPanel.tsx` (lines 234-263)
-- Add an `Input` field (type password) for the HuggingFace token
-- Add a show/hide toggle button (Eye/EyeOff icons, already imported)
-- Add a "Save Token" button that calls the `save-hf-token` edge function
-- Keep the existing "Test Connection" and "Get Token" elements
+### 3. Update `src/components/IntegrationPanel.tsx`
 
-### Database Migration: `user_api_keys` table
+**New state variables:**
+- `elTokenInput`, `showElToken`, `isSavingElToken` -- for ElevenLabs
+- `openaiTokenInput`, `showOpenaiToken`, `isSavingOpenaiToken` -- for OpenAI
+- `isTestingEl` -- for ElevenLabs test connection
+- Add `elevenlabs` and `openai` to integrations state object
+
+**New handler functions:**
+- `saveApiKey(service, token, setLoading)` -- generic save function calling the new `save-api-key` edge function
+- `testElevenLabsConnection()` -- sends a short TTS test via the `elevenlabs-tts` function
+- `testOpenAIConnection()` -- sends a test prompt via `codex-chat` (which already uses Lovable AI gateway)
+
+**New UI sections (inserted after HuggingFace, before GitHub):**
+
+- **ElevenLabs** card with:
+  - Toggle switch
+  - Password input + show/hide toggle + Save button
+  - Test Connection button
+  - "Get Token" link to `https://elevenlabs.io/app/settings/api-keys`
+
+- **OpenAI / ChatGPT** card with:
+  - Toggle switch  
+  - Password input + show/hide toggle + Save button
+  - "Get API Key" link to `https://platform.openai.com/api-keys`
+  - Description: "Connect your ChatGPT/OpenAI account for direct GPT model access"
+
+**Also:** Update the existing `saveHuggingFaceToken` to use the new generic `save-api-key` function instead of `save-hf-token`.
+
+### 4. Update `supabase/config.toml`
+
+Add entry for the new `save-api-key` function with `verify_jwt = false` (auth handled in code).
+
+## Technical Details
+
+### Generic save-api-key edge function
+
 ```text
-+------------------+
-| user_api_keys    |
-+------------------+
-| id (uuid, PK)   |
-| user_id (uuid)   |
-| service (text)   |  -- e.g. 'huggingface'
-| api_key (text)   |
-| created_at       |
-| updated_at       |
-+------------------+
+POST /save-api-key
+Body: { service: "huggingface" | "elevenlabs" | "openai", token: string }
+Auth: Required (Bearer token)
+Action: Upserts into user_api_keys table
 ```
-- RLS: Users can only SELECT, INSERT, UPDATE, DELETE their own rows
-- Unique constraint on (user_id, service)
 
-### New Edge Function: `supabase/functions/save-hf-token/index.ts`
-- POST endpoint requiring auth
-- Upserts the token into `user_api_keys` for service='huggingface'
-- Returns success/failure
+Validates `service` against an allowlist of known services. Validates token length (1-500 chars).
 
-### Updated: `supabase/functions/huggingface-inference/index.ts`
-- After authenticating the user, check `user_api_keys` for a user-specific HuggingFace token
-- If found, use it; otherwise fall back to the server-level `HUGGING_FACE_ACCESS_TOKEN` secret
+### ElevenLabs TTS user key lookup
 
-## UI Result
-When HuggingFace is enabled, the user sees:
-1. A password input field to paste their token
-2. A show/hide toggle for the token
-3. A "Save Token" button
-4. The existing "Test Connection" button
-5. The existing "Get Token" link
+Uses `SUPABASE_SERVICE_ROLE_KEY` to query `user_api_keys` for the authenticated user's ElevenLabs key, then falls back to the env secret.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `supabase/functions/save-api-key/index.ts` | New generic API key save function |
+| `supabase/functions/elevenlabs-tts/index.ts` | Add user key lookup before env fallback |
+| `src/components/IntegrationPanel.tsx` | Add ElevenLabs + OpenAI sections with token inputs |
+| `supabase/config.toml` | Add `save-api-key` function config |
 
