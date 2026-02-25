@@ -13,7 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    // Enforce authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -38,7 +37,6 @@ serve(async (req) => {
       );
     }
 
-    // Rate limiting
     const rateLimit = checkRateLimit(user.id, { maxRequests: 10, windowMs: 60000 });
     if (!rateLimit.allowed) {
       return new Response(
@@ -47,9 +45,24 @@ serve(async (req) => {
       );
     }
 
-    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY");
-    
-    if (!ELEVENLABS_API_KEY) {
+    // Check for user-specific ElevenLabs key, then fall back to env secret
+    let apiKey: string | undefined;
+
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
+
+    const { data: userKey } = await serviceClient
+      .from('user_api_keys')
+      .select('api_key')
+      .eq('user_id', user.id)
+      .eq('service', 'elevenlabs')
+      .maybeSingle();
+
+    apiKey = userKey?.api_key || Deno.env.get("ELEVENLABS_API_KEY");
+
+    if (!apiKey) {
       return new Response(
         JSON.stringify({ error: "ElevenLabs API key not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -77,7 +90,7 @@ serve(async (req) => {
       {
         method: "POST",
         headers: {
-          "xi-api-key": ELEVENLABS_API_KEY,
+          "xi-api-key": apiKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
