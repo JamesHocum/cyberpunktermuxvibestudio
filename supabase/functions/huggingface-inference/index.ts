@@ -96,7 +96,7 @@ serve(async (req) => {
     const selectedModel = model || defaultModels[task];
     console.log(`[HuggingFace] Task: ${task}, Model: ${selectedModel}`);
 
-    const apiUrl = `https://api-inference.huggingface.co/models/${selectedModel}`;
+    const apiUrl = `https://router.huggingface.co/hf-inference/models/${selectedModel}`;
     
     const requestBody: any = {
       inputs,
