@@ -144,6 +144,13 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
           const keys: Record<string, boolean> = {};
           data.forEach((row: { service: string }) => { keys[row.service] = true; });
           setSavedKeys(keys);
+          // Auto-enable integrations that have saved keys
+          setIntegrations(prev => ({
+            ...prev,
+            huggingface: { ...prev.huggingface, enabled: keys['huggingface'] || prev.huggingface.enabled },
+            elevenlabs: { ...prev.elevenlabs, enabled: keys['elevenlabs'] || prev.elevenlabs.enabled },
+            openai: { ...prev.openai, enabled: keys['openai'] || prev.openai.enabled },
+          }));
         }
       } catch (e) {
         console.error('[Fetch saved keys]:', e);
