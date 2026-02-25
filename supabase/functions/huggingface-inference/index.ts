@@ -63,7 +63,23 @@ serve(async (req) => {
       );
     }
 
-    const hfToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
+    // Check for user-specific token first, then fall back to server secret
+    let hfToken: string | null = null;
+
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
+
+    const { data: userKey } = await serviceClient
+      .from('user_api_keys')
+      .select('api_key')
+      .eq('user_id', user.id)
+      .eq('service', 'huggingface')
+      .maybeSingle();
+
+    hfToken = userKey?.api_key || Deno.env.get('HUGGING_FACE_ACCESS_TOKEN') || null;
+
     if (!hfToken) {
       return new Response(
         JSON.stringify({ 

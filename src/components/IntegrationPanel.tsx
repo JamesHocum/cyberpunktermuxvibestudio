@@ -46,6 +46,8 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
   });
   const [showHfToken, setShowHfToken] = useState(false);
   const [isTestingHf, setIsTestingHf] = useState(false);
+  const [hfTokenInput, setHfTokenInput] = useState('');
+  const [isSavingHfToken, setIsSavingHfToken] = useState(false);
 
   // Update GitHub enabled state based on connection
   useEffect(() => {
@@ -80,6 +82,27 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
       title: "Integration Updated",
       description: `${key} integration ${subKey ? subKey : ''} toggled`,
     });
+  };
+
+  const saveHuggingFaceToken = async () => {
+    if (!hfTokenInput.trim()) {
+      toast({ title: "Token Required", description: "Please enter a HuggingFace token", variant: "destructive" });
+      return;
+    }
+    setIsSavingHfToken(true);
+    try {
+      const { error } = await supabase.functions.invoke('save-hf-token', {
+        body: { token: hfTokenInput.trim() }
+      });
+      if (error) throw error;
+      toast({ title: "Token Saved ✓", description: "HuggingFace token stored securely" });
+      setHfTokenInput('');
+    } catch (error) {
+      console.error('[HF Save Error]:', error);
+      toast({ title: "Save Failed", description: "Could not save token. Please try again.", variant: "destructive" });
+    } finally {
+      setIsSavingHfToken(false);
+    }
   };
 
   const testHuggingFaceConnection = async () => {
@@ -232,10 +255,35 @@ export const IntegrationPanel: React.FC<IntegrationPanelProps> = ({ isVisible, o
               </div>
               
               {integrations.huggingface.enabled && (
-                <div className="pt-2 border-t cyber-border space-y-2">
-                  <p className="text-xs font-terminal text-muted-foreground">
-                    Token is stored securely in backend. Click Test to verify connection.
-                  </p>
+                <div className="pt-2 border-t cyber-border space-y-3">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type={showHfToken ? 'text' : 'password'}
+                        placeholder="hf_xxxxxxxxxxxxxxxxxxxx"
+                        value={hfTokenInput}
+                        onChange={(e) => setHfTokenInput(e.target.value)}
+                        className="pr-10 font-terminal bg-studio-bg cyber-border"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                        onClick={() => setShowHfToken(!showHfToken)}
+                      >
+                        {showHfToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={saveHuggingFaceToken}
+                      disabled={isSavingHfToken || !hfTokenInput.trim()}
+                      className="cyber-border bg-neon-green/20 hover:bg-neon-green/30"
+                    >
+                      {isSavingHfToken ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+                    </Button>
+                  </div>
                   <div className="flex gap-2">
                     <Button
                       size="sm"
