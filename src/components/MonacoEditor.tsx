@@ -33,6 +33,7 @@ interface MonacoEditorProps {
   onSave?: () => void;
   hasUnsavedChanges?: boolean;
   isBuilding?: boolean;
+  buildError?: string | null;
 }
 
 const defaultSampleCode = `// Welcome to Matrix DevStudio
@@ -74,6 +75,7 @@ export const MonacoCodeEditor = ({
   onSave,
   hasUnsavedChanges = false,
   isBuilding = false,
+  buildError = null,
 }: MonacoEditorProps) => {
   const [localOpenTabs, setLocalOpenTabs] = useState<string[]>(["Welcome.tsx"]);
   const [activeTab, setActiveTab] = useState("Welcome.tsx");
@@ -417,7 +419,7 @@ export default ${name};`;
           <VeylStage
             isActive={syntaxTheme === 'veyl-stage'}
             isBuilding={isBuilding}
-            hasError={false}
+            hasError={!!buildError}
           />
         )}
         {monacoFailed ? (

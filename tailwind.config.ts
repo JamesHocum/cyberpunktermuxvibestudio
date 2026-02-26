@@ -81,6 +81,7 @@ export default {
         "veyl-hero": "veyl-hero 1.5s ease-in-out infinite",
         "veyl-idle": "veyl-idle 4s ease-in-out infinite",
         "veyl-exit": "veyl-exit 0.5s ease-in forwards",
+        "veyl-error": "veyl-error 0.35s ease-in-out 0s 3",
       },
       keyframes: {
         "accordion-down": {
@@ -114,6 +115,13 @@ export default {
         "veyl-exit": {
           "0%": { opacity: "1", transform: "scale(1)" },
           "100%": { opacity: "0", transform: "scale(0.95)" },
+        },
+        "veyl-error": {
+          "0%, 100%": { transform: "translateX(0)" },
+          "20%": { transform: "translateX(-4px)" },
+          "40%": { transform: "translateX(4px)" },
+          "60%": { transform: "translateX(-3px)" },
+          "80%": { transform: "translateX(3px)" },
         },
       },
     },
