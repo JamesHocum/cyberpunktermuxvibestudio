@@ -1,8 +1,25 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import veylBg from "@/assets/veyl-stage-bg.jpg";
 import veylAvatar from "@/assets/veyl-avatar.png";
 
 type VeylMode = "hidden" | "entering" | "hero" | "idle" | "cooldown" | "error";
+
+const VEYL_QUOTES = [
+  "Scanning the grid…",
+  "Neon pulses detected.",
+  "All systems nominal.",
+  "The matrix hums softly.",
+  "Awaiting your command, operator.",
+  "Circuits aligned. Ready.",
+  "Data streams look clean.",
+  "I see every byte.",
+  "Runtime stable. For now.",
+  "The code whispers back.",
+  "Latency at zero. Nice.",
+  "Night shift protocol active.",
+  "Compiling dreams…",
+  "Your firewall? Cute.",
+];
 
 interface VeylStageProps {
   isActive: boolean;
@@ -18,6 +35,29 @@ export const VeylStage: React.FC<VeylStageProps> = ({
   const [mode, setMode] = useState<VeylMode>("hidden");
   const [showOverlays, setShowOverlays] = useState(true);
   const [showAvatar, setShowAvatar] = useState(false);
+  const [idleQuote, setIdleQuote] = useState<string | null>(null);
+
+  // Pick a random quote, avoiding repeats
+  const pickQuote = useCallback(() => {
+    setIdleQuote((prev) => {
+      let next: string;
+      do {
+        next = VEYL_QUOTES[Math.floor(Math.random() * VEYL_QUOTES.length)];
+      } while (next === prev && VEYL_QUOTES.length > 1);
+      return next;
+    });
+  }, []);
+
+  // Cycle quotes every 6s while avatar is visible and idle
+  useEffect(() => {
+    if (!showAvatar || (mode !== "idle" && mode !== "error")) {
+      setIdleQuote(null);
+      return;
+    }
+    pickQuote();
+    const interval = setInterval(pickQuote, 6000);
+    return () => clearInterval(interval);
+  }, [showAvatar, mode, pickQuote]);
 
   // activation / entrance
   useEffect(() => {
@@ -130,7 +170,9 @@ export const VeylStage: React.FC<VeylStageProps> = ({
         style={{ opacity: showAvatar ? 1 : 0, transform: showAvatar ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(40px)' }}
       >
         <div
-          className="relative h-28 w-28 rounded-full border-2 border-neon-green shadow-[0_0_20px_rgba(74,222,128,0.9)] overflow-hidden"
+          className={`relative h-28 w-28 rounded-full border-2 border-neon-green overflow-hidden ${
+            showAvatar && mode === "idle" ? "animate-veyl-avatar-glow" : "shadow-[0_0_20px_rgba(74,222,128,0.9)]"
+          }`}
         >
           <img
             src={veylAvatar}
@@ -151,6 +193,11 @@ export const VeylStage: React.FC<VeylStageProps> = ({
         {mode === "error" && (
           <div className="inline-flex rounded-full bg-red-900/80 px-4 py-1 text-xs font-semibold text-red-100 border border-red-400/80 shadow-[0_0_20px_rgba(248,113,113,0.9)] animate-veyl-enter">
             ❌ Build glitch detected
+          </div>
+        )}
+        {showAvatar && mode === "idle" && idleQuote && (
+          <div className="inline-flex rounded-full bg-black/70 px-4 py-1 text-xs font-semibold text-purple-200 border border-purple-500/50 shadow-[0_0_14px_rgba(168,85,247,0.5)] animate-fade-in" key={idleQuote}>
+            💬 {idleQuote}
           </div>
         )}
       </div>
