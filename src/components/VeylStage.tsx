@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import veylBg from "@/assets/veyl-stage-bg.jpg";
 import veylAvatar from "@/assets/veyl-avatar.png";
 
@@ -117,6 +117,93 @@ export const VeylStage: React.FC<VeylStageProps> = ({
   const typedQuote = useTypewriter(idleQuote);
   const typedSaveQuote = useTypewriter(saveQuote, 25);
 
+  // Particle canvas refs
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const particlesRef = useRef<Array<{ x: number; y: number; speed: number; radius: number; color: [number, number, number]; phase: number }>>([]);
+  const animFrameRef = useRef<number>(0);
+
+  const showParticles = showAvatar && (mode === "idle" || mode === "saved");
+
+  // Initialize particles
+  useEffect(() => {
+    if (!showParticles) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const container = canvas.parentElement;
+    if (!container) return;
+
+    const resize = () => {
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+    };
+    resize();
+    const ro = new ResizeObserver(resize);
+    ro.observe(container);
+
+    // Spawn ~30 particles in bottom-center area
+    const colors: [number, number, number][] = [
+      [74, 222, 128],   // neon-green
+      [168, 85, 247],   // neon-purple
+      [34, 211, 238],   // cyan
+    ];
+    const particles: typeof particlesRef.current = [];
+    for (let i = 0; i < 30; i++) {
+      particles.push({
+        x: canvas.width * (0.3 + Math.random() * 0.4),
+        y: canvas.height * (0.6 + Math.random() * 0.4),
+        speed: 0.3 + Math.random() * 0.7,
+        radius: 1.5 + Math.random() * 2.5,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        phase: Math.random() * 2000,
+      });
+    }
+    particlesRef.current = particles;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const draw = () => {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const now = performance.now();
+      // 2s sine pulse synced with pulse-glow
+      const globalPulse = (Math.sin((now % 2000) / 2000 * Math.PI * 2) + 1) / 2; // 0..1
+
+      for (const p of particlesRef.current) {
+        p.y -= p.speed;
+        // Respawn at bottom
+        if (p.y < -10) {
+          p.y = h + 10;
+          p.x = w * (0.3 + Math.random() * 0.4);
+        }
+
+        const localPulse = (Math.sin(((now + p.phase) % 2000) / 2000 * Math.PI * 2) + 1) / 2;
+        const pulse = (globalPulse + localPulse) / 2;
+        const opacity = 0.3 + pulse * 0.5;
+        const r = p.radius + pulse * 1;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${p.color[0]},${p.color[1]},${p.color[2]},${opacity})`;
+        ctx.shadowColor = `rgba(${p.color[0]},${p.color[1]},${p.color[2]},${opacity * 0.6})`;
+        ctx.shadowBlur = 8;
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+
+      animFrameRef.current = requestAnimationFrame(draw);
+    };
+    animFrameRef.current = requestAnimationFrame(draw);
+
+    return () => {
+      cancelAnimationFrame(animFrameRef.current);
+      ro.disconnect();
+    };
+  }, [showParticles]);
+
   // Pick a random quote, avoiding repeats, contextual to file type
   const pickQuote = useCallback(() => {
     const pool = getFileTypeQuotes(activeFile);
@@ -230,6 +317,13 @@ export const VeylStage: React.FC<VeylStageProps> = ({
 
       {/* Dark overlay for readability */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+
+      {/* Neon particle canvas — behind avatar, in front of background */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full transition-opacity duration-700 pointer-events-none"
+        style={{ opacity: showParticles ? 1 : 0 }}
+      />
 
       {/* Overlays that fade out after idle (paw placeholder + idle label) */}
       <div
