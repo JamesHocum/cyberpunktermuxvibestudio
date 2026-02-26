@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import veylBg from "@/assets/veyl-stage-bg.jpg";
 import veylAvatar from "@/assets/veyl-avatar.png";
 
-type VeylMode = "hidden" | "entering" | "hero" | "idle" | "cooldown" | "error";
+type VeylMode = "hidden" | "entering" | "hero" | "idle" | "cooldown" | "error" | "saved";
 
 const VEYL_QUOTES = [
   "Scanning the grid…",
@@ -69,11 +69,37 @@ const getFileTypeQuotes = (filename: string | null): string[] => {
   }
 };
 
+const SAVE_QUOTES = [
+  "Changes locked in. 🔒",
+  "Saved to the grid. ✅",
+  "Data persisted. Clean.",
+  "Committed to memory.",
+  "Written to the matrix.",
+];
+
+// Typewriter hook
+const useTypewriter = (text: string | null, speed = 35) => {
+  const [displayed, setDisplayed] = useState("");
+  useEffect(() => {
+    if (!text) { setDisplayed(""); return; }
+    setDisplayed("");
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setDisplayed(text.slice(0, i));
+      if (i >= text.length) clearInterval(interval);
+    }, speed);
+    return () => clearInterval(interval);
+  }, [text, speed]);
+  return displayed;
+};
+
 interface VeylStageProps {
   isActive: boolean;
   isBuilding: boolean;
   hasError: boolean;
   activeFile?: string | null;
+  justSaved?: boolean;
 }
 
 export const VeylStage: React.FC<VeylStageProps> = ({
@@ -81,11 +107,15 @@ export const VeylStage: React.FC<VeylStageProps> = ({
   isBuilding,
   hasError,
   activeFile = null,
+  justSaved = false,
 }) => {
   const [mode, setMode] = useState<VeylMode>("hidden");
   const [showOverlays, setShowOverlays] = useState(true);
   const [showAvatar, setShowAvatar] = useState(false);
   const [idleQuote, setIdleQuote] = useState<string | null>(null);
+  const [saveQuote, setSaveQuote] = useState<string | null>(null);
+  const typedQuote = useTypewriter(idleQuote);
+  const typedSaveQuote = useTypewriter(saveQuote, 25);
 
   // Pick a random quote, avoiding repeats, contextual to file type
   const pickQuote = useCallback(() => {
@@ -147,6 +177,19 @@ export const VeylStage: React.FC<VeylStageProps> = ({
     return () => clearTimeout(t);
   }, [hasError, isActive]);
 
+  // save reaction → saved mode, then back to idle
+  useEffect(() => {
+    if (!isActive || !justSaved || !showAvatar) return;
+    const quote = SAVE_QUOTES[Math.floor(Math.random() * SAVE_QUOTES.length)];
+    setSaveQuote(quote);
+    setMode("saved");
+    const t = setTimeout(() => {
+      setMode("idle");
+      setSaveQuote(null);
+    }, 2200);
+    return () => clearTimeout(t);
+  }, [justSaved, isActive, showAvatar]);
+
   // fade out overlays 2s after entering idle
   useEffect(() => {
     if (mode !== "idle") return;
@@ -176,6 +219,8 @@ export const VeylStage: React.FC<VeylStageProps> = ({
         return "animate-veyl-exit";
       case "error":
         return "animate-veyl-error";
+      case "saved":
+        return "animate-veyl-idle";
       default:
         return "";
     }
@@ -222,7 +267,9 @@ export const VeylStage: React.FC<VeylStageProps> = ({
       >
         <div
           className={`relative h-28 w-28 rounded-full border-2 border-neon-green overflow-hidden ${
-            showAvatar && mode === "idle" ? "animate-veyl-avatar-glow animate-veyl-breathe" : "shadow-[0_0_20px_rgba(74,222,128,0.9)]"
+            showAvatar && mode === "idle" ? "animate-veyl-avatar-glow animate-veyl-breathe" : 
+            showAvatar && mode === "saved" ? "animate-veyl-save-flash animate-veyl-breathe" :
+            "shadow-[0_0_20px_rgba(74,222,128,0.9)]"
           }`}
         >
           <img
@@ -246,9 +293,14 @@ export const VeylStage: React.FC<VeylStageProps> = ({
             ❌ Build glitch detected
           </div>
         )}
-        {showAvatar && mode === "idle" && idleQuote && (
+        {mode === "saved" && typedSaveQuote && (
+          <div className="inline-flex rounded-full bg-neon-green/20 px-4 py-1 text-xs font-semibold text-neon-green border border-neon-green/60 shadow-[0_0_18px_rgba(74,222,128,0.7)] animate-veyl-enter">
+            💾 {typedSaveQuote}
+          </div>
+        )}
+        {showAvatar && mode === "idle" && typedQuote && (
           <div className="inline-flex rounded-full bg-black/70 px-4 py-1 text-xs font-semibold text-purple-200 border border-purple-500/50 shadow-[0_0_14px_rgba(168,85,247,0.5)] animate-fade-in" key={idleQuote}>
-            💬 {idleQuote}
+            💬 {typedQuote}
           </div>
         )}
       </div>
