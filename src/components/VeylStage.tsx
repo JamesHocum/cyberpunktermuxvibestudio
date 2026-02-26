@@ -21,32 +21,83 @@ const VEYL_QUOTES = [
   "Your firewall? Cute.",
 ];
 
+const FILE_TYPE_QUOTES: Record<string, string[]> = {
+  typescript: [
+    "TypeScript… strong types, stronger vibes.",
+    "Interfaces locked. Types aligned.",
+    "Generics detected. Respect.",
+    "Type safety is my love language.",
+  ],
+  css: [
+    "Styling the matrix, pixel by pixel.",
+    "CSS grid? More like neon grid.",
+    "Flexbox flows like data streams.",
+    "Making it pretty. My specialty.",
+  ],
+  json: [
+    "Parsing config… keys validated.",
+    "JSON structure looks clean.",
+    "Key-value pairs in harmony.",
+    "Data manifest loaded.",
+  ],
+  javascript: [
+    "Plain JS? Old school. I dig it.",
+    "Dynamic typing… living dangerously.",
+    "Callbacks and promises… the usual chaos.",
+  ],
+  html: [
+    "Markup incoming. DOM awakens.",
+    "Semantic tags detected. Good practice.",
+  ],
+  markdown: [
+    "Documentation mode. Nice discipline.",
+    "README vibes. Tell the world.",
+  ],
+};
+
+const getFileTypeQuotes = (filename: string | null): string[] => {
+  if (!filename) return VEYL_QUOTES;
+  const ext = filename.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'ts': case 'tsx': return FILE_TYPE_QUOTES.typescript;
+    case 'css': case 'scss': return FILE_TYPE_QUOTES.css;
+    case 'json': return FILE_TYPE_QUOTES.json;
+    case 'js': case 'jsx': return FILE_TYPE_QUOTES.javascript;
+    case 'html': return FILE_TYPE_QUOTES.html;
+    case 'md': return FILE_TYPE_QUOTES.markdown;
+    default: return VEYL_QUOTES;
+  }
+};
+
 interface VeylStageProps {
   isActive: boolean;
   isBuilding: boolean;
   hasError: boolean;
+  activeFile?: string | null;
 }
 
 export const VeylStage: React.FC<VeylStageProps> = ({
   isActive,
   isBuilding,
   hasError,
+  activeFile = null,
 }) => {
   const [mode, setMode] = useState<VeylMode>("hidden");
   const [showOverlays, setShowOverlays] = useState(true);
   const [showAvatar, setShowAvatar] = useState(false);
   const [idleQuote, setIdleQuote] = useState<string | null>(null);
 
-  // Pick a random quote, avoiding repeats
+  // Pick a random quote, avoiding repeats, contextual to file type
   const pickQuote = useCallback(() => {
+    const pool = getFileTypeQuotes(activeFile);
     setIdleQuote((prev) => {
       let next: string;
       do {
-        next = VEYL_QUOTES[Math.floor(Math.random() * VEYL_QUOTES.length)];
-      } while (next === prev && VEYL_QUOTES.length > 1);
+        next = pool[Math.floor(Math.random() * pool.length)];
+      } while (next === prev && pool.length > 1);
       return next;
     });
-  }, []);
+  }, [activeFile]);
 
   // Cycle quotes every 6s while avatar is visible and idle
   useEffect(() => {
@@ -171,7 +222,7 @@ export const VeylStage: React.FC<VeylStageProps> = ({
       >
         <div
           className={`relative h-28 w-28 rounded-full border-2 border-neon-green overflow-hidden ${
-            showAvatar && mode === "idle" ? "animate-veyl-avatar-glow" : "shadow-[0_0_20px_rgba(74,222,128,0.9)]"
+            showAvatar && mode === "idle" ? "animate-veyl-avatar-glow animate-veyl-breathe" : "shadow-[0_0_20px_rgba(74,222,128,0.9)]"
           }`}
         >
           <img
