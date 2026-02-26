@@ -418,17 +418,19 @@ export default ${name};`;
         </div>
       </div>
 
+      {/* Portal-based Veyl avatar overlay — rendered into document.body */}
+      {syntaxTheme === 'veyl-stage' && (
+        <VeylStage
+          isActive={syntaxTheme === 'veyl-stage'}
+          isBuilding={isBuilding}
+          hasError={!!buildError}
+          activeFile={activeFile}
+          lastSaveTick={lastSaveTick}
+        />
+      )}
+
       {/* Monaco Editor */}
       <div className="flex-1 relative overflow-hidden">
-        {syntaxTheme === 'veyl-stage' && (
-          <VeylStage
-            isActive={syntaxTheme === 'veyl-stage'}
-            isBuilding={isBuilding}
-            hasError={!!buildError}
-            activeFile={activeFile}
-            lastSaveTick={lastSaveTick}
-          />
-        )}
         {monacoFailed ? (
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between px-4 py-2 bg-yellow-500/10 border-b border-yellow-500/30">

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import veylBg from "@/assets/veyl-stage-bg.jpg";
+import { createPortal } from "react-dom";
 import veylAvatar from "@/assets/veyl-avatar.png";
 
 type VeylMode = "hidden" | "entering" | "hero" | "idle" | "cooldown" | "error" | "saved";
@@ -109,6 +109,7 @@ export const VeylStage: React.FC<VeylStageProps> = ({
   activeFile = null,
   lastSaveTick = null,
 }) => {
+  const [mounted, setMounted] = useState(false);
   const [mode, setMode] = useState<VeylMode>("hidden");
   const [showOverlays, setShowOverlays] = useState(true);
   const [showAvatar, setShowAvatar] = useState(false);
@@ -117,6 +118,9 @@ export const VeylStage: React.FC<VeylStageProps> = ({
   const typedQuote = useTypewriter(idleQuote);
   const typedSaveQuote = useTypewriter(saveQuote, 25);
 
+  // SSR-safe portal mount guard
+  useEffect(() => { setMounted(true); }, []);
+
   // Particle canvas refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Array<{ x: number; y: number; speed: number; radius: number; color: [number, number, number]; phase: number }>>([]);
@@ -124,34 +128,27 @@ export const VeylStage: React.FC<VeylStageProps> = ({
 
   const showParticles = showAvatar && (mode === "idle" || mode === "saved");
 
-  // Initialize particles
+  // Initialize particles — scoped to a fixed 320×400 region
   useEffect(() => {
     if (!showParticles) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const container = canvas.parentElement;
-    if (!container) return;
+    const W = 320;
+    const H = 400;
+    canvas.width = W;
+    canvas.height = H;
 
-    const resize = () => {
-      canvas.width = container.clientWidth;
-      canvas.height = container.clientHeight;
-    };
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(container);
-
-    // Spawn ~30 particles in bottom-center area
     const colors: [number, number, number][] = [
-      [74, 222, 128],   // neon-green
-      [168, 85, 247],   // neon-purple
-      [34, 211, 238],   // cyan
+      [74, 222, 128],
+      [168, 85, 247],
+      [34, 211, 238],
     ];
     const particles: typeof particlesRef.current = [];
     for (let i = 0; i < 30; i++) {
       particles.push({
-        x: canvas.width * (0.3 + Math.random() * 0.4),
-        y: canvas.height * (0.6 + Math.random() * 0.4),
+        x: W * (0.2 + Math.random() * 0.6),
+        y: H * (0.5 + Math.random() * 0.5),
         speed: 0.3 + Math.random() * 0.7,
         radius: 1.5 + Math.random() * 2.5,
         color: colors[Math.floor(Math.random() * colors.length)],
@@ -164,22 +161,16 @@ export const VeylStage: React.FC<VeylStageProps> = ({
     if (!ctx) return;
 
     const draw = () => {
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
-
+      ctx.clearRect(0, 0, W, H);
       const now = performance.now();
-      // 2s sine pulse synced with pulse-glow
-      const globalPulse = (Math.sin((now % 2000) / 2000 * Math.PI * 2) + 1) / 2; // 0..1
+      const globalPulse = (Math.sin((now % 2000) / 2000 * Math.PI * 2) + 1) / 2;
 
       for (const p of particlesRef.current) {
         p.y -= p.speed;
-        // Respawn at bottom
         if (p.y < -10) {
-          p.y = h + 10;
-          p.x = w * (0.3 + Math.random() * 0.4);
+          p.y = H + 10;
+          p.x = W * (0.2 + Math.random() * 0.6);
         }
-
         const localPulse = (Math.sin(((now + p.phase) % 2000) / 2000 * Math.PI * 2) + 1) / 2;
         const pulse = (globalPulse + localPulse) / 2;
         const opacity = 0.3 + pulse * 0.5;
@@ -193,15 +184,11 @@ export const VeylStage: React.FC<VeylStageProps> = ({
         ctx.fill();
       }
       ctx.shadowBlur = 0;
-
       animFrameRef.current = requestAnimationFrame(draw);
     };
     animFrameRef.current = requestAnimationFrame(draw);
 
-    return () => {
-      cancelAnimationFrame(animFrameRef.current);
-      ro.disconnect();
-    };
+    return () => { cancelAnimationFrame(animFrameRef.current); };
   }, [showParticles]);
 
   // Pick a random quote, avoiding repeats, contextual to file type
@@ -264,7 +251,7 @@ export const VeylStage: React.FC<VeylStageProps> = ({
     return () => clearTimeout(t);
   }, [hasError, isActive]);
 
-  // save reaction → saved mode, then back to idle (triggered by lastSaveTick)
+  // save reaction
   useEffect(() => {
     if (!isActive || !lastSaveTick || !showAvatar) return;
     const quote = SAVE_QUOTES[Math.floor(Math.random() * SAVE_QUOTES.length)];
@@ -292,7 +279,7 @@ export const VeylStage: React.FC<VeylStageProps> = ({
     }
   }, [showOverlays, mode]);
 
-  if (mode === "hidden") return null;
+  if (mode === "hidden" || !mounted) return null;
 
   const animClass = (() => {
     switch (mode) {
@@ -306,103 +293,85 @@ export const VeylStage: React.FC<VeylStageProps> = ({
     }
   })();
 
-  return (
-    <div className="absolute inset-0 z-10 overflow-hidden bg-black">
-      {/* Alley background */}
-      <img
-        src={veylBg}
-        alt="Veyl Stage background"
-        className="absolute inset-0 w-full h-full object-contain saturate-[1.2]"
-      />
+  return createPortal(
+    <div
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none"
+      style={{ zIndex: 9999 }}
+    >
+      {/* Particle canvas — fixed-size region behind avatar */}
+      <div className="relative flex flex-col items-center">
+        <canvas
+          ref={canvasRef}
+          className="absolute transition-opacity duration-700 pointer-events-none"
+          style={{
+            width: 320,
+            height: 400,
+            opacity: showParticles ? 1 : 0,
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+          }}
+        />
 
-      {/* Dark overlay for readability */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-
-      {/* Neon particle canvas — behind avatar, in front of background */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 w-full h-full transition-opacity duration-700 pointer-events-none"
-        style={{ opacity: showParticles ? 1 : 0 }}
-      />
-
-      {/* Overlays that fade out after idle (paw placeholder + idle label) */}
-      <div
-        className="transition-opacity duration-1000"
-        style={{ opacity: showOverlays ? 1 : 0 }}
-      >
-        {/* Idle label (only while overlays visible) */}
-        {mode === "idle" && (
-          <div className="absolute bottom-28 left-1/2 -translate-x-1/2 text-center">
-            <div className="inline-flex rounded-full bg-black/60 px-4 py-1 text-xs font-semibold text-purple-200 border border-purple-500/60 shadow-[0_0_16px_rgba(168,85,247,0.6)]">
-              Veyl Stage Active
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Avatar + bubble container at bottom center */}
-      <div
-        className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-        style={{ opacity: showAvatar ? 1 : 0, transition: 'opacity 0.5s ease-out, transform 0.5s ease-out', transform: showAvatar ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(16px)' }}
-      >
-        {/* Veyl hero panel — tall comic-style rectangle */}
+        {/* Veyl avatar — no border, no box, transparent PNG floating freely */}
         <div
           className={[
             "relative h-64 w-32 md:h-80 md:w-40",
-            "rounded-xl border-2 border-neon-green/80 bg-transparent overflow-hidden",
-            "shadow-[0_0_30px_rgba(74,222,128,0.9)]",
             animClass,
             showAvatar && mode === "idle" ? "animate-veyl-avatar-glow animate-veyl-breathe" :
             showAvatar && mode === "saved" ? "animate-veyl-save-flash animate-veyl-breathe" : "",
           ].join(" ")}
+          style={{
+            opacity: showAvatar ? 1 : 0,
+            transition: 'opacity 0.5s ease-out, transform 0.5s ease-out',
+            transform: showAvatar ? 'translateY(0)' : 'translateY(16px)',
+          }}
         >
           <img
             src={veylAvatar}
             alt="Veyl hero form"
-            className="absolute inset-0 h-full w-full object-contain"
+            className="absolute inset-0 h-full w-full object-contain drop-shadow-[0_0_20px_rgba(74,222,128,0.6)]"
           />
-
-          {/* subtle top glow */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-purple-500/15" />
         </div>
-
-        {/* Comic-style speech bubbles with diamond tail */}
-        {mode === "hero" && (
-          <div className="relative max-w-xs">
-            <div className="rounded-2xl bg-black/85 px-4 py-1.5 text-xs font-semibold text-cyan-300 border border-cyan-400/70 shadow-[0_0_18px_rgba(34,211,238,0.7)]">
-              ⚡ Building…
-            </div>
-            <div className="absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-black/85 border-l border-t border-cyan-400/70" />
-          </div>
-        )}
-
-        {mode === "error" && (
-          <div className="relative max-w-xs">
-            <div className="rounded-2xl bg-red-900/90 px-4 py-1.5 text-xs font-semibold text-red-100 border border-red-400/80 shadow-[0_0_22px_rgba(248,113,113,0.95)]">
-              ❌ Build glitch detected
-            </div>
-            <div className="absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-red-900/90 border-l border-t border-red-400/80" />
-          </div>
-        )}
-
-        {mode === "saved" && typedSaveQuote && (
-          <div className="relative max-w-xs">
-            <div className="rounded-2xl bg-emerald-900/80 px-4 py-1.5 text-xs font-semibold text-emerald-100 border border-emerald-400/80 shadow-[0_0_20px_rgba(74,222,128,0.9)]">
-              💾 {typedSaveQuote}
-            </div>
-            <div className="absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-emerald-900/80 border-l border-t border-emerald-400/80" />
-          </div>
-        )}
-
-        {showAvatar && mode === "idle" && typedQuote && (
-          <div className="relative max-w-xs" key={idleQuote}>
-            <div className="rounded-2xl bg-black/80 px-4 py-1.5 text-xs font-semibold text-purple-100 border border-purple-500/70 shadow-[0_0_18px_rgba(168,85,247,0.7)]">
-              💬 {typedQuote}
-            </div>
-            <div className="absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-black/80 border-l border-t border-purple-500/70" />
-          </div>
-        )}
       </div>
-    </div>
+
+      {/* Speech bubbles — stacked below avatar */}
+      {mode === "hero" && (
+        <div className="relative max-w-xs">
+          <div className="rounded-2xl bg-black/85 px-4 py-1.5 text-xs font-semibold text-cyan-300 border border-cyan-400/70 shadow-[0_0_18px_rgba(34,211,238,0.7)]">
+            ⚡ Building…
+          </div>
+          <div className="absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-black/85 border-l border-t border-cyan-400/70" />
+        </div>
+      )}
+
+      {mode === "error" && (
+        <div className="relative max-w-xs">
+          <div className="rounded-2xl bg-red-900/90 px-4 py-1.5 text-xs font-semibold text-red-100 border border-red-400/80 shadow-[0_0_22px_rgba(248,113,113,0.95)]">
+            ❌ Build glitch detected
+          </div>
+          <div className="absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-red-900/90 border-l border-t border-red-400/80" />
+        </div>
+      )}
+
+      {mode === "saved" && typedSaveQuote && (
+        <div className="relative max-w-xs">
+          <div className="rounded-2xl bg-emerald-900/80 px-4 py-1.5 text-xs font-semibold text-emerald-100 border border-emerald-400/80 shadow-[0_0_20px_rgba(74,222,128,0.9)]">
+            💾 {typedSaveQuote}
+          </div>
+          <div className="absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-emerald-900/80 border-l border-t border-emerald-400/80" />
+        </div>
+      )}
+
+      {showAvatar && mode === "idle" && typedQuote && (
+        <div className="relative max-w-xs" key={idleQuote}>
+          <div className="rounded-2xl bg-black/80 px-4 py-1.5 text-xs font-semibold text-purple-100 border border-purple-500/70 shadow-[0_0_18px_rgba(168,85,247,0.7)]">
+            💬 {typedQuote}
+          </div>
+          <div className="absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-black/80 border-l border-t border-purple-500/70" />
+        </div>
+      )}
+    </div>,
+    document.body
   );
 };
