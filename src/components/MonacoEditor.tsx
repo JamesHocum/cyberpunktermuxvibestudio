@@ -4,7 +4,7 @@ import type { editor } from "monaco-editor";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X, Save, Copy, Maximize2, File, Palette, Check, Minimize2 } from "lucide-react";
+import { X, Save, Copy, Maximize2, File, Palette, Check, Minimize2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -77,8 +77,30 @@ export const MonacoCodeEditor = ({
   });
   const [cursorPosition, setCursorPosition] = useState({ line: 1, col: 1 });
   const [isSaved, setIsSaved] = useState(true);
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+  const [monacoFailed, setMonacoFailed] = useState(false);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof import("monaco-editor") | null>(null);
+  const loadingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Monaco loading timeout — show retry after 10s
+  useEffect(() => {
+    loadingTimerRef.current = setTimeout(() => {
+      if (!editorRef.current) {
+        setLoadingTimedOut(true);
+      }
+    }, 10000);
+    return () => {
+      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+    };
+  }, []);
+
+  const retryMonacoLoad = () => {
+    setLoadingTimedOut(false);
+    setMonacoFailed(false);
+    // Force re-render by toggling a key — handled via monacoFailed reset
+    window.location.reload();
+  };
 
   const fileContents = externalFileContents || localFileContents;
   const openTabs = openFiles.length > 0 ? openFiles : localOpenTabs;
@@ -211,6 +233,8 @@ export default ${name};`;
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    setLoadingTimedOut(false);
+    if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
 
     // Set initial theme
     monaco.editor.setTheme(syntaxTheme);
@@ -375,90 +399,121 @@ export default ${name};`;
 
       {/* Monaco Editor */}
       <div className="flex-1 relative overflow-hidden">
-        <Editor
-          height="100%"
-          language={getMonacoLanguage(activeTab)}
-          value={fileContents[activeTab] || ""}
-          theme={syntaxTheme}
-          onChange={handleContentChange}
-          beforeMount={handleEditorWillMount}
-          onMount={handleEditorDidMount}
-          options={{
-            fontFamily: "'JetBrains Mono', 'Fira Code', Monaco, Menlo, monospace",
-            fontSize: 14,
-            fontLigatures: true,
-            lineHeight: 22,
-            minimap: {
-              enabled: true,
-              maxColumn: 80,
-              renderCharacters: false,
-            },
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-            wordWrap: "on",
-            tabSize: 2,
-            insertSpaces: true,
-            cursorBlinking: "smooth",
-            cursorSmoothCaretAnimation: "on",
-            smoothScrolling: true,
-            renderLineHighlight: "all",
-            renderWhitespace: "selection",
-            bracketPairColorization: {
-              enabled: true,
-            },
-            guides: {
-              bracketPairs: true,
-              indentation: true,
-            },
-            suggest: {
-              showMethods: true,
-              showFunctions: true,
-              showConstructors: true,
-              showFields: true,
-              showVariables: true,
-              showClasses: true,
-              showStructs: true,
-              showInterfaces: true,
-              showModules: true,
-              showProperties: true,
-              showEvents: true,
-              showOperators: true,
-              showUnits: true,
-              showValues: true,
-              showConstants: true,
-              showEnums: true,
-              showEnumMembers: true,
-              showKeywords: true,
-              showWords: true,
-              showColors: true,
-              showFiles: true,
-              showReferences: true,
-              showFolders: true,
-              showTypeParameters: true,
-              showSnippets: true,
-            },
-            quickSuggestions: {
-              other: true,
-              comments: false,
-              strings: true,
-            },
-            parameterHints: {
-              enabled: true,
-            },
-            folding: true,
-            foldingStrategy: "indentation",
-            showFoldingControls: "always",
-            padding: {
-              top: 16,
-              bottom: 16,
-            },
-          }}
-          loading={
-            <div className="flex items-center justify-center h-full text-muted-foreground font-terminal">
-              <div className="animate-pulse">Loading neural interface...</div>
+        {monacoFailed ? (
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between px-4 py-2 bg-yellow-500/10 border-b border-yellow-500/30">
+              <span className="text-xs font-terminal text-yellow-400">⚠ Monaco Editor unavailable — using plain text fallback</span>
+              <Button variant="ghost" size="sm" className="text-yellow-400 h-6 text-xs" onClick={retryMonacoLoad}>
+                Retry Monaco
+              </Button>
             </div>
-          }
-        />
+            <textarea
+              className="flex-1 w-full bg-[#0d1117] text-[#00ff88] font-mono text-sm p-4 resize-none outline-none border-none"
+              value={fileContents[activeTab] || ""}
+              onChange={(e) => handleContentChange(e.target.value)}
+              spellCheck={false}
+            />
+          </div>
+        ) : (
+          <Editor
+            height="100%"
+            language={getMonacoLanguage(activeTab)}
+            value={fileContents[activeTab] || ""}
+            theme={syntaxTheme}
+            onChange={handleContentChange}
+            beforeMount={handleEditorWillMount}
+            onMount={handleEditorDidMount}
+            options={{
+              fontFamily: "'JetBrains Mono', 'Fira Code', Monaco, Menlo, monospace",
+              fontSize: 14,
+              fontLigatures: true,
+              lineHeight: 22,
+              minimap: {
+                enabled: true,
+                maxColumn: 80,
+                renderCharacters: false,
+              },
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              wordWrap: "on",
+              tabSize: 2,
+              insertSpaces: true,
+              cursorBlinking: "smooth",
+              cursorSmoothCaretAnimation: "on",
+              smoothScrolling: true,
+              renderLineHighlight: "all",
+              renderWhitespace: "selection",
+              bracketPairColorization: {
+                enabled: true,
+              },
+              guides: {
+                bracketPairs: true,
+                indentation: true,
+              },
+              suggest: {
+                showMethods: true,
+                showFunctions: true,
+                showConstructors: true,
+                showFields: true,
+                showVariables: true,
+                showClasses: true,
+                showStructs: true,
+                showInterfaces: true,
+                showModules: true,
+                showProperties: true,
+                showEvents: true,
+                showOperators: true,
+                showUnits: true,
+                showValues: true,
+                showConstants: true,
+                showEnums: true,
+                showEnumMembers: true,
+                showKeywords: true,
+                showWords: true,
+                showColors: true,
+                showFiles: true,
+                showReferences: true,
+                showFolders: true,
+                showTypeParameters: true,
+                showSnippets: true,
+              },
+              quickSuggestions: {
+                other: true,
+                comments: false,
+                strings: true,
+              },
+              parameterHints: {
+                enabled: true,
+              },
+              folding: true,
+              foldingStrategy: "indentation",
+              showFoldingControls: "always",
+              padding: {
+                top: 16,
+                bottom: 16,
+              },
+            }}
+            loading={
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground font-terminal gap-4">
+                {loadingTimedOut ? (
+                  <>
+                    <span className="text-yellow-400">Monaco Editor is taking too long to load.</span>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={retryMonacoLoad} className="font-terminal">
+                        <RefreshCw className="h-3 w-3 mr-2" /> Retry
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => setMonacoFailed(true)} className="font-terminal">
+                        Use Plain Editor
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="animate-pulse">Loading neural interface...</div>
+                )}
+              </div>
+            }
+          />
+        )}
       </div>
 
       {/* Status Bar */}

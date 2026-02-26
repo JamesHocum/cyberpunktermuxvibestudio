@@ -247,6 +247,7 @@ export const StudioLayout = () => {
                       content={activeFile ? (fileContents[activeFile] || '') : ''}
                       filename={activeFile || 'untitled'}
                       onClose={() => setShowPreview(false)}
+                      projectFiles={Object.keys(fileContents)}
                     />
                   </ResizablePanel>
                 </>
