@@ -23,6 +23,7 @@ interface LivePreviewProps {
   filename: string;
   cssContent?: string;
   onClose?: () => void;
+  projectFiles?: string[];
 }
 
 type ViewportSize = "mobile" | "tablet" | "desktop" | "full";
@@ -68,7 +69,19 @@ const cyberpunkTheme = {
   },
 };
 
-export const LivePreview = ({ content, filename, cssContent = "", onClose }: LivePreviewProps) => {
+// Detect if project uses a non-standard-React framework
+function detectFrameworkProject(files: string[]): string | null {
+  const hasFile = (pattern: string) => files.some(f => f === pattern || f.endsWith('/' + pattern));
+  const hasMatch = (re: RegExp) => files.some(f => re.test(f));
+
+  if (hasFile('app/layout.tsx') || hasFile('app/layout.jsx') || hasFile('pages/_app.tsx') || hasFile('pages/_app.jsx') || hasMatch(/next\.config\./)) return 'Next.js';
+  if (hasMatch(/nuxt\.config\./) || hasFile('app.vue')) return 'Nuxt/Vue';
+  if (hasMatch(/svelte\.config\./) || hasFile('src/routes/+page.svelte')) return 'SvelteKit';
+  if (hasFile('angular.json')) return 'Angular';
+  return null;
+}
+
+export const LivePreview = ({ content, filename, cssContent = "", onClose, projectFiles = [] }: LivePreviewProps) => {
   const [viewport, setViewport] = useState<ViewportSize>("full");
   const [zoom, setZoom] = useState(100);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -84,14 +97,18 @@ export const LivePreview = ({ content, filename, cssContent = "", onClose }: Liv
   const isJsonFile = filename.endsWith(".json");
   const isMarkdownFile = filename.endsWith(".md");
 
-  // Switch to Sandpack mode for React files
+  const detectedFramework = detectFrameworkProject(projectFiles);
+
+  // Switch to Sandpack mode for React files, but NOT for framework projects
   useEffect(() => {
-    if (isJsxFile) {
+    if (detectedFramework) {
+      setPreviewMode("iframe");
+    } else if (isJsxFile) {
       setPreviewMode("sandpack");
     } else {
       setPreviewMode("iframe");
     }
-  }, [isJsxFile]);
+  }, [isJsxFile, detectedFramework]);
 
   const generatePreviewHtml = useCallback(() => {
     setError(null);
@@ -299,8 +316,13 @@ body {
       <div className="flex items-center justify-between bg-studio-header border-b cyber-border px-4 py-2">
         <div className="flex items-center space-x-2">
           <Badge variant="secondary" className="neon-green font-terminal text-xs">
-            {previewMode === "sandpack" ? "REACT SANDBOX" : "LIVE PREVIEW"}
+            {detectedFramework ? `SOURCE VIEW` : previewMode === "sandpack" ? "REACT SANDBOX" : "LIVE PREVIEW"}
           </Badge>
+          {detectedFramework && (
+            <Badge variant="secondary" className="text-xs bg-yellow-500/20 text-yellow-400 border-yellow-500/30 font-terminal">
+              {detectedFramework} — needs dev server for full preview
+            </Badge>
+          )}
           <span className="text-xs text-muted-foreground font-terminal">
             {filename}
           </span>
