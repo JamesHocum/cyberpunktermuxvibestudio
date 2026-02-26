@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import Editor, { OnMount, BeforeMount } from "@monaco-editor/react";
+import Editor, { OnMount, BeforeMount, loader } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
+import * as monaco from "monaco-editor";
+
+// Use locally installed monaco-editor instead of CDN to avoid loading failures
+loader.config({ monaco });
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
