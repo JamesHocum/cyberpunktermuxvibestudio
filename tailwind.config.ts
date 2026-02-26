@@ -77,6 +77,10 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-glow": "pulse-glow 2s infinite",
         "flicker": "flicker 0.15s infinite linear alternate",
+        "veyl-enter": "veyl-enter 1.5s ease-out forwards",
+        "veyl-hero": "veyl-hero 1.5s ease-in-out infinite",
+        "veyl-idle": "veyl-idle 4s ease-in-out infinite",
+        "veyl-exit": "veyl-exit 0.5s ease-in forwards",
       },
       keyframes: {
         "accordion-down": {
@@ -94,6 +98,22 @@ export default {
         "flicker": {
           "0%": { opacity: "1" },
           "100%": { opacity: "0.95" },
+        },
+        "veyl-enter": {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        "veyl-hero": {
+          "0%, 100%": { boxShadow: "0 0 30px hsl(300 100% 60% / 0.5)" },
+          "50%": { boxShadow: "0 0 60px hsl(300 100% 60% / 0.8)" },
+        },
+        "veyl-idle": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.92" },
+        },
+        "veyl-exit": {
+          "0%": { opacity: "1", transform: "scale(1)" },
+          "100%": { opacity: "0", transform: "scale(0.95)" },
         },
       },
     },

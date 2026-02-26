@@ -89,6 +89,7 @@ export const StudioLayout = () => {
   const [showProjectManager, setShowProjectManager] = useState(false);
   const [apiKey, setApiKey] = useState<string>("DEFAULT");
   const [openFiles, setOpenFiles] = useState<string[]>([]);
+  const [isRunningBuild, setIsRunningBuild] = useState(false);
   
   // Ref for triggering sidebar matrix tools
   const [matrixModalToOpen, setMatrixModalToOpen] = useState<ModalType>(null);
@@ -140,7 +141,9 @@ export const StudioLayout = () => {
   // "Run" button: re-fetch project files and auto-select entry
   const handleRun = useCallback(async () => {
     if (!currentProject?.id) return;
+    setIsRunningBuild(true);
     await loadProject(currentProject.id);
+    setIsRunningBuild(false);
     // After loadProject, fileContents updates → the auto-select useEffect fires
     setShowPreview(true);
   }, [currentProject?.id, loadProject]);
@@ -218,6 +221,7 @@ export const StudioLayout = () => {
                       onFileChange={handleFileChange}
                       onSave={handleSave}
                       hasUnsavedChanges={hasUnsavedChanges}
+                      isBuilding={isRunningBuild}
                     />
                   </ResizablePanel>
                   

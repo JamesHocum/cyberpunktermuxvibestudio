@@ -21,6 +21,7 @@ import {
   monacoThemes, 
   getMonacoLanguage 
 } from "@/lib/monacoThemes";
+import { VeylStage } from "@/components/VeylStage";
 
 interface MonacoEditorProps {
   activeFile: string | null;
@@ -31,6 +32,7 @@ interface MonacoEditorProps {
   onFileChange?: (filename: string, content: string) => void;
   onSave?: () => void;
   hasUnsavedChanges?: boolean;
+  isBuilding?: boolean;
 }
 
 const defaultSampleCode = `// Welcome to Matrix DevStudio
@@ -71,6 +73,7 @@ export const MonacoCodeEditor = ({
   onFileChange,
   onSave,
   hasUnsavedChanges = false,
+  isBuilding = false,
 }: MonacoEditorProps) => {
   const [localOpenTabs, setLocalOpenTabs] = useState<string[]>(["Welcome.tsx"]);
   const [activeTab, setActiveTab] = useState("Welcome.tsx");
@@ -212,6 +215,7 @@ export default ${name};`;
     monaco.editor.defineTheme("matrix", monacoThemes.matrix);
     monaco.editor.defineTheme("cyber", monacoThemes.cyber);
     monaco.editor.defineTheme("vaporwave", monacoThemes.vaporwave);
+    monaco.editor.defineTheme("veyl-stage", monacoThemes['veyl-stage']);
 
     // Configure TypeScript/JavaScript for React
     monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
@@ -396,6 +400,12 @@ export default ${name};`;
               >
                 Vaporwave Theme
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => changeTheme("veyl-stage")}
+                className="text-purple-400 font-terminal"
+              >
+                Veyl Stage
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -403,6 +413,13 @@ export default ${name};`;
 
       {/* Monaco Editor */}
       <div className="flex-1 relative overflow-hidden">
+        {syntaxTheme === 'veyl-stage' && (
+          <VeylStage
+            isActive={syntaxTheme === 'veyl-stage'}
+            isBuilding={isBuilding}
+            hasError={false}
+          />
+        )}
         {monacoFailed ? (
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between px-4 py-2 bg-yellow-500/10 border-b border-yellow-500/30">
