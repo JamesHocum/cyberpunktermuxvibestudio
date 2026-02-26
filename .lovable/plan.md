@@ -1,79 +1,46 @@
 
-# Fix Entry File Detection for Next.js and More Frameworks
 
-## Problem
-The cloned "Chameleon-Document-Forger" repo is a Next.js project with an `app/` directory. The current `detectEntryFile` priority list doesn't include Next.js patterns (`app/layout.tsx`, `app/page.tsx`, `pages/index.tsx`), so it falls through to `package.json` -- which the preview shows as raw JSON with "Loading neural interface..." overlay.
+# Fix Editor Loading & Preview Errors for Cloned Projects
+
+## Problems Identified
+
+1. **"Loading neural interface..." stuck in editor**: Monaco Editor's loading placeholder is showing indefinitely. This happens because the Monaco Editor component from `@monaco-editor/react` needs to download the Monaco library from a CDN. If the network is slow or the CDN is blocked (common in Electron or restricted environments), it stays stuck on the loading state forever.
+
+2. **Sandpack "Couldn't connect to server"**: The Live Preview automatically switches to Sandpack mode for `.tsx`/`.jsx` files, but Sandpack can't run Next.js code (which uses `next/navigation`, `next/link`, server components, etc.) since its `react-ts` template only supports vanilla React.
 
 ## Solution
 
-### 1. Expand `ENTRY_PRIORITY` in `src/lib/fileDetection.ts`
-Add common framework entry points:
+### 1. Add timeout + fallback for Monaco loading
+- Show the "Loading neural interface..." message for up to 10 seconds
+- After that, show a helpful message with a retry button instead of an infinite spinner
+- This prevents users from thinking the editor is broken
 
-```
-index.html
-src/index.html
-public/index.html
-README.md
-src/App.tsx
-src/App.jsx
-src/main.tsx
-src/main.jsx
-app/page.tsx          <-- Next.js App Router
-app/page.jsx
-app/layout.tsx
-pages/index.tsx       <-- Next.js Pages Router
-pages/index.jsx
-src/routes/+page.svelte   <-- SvelteKit
-src/App.vue           <-- Vue
-src/App.svelte        <-- Svelte
-package.json          <-- last resort (still useful for seeing deps)
-```
+### 2. Fix Sandpack for non-React projects
+- Detect when a project is a Next.js, Vue, or Svelte project (by checking if files like `next.config.*`, `app/layout.tsx`, `nuxt.config.*` exist in the file tree)
+- For non-standard-React projects, fall back to **iframe mode** (static code display) instead of Sandpack, since Sandpack can't run these frameworks
+- Show a clear badge/message like "Static Preview (Next.js projects require a dev server)" instead of a confusing error
 
-### 2. Deprioritize `package.json`
-Move `package.json` to the very end since it can't render meaningfully. Also add a fallback: if the only match is `package.json` and a `README.md` exists anywhere in nested paths, prefer that instead.
+### 3. Add a "Source View" fallback in LivePreview
+- When Sandpack fails or the project isn't compatible, render the code with syntax highlighting in an iframe instead of showing an error
+- This gives users something useful to see rather than "Couldn't connect to server"
 
-### 3. Smarter fallback logic
-If no priority file is found and no files matched, pick the first file that is NOT `package.json`, `package-lock.json`, `.gitignore`, or config files -- prefer `.tsx`, `.jsx`, `.html`, or `.md` files first.
+## Technical Details
 
-Updated `detectEntryFile`:
+### File: `src/components/MonacoEditor.tsx`
+- Add a `loadingTimeout` state that triggers after 10 seconds
+- Replace the loading placeholder with a component that shows a retry button after timeout
+- Add an `onError` style fallback using a simple `<textarea>` if Monaco completely fails
 
-```typescript
-const ENTRY_PRIORITY = [
-  'index.html',
-  'src/index.html',
-  'public/index.html',
-  'README.md',
-  'src/App.tsx',
-  'src/App.jsx',
-  'src/main.tsx',
-  'src/main.jsx',
-  'app/page.tsx',
-  'app/page.jsx',
-  'app/layout.tsx',
-  'pages/index.tsx',
-  'pages/index.jsx',
-  'src/App.vue',
-  'src/App.svelte',
-  'package.json',
-];
+### File: `src/components/LivePreview.tsx`
+- Update the `useEffect` that sets `previewMode` to check the project context
+- Add detection logic: if file paths contain `app/layout.tsx`, `next.config.*`, or `pages/_app.tsx`, mark as Next.js project
+- For Next.js/non-React projects, force `previewMode = "iframe"` and render a styled source code view
+- Show an informational badge: "Source View -- framework projects need a local dev server for full preview"
 
-const PREVIEW_FRIENDLY_EXT = ['.html', '.tsx', '.jsx', '.md', '.vue', '.svelte'];
+### File: `src/components/StudioLayout.tsx`
+- Pass the full `fileContents` keys (file paths) to `LivePreview` as a new `projectFiles` prop so it can detect the project type
 
-export function detectEntryFile(paths: string[]): string | null {
-  // 1. Check priority list
-  for (const entry of ENTRY_PRIORITY) {
-    const match = paths.find(p => p === entry || p.endsWith('/' + entry));
-    if (match) return match;
-  }
-  // 2. Prefer a preview-friendly file over random config files
-  const friendly = paths.find(p =>
-    PREVIEW_FRIENDLY_EXT.some(ext => p.endsWith(ext))
-  );
-  if (friendly) return friendly;
-  // 3. Absolute fallback
-  return paths[0] ?? null;
-}
-```
-
-## Files Changed
-- `src/lib/fileDetection.ts` -- expanded priority list and added smart fallback
+## What Users Will See After Fix
+- **Editor**: Loads normally, or shows a retry/fallback after 10 seconds instead of spinning forever
+- **Preview for React files**: Sandpack works as before
+- **Preview for Next.js/framework files**: Shows a clean source code view with a message explaining that full preview requires a dev server, instead of a confusing "Couldn't connect" error
