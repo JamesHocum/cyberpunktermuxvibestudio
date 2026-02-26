@@ -91,6 +91,7 @@ export const StudioLayout = () => {
   const [openFiles, setOpenFiles] = useState<string[]>([]);
   const [isRunningBuild, setIsRunningBuild] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
+  const [lastSaveTick, setLastSaveTick] = useState<number | null>(null);
   
   // Ref for triggering sidebar matrix tools
   const [matrixModalToOpen, setMatrixModalToOpen] = useState<ModalType>(null);
@@ -137,6 +138,7 @@ export const StudioLayout = () => {
 
   const handleSave = useCallback(() => {
     saveProject();
+    setLastSaveTick(Date.now());
   }, [saveProject]);
 
   // "Run" button: re-fetch project files and auto-select entry
@@ -230,6 +232,7 @@ export const StudioLayout = () => {
                       hasUnsavedChanges={hasUnsavedChanges}
                       isBuilding={isRunningBuild}
                       buildError={buildError}
+                      lastSaveTick={lastSaveTick}
                     />
                   </ResizablePanel>
                   

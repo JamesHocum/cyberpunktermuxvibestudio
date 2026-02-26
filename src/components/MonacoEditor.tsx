@@ -34,6 +34,7 @@ interface MonacoEditorProps {
   hasUnsavedChanges?: boolean;
   isBuilding?: boolean;
   buildError?: string | null;
+  lastSaveTick?: number | null;
 }
 
 const defaultSampleCode = `// Welcome to Matrix DevStudio
@@ -76,6 +77,7 @@ export const MonacoCodeEditor = ({
   hasUnsavedChanges = false,
   isBuilding = false,
   buildError = null,
+  lastSaveTick = null,
 }: MonacoEditorProps) => {
   const [localOpenTabs, setLocalOpenTabs] = useState<string[]>(["Welcome.tsx"]);
   const [activeTab, setActiveTab] = useState("Welcome.tsx");
@@ -424,7 +426,7 @@ export default ${name};`;
             isBuilding={isBuilding}
             hasError={!!buildError}
             activeFile={activeFile}
-            justSaved={justSaved}
+            lastSaveTick={lastSaveTick}
           />
         )}
         {monacoFailed ? (
