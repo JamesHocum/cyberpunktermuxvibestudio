@@ -1,7 +1,8 @@
 // Service Worker for PWA/Offline Support
-const CACHE_NAME = 'cyberpunk-ide-v1';
-const STATIC_CACHE = 'static-v1';
-const DYNAMIC_CACHE = 'dynamic-v1';
+const CACHE_VERSION = 'v3';
+const CACHE_NAME = `cyberpunk-ide-${CACHE_VERSION}`;
+const STATIC_CACHE = `static-${CACHE_VERSION}`;
+const DYNAMIC_CACHE = `dynamic-${CACHE_VERSION}`;
 
 // Assets to cache immediately
 const STATIC_ASSETS = [
