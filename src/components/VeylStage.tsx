@@ -118,6 +118,13 @@ export const VeylStage: React.FC<VeylStageProps> = ({
   const typedQuote = useTypewriter(idleQuote);
   const typedSaveQuote = useTypewriter(saveQuote, 25);
 
+  // Idle drift state — gentle horizontal sway
+  const [driftX, setDriftX] = useState(0);
+
+  // Cursor proximity — avatar leans toward mouse
+  const [cursorOffset, setCursorOffset] = useState({ x: 0, y: 0 });
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
   // SSR-safe portal mount guard
   useEffect(() => { setMounted(true); }, []);
 
@@ -127,6 +134,46 @@ export const VeylStage: React.FC<VeylStageProps> = ({
   const animFrameRef = useRef<number>(0);
 
   const showParticles = showAvatar && (mode === "idle" || mode === "saved");
+
+  // Idle horizontal drift — slow sine sway ±12px over 8s
+  useEffect(() => {
+    if (!showAvatar || mode !== "idle") { setDriftX(0); return; }
+    let raf: number;
+    const sway = () => {
+      const now = performance.now();
+      setDriftX(Math.sin((now % 8000) / 8000 * Math.PI * 2) * 12);
+      raf = requestAnimationFrame(sway);
+    };
+    raf = requestAnimationFrame(sway);
+    return () => cancelAnimationFrame(raf);
+  }, [showAvatar, mode]);
+
+  // Cursor proximity — lean toward mouse within 300px radius
+  useEffect(() => {
+    if (!showAvatar || !mounted) return;
+    const PROXIMITY = 300;
+    const handleMouse = (e: MouseEvent) => {
+      const el = wrapperRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < PROXIMITY) {
+        const strength = 1 - dist / PROXIMITY; // 1 at center, 0 at edge
+        setCursorOffset({
+          x: (dx / PROXIMITY) * 16 * strength, // max ±16px shift
+          y: (dy / PROXIMITY) * 6 * strength,   // max ±6px vertical
+        });
+      } else {
+        setCursorOffset({ x: 0, y: 0 });
+      }
+    };
+    window.addEventListener("mousemove", handleMouse, { passive: true });
+    return () => window.removeEventListener("mousemove", handleMouse);
+  }, [showAvatar, mounted]);
 
   // Initialize particles — scoped to a fixed 320×400 region
   useEffect(() => {
@@ -295,8 +342,13 @@ export const VeylStage: React.FC<VeylStageProps> = ({
 
   return createPortal(
     <div
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none"
-      style={{ zIndex: 9999 }}
+      ref={wrapperRef}
+      className="fixed bottom-6 left-1/2 flex flex-col items-center gap-2 pointer-events-none"
+      style={{
+        zIndex: 9999,
+        transform: `translateX(calc(-50% + ${driftX + cursorOffset.x}px))`,
+        transition: 'transform 0.15s ease-out',
+      }}
     >
       {/* Particle canvas — fixed-size region behind avatar */}
       <div className="relative flex flex-col items-center">
@@ -323,8 +375,10 @@ export const VeylStage: React.FC<VeylStageProps> = ({
           ].join(" ")}
           style={{
             opacity: showAvatar ? 1 : 0,
-            transition: 'opacity 0.5s ease-out, transform 0.5s ease-out',
-            transform: showAvatar ? 'translateY(0)' : 'translateY(16px)',
+            transition: 'opacity 0.5s ease-out, transform 0.15s ease-out',
+            transform: showAvatar
+              ? `translateY(${cursorOffset.y}px) rotate(${cursorOffset.x * 0.15}deg)`
+              : 'translateY(16px)',
           }}
         >
           <img
