@@ -1,42 +1,76 @@
 
+# Auto-Select Entry File and Auto-Build Preview
 
-# Fix Integration Connection Failures
+## Problem
+After cloning a GitHub repo or opening a project, the preview is blank because no file is auto-selected and the preview panel isn't opened. The user sees "Loading neural interface..." with no content.
 
-## Root Cause
+## Solution
 
-The HuggingFace "Test Connection" fails because HuggingFace has **deprecated** their old API URL. The edge function currently calls `https://api-inference.huggingface.co/models/...` which returns a **410 Gone** error:
+### 1. Add `detectEntryFile` utility function
+Create a helper in `src/lib/fileDetection.ts` that picks the best entry file from a list of file paths:
+- Priority order: `index.html`, `src/index.html`, `public/index.html`, `README.md`, `src/App.tsx`, `src/App.jsx`, `src/main.tsx`, `src/main.jsx`, `package.json`
+- Falls back to the first file in the list
 
-> "https://api-inference.huggingface.co is no longer supported. Please use https://router.huggingface.co instead."
+### 2. Add auto-select logic in `StudioLayout`
+Add a `useEffect` that watches `currentProject` and `fileContents`. When a project loads with files but no `activeFile` is selected:
+- Call `detectEntryFile` on `Object.keys(fileContents)`
+- Set that file as `activeFile` and add it to `openFiles`
+- Auto-open the preview panel (`setShowPreview(true)`)
 
-The token **saving works fine** (confirmed by the "Token Saved" toast in screenshots). The issue is purely in the test/inference call.
+### 3. Wire up the "Run" button
+Add an `onRun` handler in `StudioLayout` that:
+- Re-fetches files from the database for the current project (calls `loadProject`)
+- Auto-selects the entry file
+- Opens the preview panel
 
-For ElevenLabs, the test also likely fails because the `save-api-key` edge function clears the input after save, so when testing there's no immediate way to confirm the key was persisted -- but the underlying issue may also be that no ElevenLabs key exists yet (the toggle is off in the screenshots).
+Pass this as a new prop to `StudioHeader` and bind it to the existing Run button.
 
-## Changes
+### 4. After-clone flow improvement
+In `AIChatPanel`, after a successful clone + `onProjectCreated`, the `loadProject` call already populates `fileContents`. The new `useEffect` in step 2 will automatically pick up the change and select the entry file + open preview. No additional changes needed in `AIChatPanel`.
 
-### 1. Fix HuggingFace API URL (`supabase/functions/huggingface-inference/index.ts`)
+## Technical Details
 
-Update the API endpoint from the deprecated URL to the new one:
+### New file: `src/lib/fileDetection.ts`
+```typescript
+const ENTRY_PRIORITY = [
+  'index.html',
+  'src/index.html',
+  'public/index.html',
+  'README.md',
+  'src/App.tsx',
+  'src/App.jsx',
+  'src/main.tsx',
+  'src/main.jsx',
+  'package.json',
+];
 
-```text
-Old: https://api-inference.huggingface.co/models/{model}
-New: https://router.huggingface.co/hf-inference/models/{model}
+export function detectEntryFile(paths: string[]): string | null {
+  for (const entry of ENTRY_PRIORITY) {
+    const match = paths.find(p => 
+      p === entry || p.endsWith('/' + entry)
+    );
+    if (match) return match;
+  }
+  return paths[0] ?? null;
+}
 ```
 
-This is the only change needed to fix HuggingFace test connections.
+### Changes to `src/components/StudioLayout.tsx`
+- Import `detectEntryFile`
+- Add `useEffect` watching `currentProject?.id` and `Object.keys(fileContents).length`:
+  - When files exist but `activeFile` is null, auto-select entry and open preview
+- Add `handleRun` callback that calls `loadProject(currentProject.id)`, then the same useEffect triggers auto-select
+- Pass `onRun` to `StudioHeader`
 
-### 2. Improve error handling in test connection
+### Changes to `src/components/StudioHeader.tsx`
+- Add optional `onRun` prop
+- Wire the existing "Run" button to call `onRun` instead of (or in addition to) its current behavior
 
-Update the `testHuggingFaceConnection` function in `IntegrationPanel.tsx` to surface more specific error messages from the edge function response (e.g., "API deprecated", "token invalid") instead of the generic "Connection Failed" message. This will use `supabase.functions.invoke` response data to check for error details.
+## Flow After Implementation
+```text
+Clone repo --> loadProject() --> fileContents populated
+  --> useEffect fires --> detectEntryFile() --> activeFile set
+  --> preview panel opens --> LivePreview renders the file
 
-### 3. Verify save-api-key works for all services
-
-The `save-api-key` edge function already handles `huggingface`, `elevenlabs`, and `openai`. The save flow works (confirmed by screenshots showing success toasts). No changes needed there.
-
-## Files Modified
-
-| File | Change |
-|------|--------|
-| `supabase/functions/huggingface-inference/index.ts` | Update API URL from `api-inference.huggingface.co` to `router.huggingface.co/hf-inference` |
-| `src/components/IntegrationPanel.tsx` | Improve error messages in test handlers to surface backend error details |
-
+Click "Run" --> loadProject() re-fetches --> same auto-select flow
+```
