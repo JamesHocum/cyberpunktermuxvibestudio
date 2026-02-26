@@ -90,6 +90,7 @@ export const StudioLayout = () => {
   const [apiKey, setApiKey] = useState<string>("DEFAULT");
   const [openFiles, setOpenFiles] = useState<string[]>([]);
   const [isRunningBuild, setIsRunningBuild] = useState(false);
+  const [buildError, setBuildError] = useState<string | null>(null);
   
   // Ref for triggering sidebar matrix tools
   const [matrixModalToOpen, setMatrixModalToOpen] = useState<ModalType>(null);
@@ -142,10 +143,16 @@ export const StudioLayout = () => {
   const handleRun = useCallback(async () => {
     if (!currentProject?.id) return;
     setIsRunningBuild(true);
-    await loadProject(currentProject.id);
-    setIsRunningBuild(false);
-    // After loadProject, fileContents updates → the auto-select useEffect fires
-    setShowPreview(true);
+    setBuildError(null);
+    try {
+      await loadProject(currentProject.id);
+    } catch (err) {
+      console.error('Build / load error', err);
+      setBuildError('Build glitch detected');
+    } finally {
+      setIsRunningBuild(false);
+      setShowPreview(true);
+    }
   }, [currentProject?.id, loadProject]);
 
   // Handle AI code generation from terminal
@@ -222,6 +229,7 @@ export const StudioLayout = () => {
                       onSave={handleSave}
                       hasUnsavedChanges={hasUnsavedChanges}
                       isBuilding={isRunningBuild}
+                      buildError={buildError}
                     />
                   </ResizablePanel>
                   
