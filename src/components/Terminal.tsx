@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X, Plus, Settings, Square, Terminal as TerminalIcon } from "lucide-react";
+import { X, Plus, Settings, Square, Terminal as TerminalIcon, Minimize2 } from "lucide-react";
 import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,9 +14,11 @@ interface TerminalProps {
   fileContents?: Record<string, string>;
   onCodeGenerated?: (code: string, filename: string) => void;
   projectId?: string;
+  onClose?: () => void;
+  onMinimize?: () => void;
 }
 
-export const Terminal = ({ fileTree, fileContents = {}, onCodeGenerated, projectId }: TerminalProps) => {
+export const Terminal = ({ fileTree, fileContents = {}, onCodeGenerated, projectId, onClose, onMinimize }: TerminalProps) => {
   const { session } = useAuth();
   const [terminals, setTerminals] = useState(['MAIN_SHELL']);
   const [activeTerminal, setActiveTerminal] = useState('MAIN_SHELL');
@@ -755,6 +757,28 @@ export const Terminal = ({ fileTree, fileContents = {}, onCodeGenerated, project
           >
             <Settings className="h-4 w-4" />
           </Button>
+          {onMinimize && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="neon-green hover:neon-glow"
+              onClick={onMinimize}
+              title="Minimize terminal"
+            >
+              <Minimize2 className="h-4 w-4" />
+            </Button>
+          )}
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              onClick={onClose}
+              title="Close terminal"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 

@@ -12,7 +12,8 @@ import {
   Minimize2,
   ExternalLink,
   AlertTriangle,
-  Code2
+  Code2,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
 import { Sandpack, SandpackProvider, SandpackPreview, SandpackThemeProvider } from "@codesandbox/sandpack-react";
@@ -21,6 +22,7 @@ interface LivePreviewProps {
   content: string;
   filename: string;
   cssContent?: string;
+  onClose?: () => void;
 }
 
 type ViewportSize = "mobile" | "tablet" | "desktop" | "full";
@@ -66,7 +68,7 @@ const cyberpunkTheme = {
   },
 };
 
-export const LivePreview = ({ content, filename, cssContent = "" }: LivePreviewProps) => {
+export const LivePreview = ({ content, filename, cssContent = "", onClose }: LivePreviewProps) => {
   const [viewport, setViewport] = useState<ViewportSize>("full");
   const [zoom, setZoom] = useState(100);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -413,6 +415,17 @@ body {
               <Maximize2 className="h-4 w-4" />
             )}
           </Button>
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+              onClick={onClose}
+              title="Close preview"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
