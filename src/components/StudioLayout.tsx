@@ -230,6 +230,8 @@ export const StudioLayout = () => {
                           fileContents={fileContents}
                           onCodeGenerated={handleCodeGenerated}
                           projectId={currentProject?.id}
+                          onClose={() => setShowTerminal(false)}
+                          onMinimize={() => setShowTerminal(false)}
                         />
                       </ResizablePanel>
                     </>
@@ -244,6 +246,7 @@ export const StudioLayout = () => {
                     <LivePreview 
                       content={activeFile ? (fileContents[activeFile] || '') : ''}
                       filename={activeFile || 'untitled'}
+                      onClose={() => setShowPreview(false)}
                     />
                   </ResizablePanel>
                 </>
