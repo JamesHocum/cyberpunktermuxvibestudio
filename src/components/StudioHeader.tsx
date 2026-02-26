@@ -186,6 +186,7 @@ export const StudioHeader = ({
             showDownloader={showDownloader}
             showTesting={showTesting}
             showIntegrations={showIntegrations}
+            onTogglePWAInstall={() => setShowPWAPrompt(true)}
           />
           
           {/* User menu on mobile */}
