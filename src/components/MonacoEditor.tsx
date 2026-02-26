@@ -86,6 +86,7 @@ export const MonacoCodeEditor = ({
   });
   const [cursorPosition, setCursorPosition] = useState({ line: 1, col: 1 });
   const [isSaved, setIsSaved] = useState(true);
+  const [justSaved, setJustSaved] = useState(false);
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
   const [monacoFailed, setMonacoFailed] = useState(false);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -206,6 +207,8 @@ export default ${name};`;
       onSave();
     }
     setIsSaved(true);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 100);
     toast.success(`Saved ${activeTab}`);
   }, [activeTab, onSave]);
 
@@ -421,6 +424,7 @@ export default ${name};`;
             isBuilding={isBuilding}
             hasError={!!buildError}
             activeFile={activeFile}
+            justSaved={justSaved}
           />
         )}
         {monacoFailed ? (

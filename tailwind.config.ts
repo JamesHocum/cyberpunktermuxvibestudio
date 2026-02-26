@@ -84,6 +84,7 @@ export default {
         "veyl-error": "veyl-error 0.35s ease-in-out 0s 3",
         "veyl-avatar-glow": "veyl-avatar-glow 3s ease-in-out infinite",
         "veyl-breathe": "veyl-breathe 4s ease-in-out infinite",
+        "veyl-save-flash": "veyl-save-flash 0.6s ease-out",
       },
       keyframes: {
         "accordion-down": {
@@ -132,6 +133,11 @@ export default {
         "veyl-breathe": {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-6px)" },
+        },
+        "veyl-save-flash": {
+          "0%": { boxShadow: "0 0 40px rgba(74,222,128,1), 0 0 80px rgba(74,222,128,0.6)" },
+          "50%": { boxShadow: "0 0 60px rgba(74,222,128,1), 0 0 100px rgba(45,212,191,0.8)" },
+          "100%": { boxShadow: "0 0 20px rgba(74,222,128,0.7), 0 0 40px rgba(168,85,247,0.3)" },
         },
       },
     },
