@@ -420,6 +420,7 @@ export default ${name};`;
             isActive={syntaxTheme === 'veyl-stage'}
             isBuilding={isBuilding}
             hasError={!!buildError}
+            activeFile={activeFile}
           />
         )}
         {monacoFailed ? (
