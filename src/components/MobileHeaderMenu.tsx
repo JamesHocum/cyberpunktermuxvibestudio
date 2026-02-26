@@ -17,7 +17,8 @@ import {
   Eye,
   Settings,
   Menu,
-  MessageSquare
+  MessageSquare,
+  Smartphone
 } from "lucide-react";
 
 interface MobileHeaderMenuProps {
@@ -30,6 +31,7 @@ interface MobileHeaderMenuProps {
   onToggleGit?: () => void;
   onToggleSettings?: () => void;
   onToggleChat: () => void;
+  onTogglePWAInstall?: () => void;
   showTerminal: boolean;
   showPreview: boolean;
   showApiConfig: boolean;
@@ -49,6 +51,7 @@ export const MobileHeaderMenu = ({
   onToggleGit,
   onToggleSettings,
   onToggleChat,
+  onTogglePWAInstall,
   showTerminal,
   showPreview,
   showApiConfig,
@@ -127,6 +130,16 @@ export const MobileHeaderMenu = ({
           <Plug className="h-4 w-4 mr-2" />
           Integrations
         </DropdownMenuItem>
+        
+        {onTogglePWAInstall && (
+          <DropdownMenuItem
+            onClick={onTogglePWAInstall}
+            className="cursor-pointer text-secondary"
+          >
+            <Smartphone className="h-4 w-4 mr-2" />
+            Install App
+          </DropdownMenuItem>
+        )}
         
         <DropdownMenuSeparator className="bg-purple-600/30" />
         
