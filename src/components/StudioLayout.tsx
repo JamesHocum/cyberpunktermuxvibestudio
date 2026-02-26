@@ -22,6 +22,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { useProjectContext } from "@/contexts/ProjectContext";
 import { useRecentFiles } from "@/hooks/useRecentFiles";
 import { ModalType } from "./MatrixToolsPanel";
+import { detectEntryFile } from "@/lib/fileDetection";
 export const StudioLayout = () => {
   const navigate = useNavigate();
   const {
@@ -63,6 +64,19 @@ export const StudioLayout = () => {
   }, [isLoading, currentProject, navigate]);
 
   const [activeFile, setActiveFile] = useState<string | null>(null);
+
+  // Auto-select entry file when project loads with files
+  const fileKeys = Object.keys(fileContents);
+  useEffect(() => {
+    if (fileKeys.length > 0 && !activeFile) {
+      const entry = detectEntryFile(fileKeys);
+      if (entry) {
+        setActiveFile(entry);
+        setOpenFiles(prev => prev.includes(entry) ? prev : [...prev, entry]);
+        setShowPreview(true);
+      }
+    }
+  }, [currentProject?.id, fileKeys.length]);
   const [showChat, setShowChat] = useState(false);
   const [showTerminal, setShowTerminal] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
@@ -123,6 +137,14 @@ export const StudioLayout = () => {
     saveProject();
   }, [saveProject]);
 
+  // "Run" button: re-fetch project files and auto-select entry
+  const handleRun = useCallback(async () => {
+    if (!currentProject?.id) return;
+    await loadProject(currentProject.id);
+    // After loadProject, fileContents updates → the auto-select useEffect fires
+    setShowPreview(true);
+  }, [currentProject?.id, loadProject]);
+
   // Handle AI code generation from terminal
   const handleCodeGenerated = useCallback((code: string, filename: string) => {
     createFile(filename, 'file');
@@ -175,8 +197,8 @@ export const StudioLayout = () => {
               isSaving={isSaving}
               hasUnsavedChanges={hasUnsavedChanges}
               currentProjectName={currentProject?.name}
+              onRun={handleRun}
             />
-            
             {showApiConfig && (
               <div className="p-4 border-b bg-muted/50">
                 <StudioApiKeySelector onKeyChange={setApiKey} />
