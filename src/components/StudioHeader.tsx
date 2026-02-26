@@ -53,6 +53,7 @@ interface StudioHeaderProps {
   onToggleSettings?: () => void;
   onToggleProjectManager?: () => void;
   onSave?: () => void;
+  onRun?: () => void;
   showChat: boolean;
   showTerminal: boolean;
   showPreview: boolean;
@@ -81,7 +82,8 @@ export const StudioHeader = ({
   showApiConfig,
   showDownloader,
   showTesting,
-  showIntegrations
+  showIntegrations,
+  onRun
 }: StudioHeaderProps) => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -139,7 +141,7 @@ export const StudioHeader = ({
           <FolderKanban className="h-4 w-4 md:mr-2" />
           <span className="hidden md:inline">Projects</span>
         </Button>
-        <Button variant="ghost" size="sm" className="neon-green" onClick={handleClick}>
+        <Button variant="ghost" size="sm" className="neon-green" onClick={(e) => { handleClick(e); onRun?.(); }}>
           <Play className="h-4 w-4 md:mr-2" />
           <span className="hidden md:inline">Run</span>
         </Button>
