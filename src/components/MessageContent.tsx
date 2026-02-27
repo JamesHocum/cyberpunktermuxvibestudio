@@ -12,6 +12,7 @@ interface MessageContentProps {
   onDeploy?: (target: 'vercel' | 'netlify' | 'zip') => void;
   onUndoFile?: (filename: string) => void;
   autoApply?: boolean;
+  onDownloadProject?: () => void;
 }
 
 const CodeBlockWithApply: React.FC<{
@@ -118,7 +119,7 @@ const DeploymentOptions: React.FC<{ onDeploy?: (target: 'vercel' | 'netlify' | '
   );
 };
 
-export const MessageContent: React.FC<MessageContentProps> = ({ content, onApplyCode, onDeploy, onUndoFile, autoApply }) => {
+export const MessageContent: React.FC<MessageContentProps> = ({ content, onApplyCode, onDeploy, onUndoFile, autoApply, onDownloadProject }) => {
   const segments = parseMessageContent(content);
   const codeBlocks = segments.filter(s => s.type === 'code' && s.codeBlock);
   const [allApplied, setAllApplied] = useState(false);
@@ -229,6 +230,23 @@ export const MessageContent: React.FC<MessageContentProps> = ({ content, onApply
       )}
 
       {allApplied && <DeploymentOptions onDeploy={onDeploy} />}
+
+      {autoApply && appliedFiles.length > 0 && onDownloadProject && (
+        <div className="mt-4 p-4 rounded-lg cyber-border bg-primary/5 border-primary/30">
+          <p className="text-sm font-terminal text-foreground mb-3">
+            <Rocket className="h-4 w-4 inline mr-2 text-primary" />
+            Your project is ready! Download the complete package below.
+          </p>
+          <Button
+            variant="outline"
+            className="w-full gap-2 font-terminal text-sm cyber-border border-primary/40 text-primary hover:bg-primary/10"
+            onClick={onDownloadProject}
+          >
+            <Download className="h-4 w-4" />
+            Download Project ZIP
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
