@@ -9,6 +9,11 @@ const corsHeaders = {
 
 type CodexAction = 'chat' | 'generate' | 'refactor' | 'debug' | 'explain' | 'test' | 'analyze-image';
 
+interface BuildModeContext {
+  buildMode?: boolean;
+  existingFiles?: string[];
+}
+
 interface StackProfile {
   backend: 'supabase' | 'sqlite' | 'none';
   auth: 'supabase_auth' | 'jwt' | 'none';
@@ -31,7 +36,7 @@ interface ChatMessage {
   attachments?: ChatAttachment[];
 }
 
-const getSystemPrompt = (action: CodexAction, hasImages: boolean, stackProfile?: StackProfile): string => {
+const getSystemPrompt = (action: CodexAction, hasImages: boolean, stackProfile?: StackProfile, buildCtx?: BuildModeContext): string => {
   const codeFormattingRules = `
 
 CRITICAL CODE FORMATTING RULES:
@@ -85,8 +90,22 @@ You can analyze screenshots, mockups, and images. When analyzing:
   }
 
   switch (action) {
-    case 'generate':
-      return basePrompt + `
+    case 'generate': {
+      const buildModeBlock = buildCtx?.buildMode ? `
+
+[BUILD MODE - AUTONOMOUS COPILOT]
+You are an autonomous coding copilot. When asked to build, scaffold, or create something:
+- Produce ALL necessary files with COMPLETE, working code. No placeholders, no "TODO", no "add your code here".
+- Do NOT tell the user to run commands. Do NOT give instructions. Just produce the files.
+- Do NOT explain what each file does unless explicitly asked. Just output the files.
+- Each file MUST have its filename on the line immediately before the code fence, wrapped in backticks.
+- Cover EVERY file needed: config, components, styles, types, utils, entry points.
+- If a file already exists in the project, only include it if it needs changes.
+- For PWA requests: include manifest.json, service worker registration, installable app shell, and icons config.
+- For React projects: include package.json dependencies, vite config, index.html, App component, routing, and styles.
+${buildCtx.existingFiles?.length ? `\nEXISTING PROJECT FILES (do not regenerate unless changes needed):\n${buildCtx.existingFiles.map(f => '- ' + f).join('\n')}` : ''}` : '';
+
+      return basePrompt + buildModeBlock + `
 
 [CODE GENERATION MODE]
 Generate clean, production-ready code based on the user's description.
@@ -96,6 +115,7 @@ Rules:
 - Add helpful comments
 - Follow best practices
 - Return ONLY the code unless asked for explanations`;
+    }
 
     case 'refactor':
       return basePrompt + `
@@ -239,12 +259,14 @@ serve(async (req) => {
 
     console.log(`[CodexChat] Authenticated user: ${user.id}`);
 
-    const { messages, action = 'chat', model: requestedModel, systemPrompt: customSystemPrompt, stackProfile } = await req.json() as { 
+    const { messages, action = 'chat', model: requestedModel, systemPrompt: customSystemPrompt, stackProfile, buildMode, existingFiles } = await req.json() as { 
       messages: ChatMessage[]; 
       action?: CodexAction;
       model?: string;
       systemPrompt?: string;
       stackProfile?: StackProfile;
+      buildMode?: boolean;
+      existingFiles?: string[];
     };
 
     if (!messages || !Array.isArray(messages)) {
@@ -274,7 +296,8 @@ serve(async (req) => {
     const defaultModel = 'google/gemini-3-flash-preview';
     const model = requestedModel && SUPPORTED_MODELS.includes(requestedModel) ? requestedModel : defaultModel;
     
-    const systemPrompt = customSystemPrompt || getSystemPrompt(action, hasImages, stackProfile);
+    const buildCtx: BuildModeContext = { buildMode, existingFiles };
+    const systemPrompt = customSystemPrompt || getSystemPrompt(action, hasImages, stackProfile, buildCtx);
     const formattedMessages = formatMessagesForAI(messages, hasImages);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

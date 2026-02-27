@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Copy, Check, FileDown, FileCode, Rocket, Globe, Download, ExternalLink, Undo2 } from "lucide-react";
@@ -11,6 +11,7 @@ interface MessageContentProps {
   onApplyCode?: (filename: string, code: string) => void;
   onDeploy?: (target: 'vercel' | 'netlify' | 'zip') => void;
   onUndoFile?: (filename: string) => void;
+  autoApply?: boolean;
 }
 
 const CodeBlockWithApply: React.FC<{
@@ -117,11 +118,28 @@ const DeploymentOptions: React.FC<{ onDeploy?: (target: 'vercel' | 'netlify' | '
   );
 };
 
-export const MessageContent: React.FC<MessageContentProps> = ({ content, onApplyCode, onDeploy, onUndoFile }) => {
+export const MessageContent: React.FC<MessageContentProps> = ({ content, onApplyCode, onDeploy, onUndoFile, autoApply }) => {
   const segments = parseMessageContent(content);
   const codeBlocks = segments.filter(s => s.type === 'code' && s.codeBlock);
   const [allApplied, setAllApplied] = useState(false);
   const [appliedFiles, setAppliedFiles] = useState<string[]>([]);
+  const autoAppliedRef = useRef(false);
+
+  // Auto-apply all code blocks when autoApply is true (build mode)
+  useEffect(() => {
+    if (autoApply && onApplyCode && codeBlocks.length > 0 && !autoAppliedRef.current) {
+      autoAppliedRef.current = true;
+      const appliedNow: string[] = [];
+      codeBlocks.forEach(s => {
+        if (s.codeBlock) {
+          onApplyCode(s.codeBlock.filename, s.codeBlock.code);
+          appliedNow.push(s.codeBlock.filename);
+        }
+      });
+      setAppliedFiles(appliedNow);
+      setAllApplied(true);
+    }
+  }, [autoApply]); // intentionally minimal deps - run once on mount
 
   const recordApplied = (filename: string) => {
     setAppliedFiles(prev => prev.includes(filename) ? prev : [...prev, filename]);

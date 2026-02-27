@@ -61,6 +61,21 @@ const isAgenticCommand = (message: string): boolean => {
   return hasGitHubUrl && (hasBuildIntent || !lower.includes('?'));
 };
 
+// Detect build intent for copilot BUILD MODE
+const isBuildIntent = (message: string): boolean => {
+  const lower = message.toLowerCase();
+  const buildKeywords = [
+    'build this', 'build a', 'build an', 'build me',
+    'scaffold', 'create a pwa', 'create a react', 'create an app',
+    'set up a', 'set up the', 'setup a', 'setup the',
+    'initialize', 'init a', 'init the',
+    'generate a project', 'generate a pwa', 'generate an app',
+    'make a', 'make an app', 'make a pwa', 'make me a',
+    'build as a pwa', 'as a pwa', 'with installer'
+  ];
+  return buildKeywords.some(kw => lower.includes(kw));
+};
+
 const WELCOME_MESSAGE: Message = {
   id: 'welcome',
   role: 'assistant',
@@ -323,13 +338,17 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
       return;
     }
 
+    // Detect build intent
+    const buildMode = isBuildIntent(input);
+    const effectiveAction = buildMode && currentAction === 'chat' ? 'generate' : currentAction;
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: input,
       timestamp: new Date(),
       attachments: [...attachments],
-      action: currentAction
+      action: effectiveAction
     };
 
     const updatedMessages = [...messages, userMessage];
@@ -420,10 +439,12 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
           },
       body: JSON.stringify({
             messages: apiMessages,
-            action: currentAction,
+            action: effectiveAction,
             model: loadPersonaSettings().model,
             systemPrompt: loadPersonaSettings().systemPrompt,
-            stackProfile: loadStackProfile(currentProjectId)
+            stackProfile: loadStackProfile(currentProjectId),
+            buildMode,
+            existingFiles: buildMode ? Object.keys(fileContents) : undefined
           }),
         }
       );
@@ -485,6 +506,23 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
 
         // Save the complete assistant message
         saveMessage(assistantMessage);
+
+        // BUILD MODE: auto-apply all code blocks
+        if (buildMode && onCreateFile && onUpdateFileContent) {
+          const { parseMessageContent } = await import('@/lib/parseCodeBlocks');
+          const segments = parseMessageContent(assistantMessage.content);
+          const codeBlocks = segments.filter(s => s.type === 'code' && s.codeBlock);
+          
+          if (codeBlocks.length > 0) {
+            const applyHandler = makeHandleApplyCode(assistantMessage.id);
+            codeBlocks.forEach(s => {
+              if (s.codeBlock) {
+                applyHandler(s.codeBlock.filename, s.codeBlock.code);
+              }
+            });
+            toast.success(`🚀 Build Mode: Applied ${codeBlocks.length} files to project`);
+          }
+        }
       }
 
       setIsTyping(false);
