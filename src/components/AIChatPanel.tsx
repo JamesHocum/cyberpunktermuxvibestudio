@@ -805,7 +805,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                           variant="ghost" 
                           size="sm" 
                           className="h-6 px-2 neon-purple hover:neon-glow"
-                          onClick={() => voicePlayback.speak(message.content)}
+                          onClick={() => voicePlayback.speakDirect(message.content)}
                           disabled={voicePlayback.isSpeaking || voicePlayback.isLoading}
                           title="Read aloud"
                         >

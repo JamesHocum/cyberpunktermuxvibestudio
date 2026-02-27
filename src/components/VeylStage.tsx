@@ -95,6 +95,7 @@ const useTypewriter = (text: string | null, speed = 35) => {
 };
 
 interface VeylStageProps {
+  enabled?: boolean;
   isActive: boolean;
   isBuilding: boolean;
   hasError: boolean;
@@ -103,12 +104,15 @@ interface VeylStageProps {
 }
 
 export const VeylStage: React.FC<VeylStageProps> = ({
+  enabled = false,
   isActive,
   isBuilding,
   hasError,
   activeFile = null,
   lastSaveTick = null,
 }) => {
+  // Defense-in-depth: if not explicitly enabled, render nothing
+  if (!enabled) return null;
   const [mounted, setMounted] = useState(false);
   const [mode, setMode] = useState<VeylMode>("hidden");
   const [showOverlays, setShowOverlays] = useState(true);
@@ -350,6 +354,12 @@ export const VeylStage: React.FC<VeylStageProps> = ({
         transition: 'transform 0.15s ease-out',
       }}
     >
+      {/* Atmospheric CSS gradient layers — no asset dependency */}
+      <div className="absolute inset-0 bg-black rounded-full opacity-40 blur-3xl scale-150" />
+      <div className="absolute inset-0 opacity-70 rounded-full blur-2xl scale-125" style={{ background: 'radial-gradient(circle at 50% 40%, rgba(0,255,170,0.14) 0%, rgba(0,0,0,0) 55%)' }} />
+      <div className="absolute inset-0 opacity-60 rounded-full blur-2xl scale-125" style={{ background: 'radial-gradient(circle at 60% 70%, rgba(180,0,255,0.12) 0%, rgba(0,0,0,0) 55%)' }} />
+      <div className="absolute inset-0 opacity-80" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.92), rgba(0,0,0,0.25), rgba(0,0,0,0.88))' }} />
+
       {/* Particle canvas — fixed-size region behind avatar */}
       <div className="relative flex flex-col items-center">
         <canvas

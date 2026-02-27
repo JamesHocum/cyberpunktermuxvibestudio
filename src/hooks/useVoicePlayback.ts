@@ -27,6 +27,7 @@ interface UseVoicePlaybackReturn {
   setVoiceEnabled: (enabled: boolean) => void;
   setCurrentVoice: (voice: Voice) => void;
   speak: (text: string) => Promise<void>;
+  speakDirect: (text: string) => Promise<void>;
   stop: () => void;
 }
 
@@ -70,8 +71,8 @@ export function useVoicePlayback(): UseVoicePlaybackReturn {
     setIsLoading(false);
   }, []);
 
-  const speak = useCallback(async (text: string) => {
-    if (!voiceEnabled || !text.trim()) return;
+  const doSpeak = useCallback(async (text: string) => {
+    if (!text.trim()) return;
 
     // Clean text for TTS (remove markdown, code blocks, etc.)
     const cleanText = text
@@ -144,7 +145,18 @@ export function useVoicePlayback(): UseVoicePlaybackReturn {
       setIsLoading(false);
       setIsSpeaking(false);
     }
-  }, [voiceEnabled, currentVoice, stop]);
+  }, [currentVoice, stop]);
+
+  // speak() respects the global voiceEnabled toggle (for auto-read)
+  const speak = useCallback(async (text: string) => {
+    if (!voiceEnabled) return;
+    return doSpeak(text);
+  }, [voiceEnabled, doSpeak]);
+
+  // speakDirect() bypasses voiceEnabled — for explicit speaker button clicks
+  const speakDirect = useCallback(async (text: string) => {
+    return doSpeak(text);
+  }, [doSpeak]);
 
   return {
     isSpeaking,
@@ -156,6 +168,7 @@ export function useVoicePlayback(): UseVoicePlaybackReturn {
     setVoiceEnabled: handleVoiceEnabled,
     setCurrentVoice,
     speak,
+    speakDirect,
     stop,
   };
 }
