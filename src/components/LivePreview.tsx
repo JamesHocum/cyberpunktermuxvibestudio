@@ -24,6 +24,7 @@ interface LivePreviewProps {
   cssContent?: string;
   onClose?: () => void;
   projectFiles?: string[];
+  allFileContents?: Record<string, string>;
 }
 
 type ViewportSize = "mobile" | "tablet" | "desktop" | "full";
@@ -81,7 +82,7 @@ function detectFrameworkProject(files: string[]): string | null {
   return null;
 }
 
-export const LivePreview = ({ content, filename, cssContent = "", onClose, projectFiles = [] }: LivePreviewProps) => {
+export const LivePreview = ({ content, filename, cssContent = "", onClose, projectFiles = [], allFileContents = {} }: LivePreviewProps) => {
   const [viewport, setViewport] = useState<ViewportSize>("full");
   const [zoom, setZoom] = useState(100);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -292,10 +293,26 @@ export const LivePreview = ({ content, filename, cssContent = "", onClose, proje
 
   const currentViewport = viewportSizes[viewport];
 
-  // Generate Sandpack files for React preview
-  const sandpackFiles = isJsxFile ? {
-    "/App.tsx": content,
-    "/styles.css": cssContent || `
+  // Generate Sandpack files for React preview — include all project files
+  const sandpackFiles: Record<string, string> = {};
+  if (isJsxFile) {
+    // Add all project .tsx/.ts/.jsx/.js/.css/.json files for cross-file imports
+    Object.entries(allFileContents).forEach(([path, fileContent]) => {
+      const ext = path.split('.').pop()?.toLowerCase() || '';
+      if (['tsx', 'ts', 'jsx', 'js', 'css', 'json'].includes(ext)) {
+        const sandpackPath = path.startsWith('/') ? path : `/${path}`;
+        sandpackFiles[sandpackPath] = fileContent;
+      }
+    });
+    // Ensure current file is included (as /App.tsx if no entry exists)
+    const currentPath = filename.startsWith('/') ? filename : `/${filename}`;
+    sandpackFiles[currentPath] = content;
+    // If there's no /App.tsx, map the current file as the entry
+    if (!sandpackFiles['/App.tsx'] && !sandpackFiles['/src/App.tsx']) {
+      sandpackFiles['/App.tsx'] = content;
+    }
+    if (!sandpackFiles['/styles.css']) {
+      sandpackFiles['/styles.css'] = cssContent || `
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -303,8 +320,9 @@ body {
   min-height: 100vh;
   color: #e6e6e6;
 }
-    `,
-  } : {};
+      `;
+    }
+  }
 
   return (
     <div

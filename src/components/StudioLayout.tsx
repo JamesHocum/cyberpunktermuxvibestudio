@@ -5,6 +5,7 @@ import { StudioSidebar } from "./StudioSidebar";
 import { StudioHeader } from "./StudioHeader";
 import { MonacoCodeEditor } from "./MonacoEditor";
 import { LivePreview } from "./LivePreview";
+import { PublishDialog } from "./PublishDialog";
 import { Terminal } from "./Terminal";
 import { AIChatPanel } from "./AIChatPanel";
 import StudioApiKeySelector from "./StudioApiKeySelector";
@@ -92,6 +93,7 @@ export const StudioLayout = () => {
   const [isRunningBuild, setIsRunningBuild] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
   const [lastSaveTick, setLastSaveTick] = useState<number | null>(null);
+  const [showPublish, setShowPublish] = useState(false);
   
   // Ref for triggering sidebar matrix tools
   const [matrixModalToOpen, setMatrixModalToOpen] = useState<ModalType>(null);
@@ -205,6 +207,7 @@ export const StudioLayout = () => {
               onToggleGit={() => setShowGit(!showGit)}
               onToggleSettings={() => setShowSettings(!showSettings)}
               onToggleProjectManager={() => setShowProjectManager(!showProjectManager)}
+              onTogglePublish={() => setShowPublish(true)}
               onSave={handleSave}
               isSaving={isSaving}
               hasUnsavedChanges={hasUnsavedChanges}
@@ -263,6 +266,7 @@ export const StudioLayout = () => {
                       filename={activeFile || 'untitled'}
                       onClose={() => setShowPreview(false)}
                       projectFiles={Object.keys(fileContents)}
+                      allFileContents={fileContents}
                     />
                   </ResizablePanel>
                 </>
@@ -364,6 +368,13 @@ export const StudioLayout = () => {
           recentFiles={recentFiles}
           onOpenRecentFile={handleFileSelect}
           onClearRecentFiles={clearRecentFiles}
+        />
+        <PublishDialog
+          open={showPublish}
+          onOpenChange={setShowPublish}
+          projectName={currentProject?.name || 'MyProject'}
+          fileContents={fileContents}
+          onShowDownloader={() => setShowDownloader(true)}
         />
         
         <DevModeIndicator />

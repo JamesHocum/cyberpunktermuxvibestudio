@@ -22,7 +22,8 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
-  Smartphone
+  Smartphone,
+  Upload
 } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import { useGitHub } from '@/hooks/useGitHub';
@@ -52,6 +53,7 @@ interface StudioHeaderProps {
   onToggleGit?: () => void;
   onToggleSettings?: () => void;
   onToggleProjectManager?: () => void;
+  onTogglePublish?: () => void;
   onSave?: () => void;
   onRun?: () => void;
   showChat: boolean;
@@ -76,6 +78,7 @@ export const StudioHeader = ({
   onToggleIntegrations,
   onToggleGit,
   onToggleSettings,
+  onTogglePublish,
   showChat, 
   showTerminal,
   showPreview,
@@ -386,6 +389,16 @@ export const StudioHeader = ({
             </Button>
           )}
           
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={(e) => { handleClick(e); onTogglePublish?.(); }}
+            className="neon-green flex-shrink-0 pulse-glow"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Publish
+          </Button>
+
           <Button 
             variant="ghost" 
             size="sm"

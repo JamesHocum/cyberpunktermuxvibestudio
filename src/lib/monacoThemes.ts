@@ -1,6 +1,6 @@
 import type { editor } from 'monaco-editor';
 
-export type MonacoTheme = 'matrix' | 'cyber' | 'vaporwave' | 'veyl-stage';
+export type MonacoTheme = 'matrix' | 'cyber' | 'vaporwave';
 
 export const matrixTheme: editor.IStandaloneThemeData = {
   base: 'vs-dark',
@@ -148,59 +148,10 @@ export const vaporwaveTheme: editor.IStandaloneThemeData = {
   },
 };
 
-export const veylStageTheme: editor.IStandaloneThemeData = {
-  base: 'vs-dark',
-  inherit: true,
-  rules: [
-    { token: '', foreground: 'e040fb', background: '120818' },
-    { token: 'comment', foreground: '6a4a7a', fontStyle: 'italic' },
-    { token: 'keyword', foreground: 'ff006e', fontStyle: 'bold' },
-    { token: 'string', foreground: 'e040fb' },
-    { token: 'number', foreground: '00d4ff' },
-    { token: 'regexp', foreground: 'ffbe0b' },
-    { token: 'type', foreground: '00d4ff' },
-    { token: 'class', foreground: 'ffbe0b' },
-    { token: 'function', foreground: '00d4ff' },
-    { token: 'variable', foreground: 'e040fb' },
-    { token: 'variable.predefined', foreground: 'ff006e' },
-    { token: 'constant', foreground: 'ffbe0b' },
-    { token: 'operator', foreground: 'ff006e' },
-    { token: 'tag', foreground: 'ff006e' },
-    { token: 'attribute.name', foreground: '00d4ff' },
-    { token: 'attribute.value', foreground: 'e040fb' },
-    { token: 'delimiter', foreground: '6a4a7a' },
-  ],
-  colors: {
-    'editor.background': '#120818',
-    'editor.foreground': '#e040fb',
-    'editor.lineHighlightBackground': '#e040fb10',
-    'editor.selectionBackground': '#e040fb30',
-    'editor.inactiveSelectionBackground': '#e040fb20',
-    'editorCursor.foreground': '#e040fb',
-    'editorWhitespace.foreground': '#6a4a7a',
-    'editorLineNumber.foreground': '#6a4a7a',
-    'editorLineNumber.activeForeground': '#e040fb',
-    'editorGutter.background': '#0e0612',
-    'editorWidget.background': '#120818',
-    'editorWidget.border': '#e040fb50',
-    'editorSuggestWidget.background': '#120818',
-    'editorSuggestWidget.border': '#e040fb50',
-    'editorSuggestWidget.foreground': '#e040fb',
-    'editorSuggestWidget.selectedBackground': '#e040fb30',
-    'editorSuggestWidget.highlightForeground': '#ff006e',
-    'editorHoverWidget.background': '#120818',
-    'editorHoverWidget.border': '#e040fb50',
-    'scrollbarSlider.background': '#e040fb30',
-    'scrollbarSlider.hoverBackground': '#e040fb50',
-    'scrollbarSlider.activeBackground': '#e040fb70',
-  },
-};
-
 export const monacoThemes = {
   matrix: matrixTheme,
   cyber: cyberTheme,
   vaporwave: vaporwaveTheme,
-  'veyl-stage': veylStageTheme,
 } as const;
 
 export const getMonacoLanguage = (filename: string): string => {
