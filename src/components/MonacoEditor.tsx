@@ -421,6 +421,7 @@ export default ${name};`;
       {/* Portal-based Veyl avatar overlay — rendered into document.body */}
       {syntaxTheme === 'veyl-stage' && (
         <VeylStage
+          enabled={true}
           isActive={syntaxTheme === 'veyl-stage'}
           isBuilding={isBuilding}
           hasError={!!buildError}
