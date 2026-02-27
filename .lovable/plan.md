@@ -1,71 +1,85 @@
 
 
-# Make Codex AI a True Build Copilot
+# Hotfixes: VeylStage Hardening, TTS Speaker Fix, and Build Copilot Polish
 
-## Problem
-When a user asks "Build this project as a PWA React app with installer," the Codex AI responds with explanations, terminal commands, and instructions like "run `npm run build`" instead of directly generating files and offering a download. Since this is a web-based IDE, there is no filesystem to produce a `dist/` folder or `.exe` -- the AI needs to generate the project files and trigger the existing ZIP download mechanism.
+## Current State Analysis
 
-## Three Issues to Fix
+After thorough code review, here is the actual status of each requested fix:
 
-### 1. Strengthen the Build Mode System Prompt (Backend)
-The current BUILD MODE prompt in `codex-chat` is good but not aggressive enough. The AI still defaults to explaining. We need to add explicit prohibitions against instructional responses and terminal command suggestions.
+### HOTFIX 1 -- Portal Gate: ALREADY IMPLEMENTED
+The portal is already strictly gated in `MonacoEditor.tsx` (line 422):
+```text
+{syntaxTheme === 'veyl-stage' && (
+  <VeylStage isActive={syntaxTheme === 'veyl-stage'} ... />
+)}
+```
+No portal call occurs when the theme is not `veyl-stage`. No leak exists.
 
-**File:** `supabase/functions/codex-chat/index.ts`
-- Add stronger "DO NOT" rules to the BUILD MODE prompt section:
-  - "NEVER tell the user to run terminal commands like npm, npx, or electron-builder."
-  - "NEVER say 'run this command' or 'execute this in your terminal'."
-  - "NEVER reference dist folders, setup.exe, or build output paths."
-  - "You ARE the build system. Generate the complete files directly."
-- Add a rule: "When asked to build as PWA, generate: manifest.json, sw.js registration in index.html, App component, package.json with all deps, vite.config with PWA plugin, index.css, and any requested components."
-- Add a rule: "After generating all files, tell the user to click 'Apply All' then use the Project Export button to download."
+### HOTFIX 2 -- Safety Gate Inside VeylStage: NEEDS MINOR HARDENING
+The component uses `isActive` to control its state machine, but adding an explicit early-return `enabled` guard provides defense-in-depth if VeylStage is ever mounted from another location.
 
-### 2. Auto-Trigger Project Download After Build Mode Apply
-When build mode auto-applies files, show a prominent "Download Project" button directly in the chat instead of requiring the user to find the export feature.
+**Change:** Add `enabled` prop with default `false`, return `null` immediately if not enabled.
 
-**File:** `src/components/MessageContent.tsx`
-- After all files are auto-applied in build mode, show a download banner with a "Download as ZIP" button
-- Add an `onDownloadProject` prop to `MessageContentProps`
-- When build mode completes and files are applied, render a prominent download CTA below the applied files badges
+### HOTFIX 3 -- White Card/Wrapper: NOT PRESENT
+The avatar renders as a transparent PNG with `object-contain` and a green `drop-shadow`. There is no `<Card>`, no `bg-white`, no border, no padding wrapper anywhere in VeylStage. No change needed.
 
-### 3. Widen Build Intent Detection
-The current keyword list misses common phrasings.
+### HOTFIX 4 -- CSS Fallback Background: ADD ATMOSPHERIC GRADIENTS
+VeylStage is a portal-based floating overlay (not a scene container), so it has no "background" to fill. However, we can add subtle radial gradient atmosphere behind the avatar canvas for visual depth, using pure CSS so it never depends on missing image assets.
 
-**File:** `src/components/AIChatPanel.tsx`
-- Add more build intent keywords: `'create project'`, `'generate project'`, `'build project'`, `'build me a'`, `'make me an app'`, `'create an application'`, `'build as a'`, `'compile'`, `'package this'`, `'export as'`
-- After build mode auto-apply completes, auto-show the ProjectDownloader modal (or append a download button to the message)
+**Change:** Add layered radial gradients (green/purple haze) behind the particle canvas inside the portal wrapper.
+
+### TTS FIX -- Speaker Button Silent: ROOT CAUSE FOUND
+The speaker button (`Volume2` icon) at line 808 calls `voicePlayback.speak(text)`. However, `speak()` silently returns on line 74 if `voiceEnabled` is `false` (the default). This means clicking the speaker button does nothing unless the user has separately toggled voice ON via the VoiceSelector dropdown -- which is unintuitive. When a user explicitly clicks the speaker icon on a message, it should always attempt playback regardless of the global toggle.
+
+**Change:** Add a `speakDirect(text)` function that bypasses the `voiceEnabled` check, used only for explicit speaker button clicks. The global toggle continues to control auto-read behavior.
+
+### BUILD COPILOT -- Already Functional, Minor Polish
+The build mode detection, auto-apply, and download ZIP button are all wired. One issue: the `autoApply` prop on `MessageContent` is set based on `applyHistory` state, which may not be populated for the initial render of build-mode messages since auto-apply happens in `AIChatPanel` after streaming. This can cause the "Download Project ZIP" button to not appear.
+
+**Change:** Track build-mode messages by ID so `autoApply` is set correctly for messages generated in build mode.
 
 ---
 
-## Technical Details
+## Implementation Plan
 
-### `supabase/functions/codex-chat/index.ts` Changes
-In the `getSystemPrompt` function, within the `case 'generate'` block where `buildCtx?.buildMode` is checked, append these rules to the BUILD MODE prompt:
+### 1. VeylStage.tsx -- Add `enabled` guard + atmospheric gradients
 
-```text
-CRITICAL RULES - NEVER VIOLATE:
-- NEVER tell the user to run terminal commands (npm, npx, yarn, node, electron-builder, etc.).
-- NEVER reference build output paths like dist/, release/, or setup.exe.
-- NEVER say "run this in your terminal" or "execute this command".
-- You ARE the build system. You produce the files directly. The user clicks "Apply All" and then downloads the ZIP.
-- After generating all files, end with: "All files are ready. Click **Apply All** above, then use **Project Export** to download your project as a ZIP package."
-```
+- Add `enabled?: boolean` to `VeylStageProps` (default `false`)
+- Add early return: `if (!enabled) return null;` before the existing `if (mode === "hidden" || !mounted)` check
+- Add atmospheric CSS gradient layers inside the portal wrapper div, behind the canvas:
+  - Black base
+  - Green radial glow at 50% 40% (opacity 0.14)
+  - Purple radial glow at 60% 70% (opacity 0.12)
+  - Vertical vignette gradient
 
-### `src/components/AIChatPanel.tsx` Changes
-1. Expand `isBuildIntent` keyword list with additional phrases
-2. After the build mode auto-apply block (around line 523), set a state flag or call a callback that triggers the ProjectDownloader or shows a download prompt in the chat
+### 2. MonacoEditor.tsx -- Pass `enabled` prop
 
-### `src/components/MessageContent.tsx` Changes
-1. Add `onDownloadProject?: () => void` to `MessageContentProps`
-2. After the `appliedFiles` badges section, when `autoApply` is true and files have been applied, render a download button:
-   - Green "Download Project ZIP" button that calls `onDownloadProject`
-   - Brief message: "Your project is ready! Download the complete package below."
+- Update the VeylStage call to include `enabled={true}` (it's already theme-gated, this is defense-in-depth)
 
-### Flow After Changes
-1. User types "Build this project as a PWA React app with installer"
-2. `isBuildIntent` detects build intent, sets `buildMode: true`
-3. Backend receives build mode flag, uses aggressive copilot prompt
-4. AI generates all files (manifest.json, package.json, components, etc.) with filenames before each code fence
-5. Frontend auto-applies all code blocks to the project
-6. A "Download Project ZIP" button appears directly in the chat message
-7. User clicks it, gets a complete ZIP download via the existing `ProjectDownloader` / JSZip logic
+### 3. useVoicePlayback.ts -- Add `speakDirect` function
+
+- Add a new `speakDirect(text: string)` method that runs the same TTS pipeline as `speak()` but skips the `voiceEnabled` check
+- Export it in the return object
+
+### 4. AIChatPanel.tsx -- Wire speaker button to `speakDirect`
+
+- Change speaker button `onClick` from `voicePlayback.speak(message.content)` to `voicePlayback.speakDirect(message.content)`
+- Track build-mode message IDs in a `Set` so `autoApply` is correctly set on `MessageContent` for those messages
+
+### 5. Deploy edge function (no changes needed)
+
+The `elevenlabs-tts` and `codex-chat` edge functions are already correctly configured. The `ELEVENLABS_API_KEY` secret is present. No backend changes required.
+
+---
+
+## Files Modified
+
+| File | Change |
+|------|--------|
+| `src/components/VeylStage.tsx` | Add `enabled` prop guard + atmospheric gradient layers |
+| `src/components/MonacoEditor.tsx` | Pass `enabled={true}` to VeylStage |
+| `src/hooks/useVoicePlayback.ts` | Add `speakDirect()` method bypassing voiceEnabled check |
+| `src/components/AIChatPanel.tsx` | Use `speakDirect` for speaker button; track build-mode message IDs for autoApply |
+
+No destructive changes. Existing architecture preserved. No files deleted.
 
