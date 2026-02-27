@@ -65,13 +65,15 @@ const isAgenticCommand = (message: string): boolean => {
 const isBuildIntent = (message: string): boolean => {
   const lower = message.toLowerCase();
   const buildKeywords = [
-    'build this', 'build a', 'build an', 'build me',
-    'scaffold', 'create a pwa', 'create a react', 'create an app',
+    'build this', 'build a', 'build an', 'build me', 'build project', 'build as a',
+    'scaffold', 'create a pwa', 'create a react', 'create an app', 'create a project',
+    'create an application', 'create project', 'create me',
     'set up a', 'set up the', 'setup a', 'setup the',
     'initialize', 'init a', 'init the',
-    'generate a project', 'generate a pwa', 'generate an app',
-    'make a', 'make an app', 'make a pwa', 'make me a',
-    'build as a pwa', 'as a pwa', 'with installer'
+    'generate a project', 'generate a pwa', 'generate an app', 'generate project',
+    'make a', 'make an app', 'make a pwa', 'make me a', 'make me an app',
+    'build as a pwa', 'as a pwa', 'with installer',
+    'compile', 'package this', 'export as'
   ];
   return buildKeywords.some(kw => lower.includes(kw));
 };
@@ -784,6 +786,8 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                         onApplyCode={message.role === 'assistant' ? makeHandleApplyCode(message.id) : undefined}
                         onDeploy={message.role === 'assistant' ? handleDeploy : undefined}
                         onUndoFile={message.role === 'assistant' ? makeHandleUndoFile(message.id) : undefined}
+                        autoApply={message.role === 'assistant' && message.action === 'generate' && !!applyHistory[message.id]}
+                        onDownloadProject={message.role === 'assistant' ? () => onDeploy?.('zip') : undefined}
                       />
                     </div>
                     
