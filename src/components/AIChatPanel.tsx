@@ -201,6 +201,11 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
   // Load chat history from database
   const loadChatHistory = useCallback(async () => {
     if (!user?.id) return;
+    // If no project is selected, don't load orphaned messages
+    if (!currentProjectId) {
+      setMessages([WELCOME_MESSAGE]);
+      return;
+    }
     
     setIsLoadingHistory(true);
     try {
@@ -208,7 +213,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
         .from('chat_messages')
         .select('*')
         .eq('user_id', user.id)
-        .eq('project_id', currentProjectId || null)
+        .eq('project_id', currentProjectId)
         .order('created_at', { ascending: true })
         .limit(100);
 
@@ -230,6 +235,12 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
       setIsLoadingHistory(false);
     }
   }, [user?.id, currentProjectId]);
+
+  // Reset messages when project changes
+  useEffect(() => {
+    setMessages([WELCOME_MESSAGE]);
+    setApplyHistory({});
+  }, [currentProjectId]);
 
   // Load history on mount and when project changes
   useEffect(() => {

@@ -141,9 +141,13 @@ export function useVoicePlayback(): UseVoicePlaybackReturn {
         return;
       }
       console.error('Voice playback error:', err);
-      setError(err instanceof Error ? err.message : 'Voice playback failed');
+      const errorMsg = err instanceof Error ? err.message : 'Voice playback failed';
+      setError(errorMsg);
       setIsLoading(false);
       setIsSpeaking(false);
+      // Surface error to the user via toast
+      const { toast } = await import('sonner');
+      toast.error(`TTS failed: ${errorMsg}`);
     }
   }, [currentVoice, stop]);
 

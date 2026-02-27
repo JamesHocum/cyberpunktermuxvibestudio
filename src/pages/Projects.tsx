@@ -62,7 +62,7 @@ const STACK_OPTIONS: StackOption[] = [
 
 const Projects = () => {
   const navigate = useNavigate();
-  const { projects, isLoading, createProject, deleteProject, loadProject } = useProjectContext();
+  const { projects, isLoading, hasLoaded, createProject, deleteProject, loadProject } = useProjectContext();
   const { user, signOut } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
@@ -285,14 +285,14 @@ const Projects = () => {
           )}
 
           {/* Loading state */}
-          {isLoading && (
+          {(isLoading || !hasLoaded) && (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="h-8 w-8 text-primary animate-spin" />
             </div>
           )}
 
           {/* Project grid */}
-          {!isLoading && (
+          {!isLoading && hasLoaded && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {projects.map((project) => (
                 <Card

@@ -21,7 +21,7 @@ import {
   monacoThemes, 
   getMonacoLanguage 
 } from "@/lib/monacoThemes";
-import { VeylStage } from "@/components/VeylStage";
+
 
 interface MonacoEditorProps {
   activeFile: string | null;
@@ -222,7 +222,7 @@ export default ${name};`;
     monaco.editor.defineTheme("matrix", monacoThemes.matrix);
     monaco.editor.defineTheme("cyber", monacoThemes.cyber);
     monaco.editor.defineTheme("vaporwave", monacoThemes.vaporwave);
-    monaco.editor.defineTheme("veyl-stage", monacoThemes['veyl-stage']);
+    
 
     // Configure TypeScript/JavaScript for React
     monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
@@ -407,28 +407,11 @@ export default ${name};`;
               >
                 Vaporwave Theme
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => changeTheme("veyl-stage")}
-                className="text-purple-400 font-terminal"
-              >
-                Veyl Stage
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
 
-      {/* Portal-based Veyl avatar overlay — rendered into document.body */}
-      {syntaxTheme === 'veyl-stage' && (
-        <VeylStage
-          enabled={true}
-          isActive={syntaxTheme === 'veyl-stage'}
-          isBuilding={isBuilding}
-          hasError={!!buildError}
-          activeFile={activeFile}
-          lastSaveTick={lastSaveTick}
-        />
-      )}
 
       {/* Monaco Editor */}
       <div className="flex-1 relative overflow-hidden">
