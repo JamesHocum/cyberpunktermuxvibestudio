@@ -1,51 +1,65 @@
 
-# Portal-Based Veyl Avatar Overlay
 
-## Overview
-Refactor VeylStage from a constrained child element inside the Monaco editor container to a React portal rendered into `document.body`. This eliminates all parent clipping, borders, and overflow constraints, allowing the avatar to float freely above the entire IDE with proper z-indexing.
+# Fine-Tune Codex AI to Act as a True Copilot
 
-## Files to Modify
+## Problem
+When users ask the Codex AI to "build this project as a PWA React with installer," it responds with explanations and instructions instead of directly generating and applying code to the project. It behaves like a tutorial rather than a copilot.
 
-### 1. `src/components/VeylStage.tsx`
-- Wrap the entire render output in `createPortal(..., document.body)` using `react-dom`
-- Change the root container from `absolute inset-0` to `fixed` positioning with bottom-center placement
-- Remove the alley background image and dark overlay gradient (no longer filling a container -- the avatar floats on its own)
-- Keep the particle canvas but scope it to a fixed-size area behind the avatar (e.g. 300x400 region)
-- Remove the `border-2 border-neon-green/80` from the avatar panel -- no box, no border
-- Remove `overflow-hidden` and `bg-black` from the root container
-- Keep all existing animation classes, state machine logic, quotes, typewriter, and particle system
-- Add `pointer-events: none` on the wrapper so clicks pass through to the IDE
-- Use `z-index: 9999` to float above all editor content
-- Add a `mounted` state guard for SSR-safe portal rendering
-- Reposition speech bubbles to stack below the avatar within the portal
+## Root Cause
+1. **System prompt is too passive** -- it says "generate code" but doesn't instruct the AI to act autonomously or produce all necessary files in one response
+2. **No auto-apply for build commands** -- even when code blocks are generated correctly, the user must manually click "Apply" on each one
+3. **No detection of "build" intent** -- commands like "build this as a PWA" should trigger a more aggressive, file-producing mode
+4. **AI defaults to explaining** rather than doing, especially for broad requests
 
-### 2. `src/components/MonacoEditor.tsx`
-- Move `<VeylStage>` outside the `div.flex-1.relative.overflow-hidden` container (lines 422-431)
-- Since VeylStage now portals to `document.body`, its placement in the component tree only matters for React lifecycle, not DOM positioning
-- Keep it adjacent to or just before the editor div, still conditionally rendered when `syntaxTheme === 'veyl-stage'`
+## Solution
+
+### 1. Enhance the system prompt in `codex-chat` edge function
+- Add a "BUILD MODE" prompt variant triggered when the action is `generate` or the message contains build-intent keywords
+- Instruct the AI to produce ALL required files with full content, no placeholders, no "run this command" instructions
+- Emphasize: "You are a copilot. Create the files. Do not instruct the user to create them."
+
+### 2. Add build-intent detection in `AIChatPanel.tsx`
+- Detect phrases like "build this", "scaffold", "create a PWA", "set up", "initialize" and auto-set the action to `generate`
+- Pass a `buildMode: true` flag to the edge function so the system prompt switches to full-build mode
+
+### 3. Add auto-apply option for build responses
+- When `buildMode` is active and the AI response contains 2+ code blocks, show an "Auto-Apply All" banner at the top of the response that automatically creates/updates all files
+- Add a user setting (stored in localStorage) to toggle auto-apply behavior
+
+### 4. Improve the `generate` system prompt to be project-aware
+- Include the current file list in the prompt context so the AI knows what already exists
+- Instruct it to only generate files that are missing or need changes
+- For PWA builds specifically: generate `manifest.json`, service worker registration, and installable app shell
+
+---
 
 ## Technical Details
 
-### Portal Structure
-```text
-document.body
-  +-- VeylStage portal (fixed, bottom-center, z-9999, pointer-events-none)
-       +-- particle canvas (absolute within a sized wrapper)
-       +-- avatar img (no border, no box, object-contain)
-       +-- speech bubbles (positioned below avatar)
-```
+### Files to modify
 
-### What Stays the Same
-- All state machine logic (hidden/entering/hero/idle/cooldown/error/saved)
-- All animation classes (veyl-enter, veyl-hero, veyl-idle, veyl-error, etc.)
-- Typewriter hook and quote cycling
-- Particle system with 2s pulse sync
-- lastSaveTick-based save reactions
-- Conditional activation only when veyl-stage theme is selected
+**`supabase/functions/codex-chat/index.ts`**
+- Add `buildMode` to the request interface
+- Add a new `BUILD MODE` system prompt section that says:
+  - "You are an autonomous coding copilot. When asked to build something, produce ALL necessary files with complete code."
+  - "Do NOT tell the user to run commands. Do NOT give instructions. Just produce the files."
+  - "Each file must have its filename on the line before the code fence."
+  - "Cover every file needed: config, components, styles, types, utils."
+- When `buildMode` is true, append the project's existing file list to context
 
-### What Changes
-- Root element: `div.absolute.inset-0` becomes `div.fixed.bottom-6` with explicit centering
-- Background: alley image and gradient overlay removed (avatar stands alone over the editor)
-- Avatar panel: border and rounded-xl box removed; just the transparent PNG floating freely
-- Canvas: sized to a fixed region (e.g. 320x400) centered on the avatar area rather than filling a parent
-- Rendering: wrapped in `createPortal` for DOM-level escape from layout constraints
+**`src/components/AIChatPanel.tsx`**
+- Add `isBuildIntent()` function to detect build commands (keywords: "build", "scaffold", "create a", "set up", "initialize", "generate a", "make a")
+- When build intent is detected, auto-set action to `generate` and pass `buildMode: true`
+- After streaming completes in build mode, auto-trigger `handleApplyAll` equivalent -- iterate all parsed code blocks and call `onCreateFile` + `onUpdateFileContent` for each
+- Show a toast: "Applied X files to your project"
+
+**`src/components/MessageContent.tsx`**
+- Add `autoApply` prop (boolean)
+- When `autoApply` is true and code blocks are present, call `onApplyCode` for each block automatically on mount via `useEffect`
+- Show applied-files badges immediately
+
+### Edge cases handled
+- If a file already exists, `onUpdateFileContent` overwrites it (existing behavior)
+- Undo is still available per-file via the existing undo system
+- Non-build messages continue to work exactly as before
+- Users can still manually apply individual blocks if auto-apply is off
+
