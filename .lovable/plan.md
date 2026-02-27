@@ -1,65 +1,71 @@
 
 
-# Fine-Tune Codex AI to Act as a True Copilot
+# Make Codex AI a True Build Copilot
 
 ## Problem
-When users ask the Codex AI to "build this project as a PWA React with installer," it responds with explanations and instructions instead of directly generating and applying code to the project. It behaves like a tutorial rather than a copilot.
+When a user asks "Build this project as a PWA React app with installer," the Codex AI responds with explanations, terminal commands, and instructions like "run `npm run build`" instead of directly generating files and offering a download. Since this is a web-based IDE, there is no filesystem to produce a `dist/` folder or `.exe` -- the AI needs to generate the project files and trigger the existing ZIP download mechanism.
 
-## Root Cause
-1. **System prompt is too passive** -- it says "generate code" but doesn't instruct the AI to act autonomously or produce all necessary files in one response
-2. **No auto-apply for build commands** -- even when code blocks are generated correctly, the user must manually click "Apply" on each one
-3. **No detection of "build" intent** -- commands like "build this as a PWA" should trigger a more aggressive, file-producing mode
-4. **AI defaults to explaining** rather than doing, especially for broad requests
+## Three Issues to Fix
 
-## Solution
+### 1. Strengthen the Build Mode System Prompt (Backend)
+The current BUILD MODE prompt in `codex-chat` is good but not aggressive enough. The AI still defaults to explaining. We need to add explicit prohibitions against instructional responses and terminal command suggestions.
 
-### 1. Enhance the system prompt in `codex-chat` edge function
-- Add a "BUILD MODE" prompt variant triggered when the action is `generate` or the message contains build-intent keywords
-- Instruct the AI to produce ALL required files with full content, no placeholders, no "run this command" instructions
-- Emphasize: "You are a copilot. Create the files. Do not instruct the user to create them."
+**File:** `supabase/functions/codex-chat/index.ts`
+- Add stronger "DO NOT" rules to the BUILD MODE prompt section:
+  - "NEVER tell the user to run terminal commands like npm, npx, or electron-builder."
+  - "NEVER say 'run this command' or 'execute this in your terminal'."
+  - "NEVER reference dist folders, setup.exe, or build output paths."
+  - "You ARE the build system. Generate the complete files directly."
+- Add a rule: "When asked to build as PWA, generate: manifest.json, sw.js registration in index.html, App component, package.json with all deps, vite.config with PWA plugin, index.css, and any requested components."
+- Add a rule: "After generating all files, tell the user to click 'Apply All' then use the Project Export button to download."
 
-### 2. Add build-intent detection in `AIChatPanel.tsx`
-- Detect phrases like "build this", "scaffold", "create a PWA", "set up", "initialize" and auto-set the action to `generate`
-- Pass a `buildMode: true` flag to the edge function so the system prompt switches to full-build mode
+### 2. Auto-Trigger Project Download After Build Mode Apply
+When build mode auto-applies files, show a prominent "Download Project" button directly in the chat instead of requiring the user to find the export feature.
 
-### 3. Add auto-apply option for build responses
-- When `buildMode` is active and the AI response contains 2+ code blocks, show an "Auto-Apply All" banner at the top of the response that automatically creates/updates all files
-- Add a user setting (stored in localStorage) to toggle auto-apply behavior
+**File:** `src/components/MessageContent.tsx`
+- After all files are auto-applied in build mode, show a download banner with a "Download as ZIP" button
+- Add an `onDownloadProject` prop to `MessageContentProps`
+- When build mode completes and files are applied, render a prominent download CTA below the applied files badges
 
-### 4. Improve the `generate` system prompt to be project-aware
-- Include the current file list in the prompt context so the AI knows what already exists
-- Instruct it to only generate files that are missing or need changes
-- For PWA builds specifically: generate `manifest.json`, service worker registration, and installable app shell
+### 3. Widen Build Intent Detection
+The current keyword list misses common phrasings.
+
+**File:** `src/components/AIChatPanel.tsx`
+- Add more build intent keywords: `'create project'`, `'generate project'`, `'build project'`, `'build me a'`, `'make me an app'`, `'create an application'`, `'build as a'`, `'compile'`, `'package this'`, `'export as'`
+- After build mode auto-apply completes, auto-show the ProjectDownloader modal (or append a download button to the message)
 
 ---
 
 ## Technical Details
 
-### Files to modify
+### `supabase/functions/codex-chat/index.ts` Changes
+In the `getSystemPrompt` function, within the `case 'generate'` block where `buildCtx?.buildMode` is checked, append these rules to the BUILD MODE prompt:
 
-**`supabase/functions/codex-chat/index.ts`**
-- Add `buildMode` to the request interface
-- Add a new `BUILD MODE` system prompt section that says:
-  - "You are an autonomous coding copilot. When asked to build something, produce ALL necessary files with complete code."
-  - "Do NOT tell the user to run commands. Do NOT give instructions. Just produce the files."
-  - "Each file must have its filename on the line before the code fence."
-  - "Cover every file needed: config, components, styles, types, utils."
-- When `buildMode` is true, append the project's existing file list to context
+```text
+CRITICAL RULES - NEVER VIOLATE:
+- NEVER tell the user to run terminal commands (npm, npx, yarn, node, electron-builder, etc.).
+- NEVER reference build output paths like dist/, release/, or setup.exe.
+- NEVER say "run this in your terminal" or "execute this command".
+- You ARE the build system. You produce the files directly. The user clicks "Apply All" and then downloads the ZIP.
+- After generating all files, end with: "All files are ready. Click **Apply All** above, then use **Project Export** to download your project as a ZIP package."
+```
 
-**`src/components/AIChatPanel.tsx`**
-- Add `isBuildIntent()` function to detect build commands (keywords: "build", "scaffold", "create a", "set up", "initialize", "generate a", "make a")
-- When build intent is detected, auto-set action to `generate` and pass `buildMode: true`
-- After streaming completes in build mode, auto-trigger `handleApplyAll` equivalent -- iterate all parsed code blocks and call `onCreateFile` + `onUpdateFileContent` for each
-- Show a toast: "Applied X files to your project"
+### `src/components/AIChatPanel.tsx` Changes
+1. Expand `isBuildIntent` keyword list with additional phrases
+2. After the build mode auto-apply block (around line 523), set a state flag or call a callback that triggers the ProjectDownloader or shows a download prompt in the chat
 
-**`src/components/MessageContent.tsx`**
-- Add `autoApply` prop (boolean)
-- When `autoApply` is true and code blocks are present, call `onApplyCode` for each block automatically on mount via `useEffect`
-- Show applied-files badges immediately
+### `src/components/MessageContent.tsx` Changes
+1. Add `onDownloadProject?: () => void` to `MessageContentProps`
+2. After the `appliedFiles` badges section, when `autoApply` is true and files have been applied, render a download button:
+   - Green "Download Project ZIP" button that calls `onDownloadProject`
+   - Brief message: "Your project is ready! Download the complete package below."
 
-### Edge cases handled
-- If a file already exists, `onUpdateFileContent` overwrites it (existing behavior)
-- Undo is still available per-file via the existing undo system
-- Non-build messages continue to work exactly as before
-- Users can still manually apply individual blocks if auto-apply is off
+### Flow After Changes
+1. User types "Build this project as a PWA React app with installer"
+2. `isBuildIntent` detects build intent, sets `buildMode: true`
+3. Backend receives build mode flag, uses aggressive copilot prompt
+4. AI generates all files (manifest.json, package.json, components, etc.) with filenames before each code fence
+5. Frontend auto-applies all code blocks to the project
+6. A "Download Project ZIP" button appears directly in the chat message
+7. User clicks it, gets a complete ZIP download via the existing `ProjectDownloader` / JSZip logic
 
