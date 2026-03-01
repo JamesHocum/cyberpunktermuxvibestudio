@@ -1,116 +1,111 @@
 
 
-# Comprehensive IDE Fixes: Remove Veyl, Fix Chat Isolation, Add Publish/Download Features
+# Add Linux/macOS Export, Completed Projects Tab, and End-to-End Testing
 
 ## Overview
 
-This plan addresses 7 distinct issues reported. Changes span removing the Veyl Stage theme, fixing chat conversation isolation per project, improving the Projects page load state, adding publish/download capabilities, and fixing the preview pane.
+Three features to implement:
+1. Add Linux AppImage and macOS DMG export options to the Publish dialog
+2. Create a `project_exports` database table and a "Completed Projects" tab on the Projects page with re-download capability
+3. Wire export events to persist in the database so completed builds appear in the new tab
 
 ---
 
-## 1. Remove Veyl Stage Theme Entirely
+## 1. Add Linux AppImage and macOS DMG to Publish Dialog
 
-**Files to modify:**
-- **Delete** `src/components/VeylStage.tsx`
-- **`src/components/MonacoEditor.tsx`**: Remove the VeylStage import (line 24), remove the portal block (lines 421-431), remove `veyl-stage` from the theme dropdown (lines 410-415), remove `isBuilding`/`buildError`/`lastSaveTick` props if only used for Veyl
-- **`src/lib/monacoThemes.ts`**: Remove `'veyl-stage'` from the `MonacoTheme` type union and delete the `veyl-stage` theme definition object
+**File: `src/components/PublishDialog.tsx`**
 
----
+Add two new export handlers and option cards alongside the existing Windows .exe:
 
-## 2. Fix TTS Speaker Button
+- **`handleLinuxPackage`**: Generates a ZIP with project files, Electron main process, `package.json` with `package:linux` script (`electron-builder --linux`), and `electron-builder.config.js` targeting `AppImage`, `deb`, and `rpm`. Includes a README with build instructions.
 
-The `speakDirect` method was already wired in the last diff. The remaining issue is that the ElevenLabs edge function requires a valid `ELEVENLABS_API_KEY` secret. We will verify the secret exists and add error feedback so the user knows if TTS fails due to a missing key.
+- **`handleMacPackage`**: Same pattern but targets `dmg` and `zip` for macOS, with `package:mac` script. Config includes `mac.category`, `mac.darkModeSupport`, and DMG layout settings.
 
-**File to modify:**
-- **`src/hooks/useVoicePlayback.ts`**: Add a toast notification on TTS failure so silent failures become visible (e.g., "TTS failed: check API key in Integrations")
+- Add two new entries to the `options` array:
+  - `{ id: "linux", icon: <Terminal>, title: "Linux AppImage", badge: "LINUX", desc: "Download with Electron config -- run npm run package:linux locally" }`
+  - `{ id: "mac", icon: <Apple/Monitor>, title: "macOS DMG", badge: "MACOS", desc: "Download with Electron config -- run npm run package:mac locally" }`
 
----
+- Import `Terminal` icon from lucide-react for Linux (there's no Apple icon in lucide, so we'll use a custom label or the `Laptop` icon).
 
-## 3. Fix Cross-Project Chat Conversations
-
-**Root cause:** In `AIChatPanel.tsx` line 211, the query is `.eq('project_id', currentProjectId || null)`. When `currentProjectId` is `undefined`, this queries for `project_id = null`, returning orphaned messages from previous sessions.
-
-**Fix in `src/components/AIChatPanel.tsx`:**
-- In `loadChatHistory`: If `currentProjectId` is undefined/null, skip loading history entirely (start fresh with just the welcome message)
-- In `saveMessage`: If `currentProjectId` is undefined, save with `project_id: null` but don't load them back on next mount
-- In `clearHistory`: Same guard -- only clear for the current project
-- Reset messages to `[WELCOME_MESSAGE]` when `currentProjectId` changes (add effect)
+- After each successful download, record the export to the database (see section 3).
 
 ---
 
-## 4. Fix Projects Page "Create First Project" Flash
+## 2. Database: `project_exports` Table
 
-**Root cause:** The `projects` array starts empty while `isLoading` is `true`. The code at line 295 checks `!isLoading` before rendering the grid, which should prevent the flash. However, `loadProjects` runs on mount via `useEffect` in the hook, and there may be a render cycle where `isLoading` becomes `false` before `projects` is populated.
+**New migration** to create a table that tracks completed exports/builds:
 
-**Fix in `src/pages/Projects.tsx`:**
-- Move the empty state check to also verify that loading has completed AND projects is empty: show "Create Your First Project" only when `!isLoading && projects.length === 0`
-- This is already the current logic, so the real fix is in `useProject.ts`: ensure `setProjects` is called BEFORE `setIsLoading(false)` (it already is -- the issue may be the initial render). Add a `hasLoaded` flag to distinguish "never loaded" from "loaded but empty".
-
----
-
-## 5. Add Completed Projects / Download Tab
-
-**New feature:** Add a "Publish" button to the IDE header toolbar that opens a deployment dialog with options:
-- Deploy as PWA (generates manifest + service worker files, then triggers ZIP download)
-- Deploy as Web App (opens Vercel/Netlify links)  
-- Download as ZIP (existing ProjectDownloader)
-- Download as Windows Installer Package (generates Electron config + triggers ZIP with build instructions)
-
-**Files to modify:**
-- **`src/components/StudioHeader.tsx`**: Add a "Publish" button that opens the deploy dialog
-- **`src/components/StudioLayout.tsx`**: Wire the publish action to show ProjectDownloader or a new PublishDialog
-- **New file `src/components/PublishDialog.tsx`**: A dialog with deployment target options (PWA, Web, ZIP, Windows EXE package). For Windows EXE, it bundles the Electron config files (`electron/main.cjs`, `electron-builder.config.js`) into the ZIP so the user can run `npm run package:win` locally.
-
----
-
-## 6. Fix Preview Pane Not Displaying Current Project
-
-**Root cause:** `LivePreview` receives only the content of the single active file (`fileContents[activeFile]`). For React/TSX files, it tries Sandpack mode but only passes the single file, not the whole project.
-
-**Fix in `src/components/StudioLayout.tsx`:**
-- Pass the full `fileContents` map to `LivePreview` as a new prop so Sandpack can resolve imports across files
-- **`src/components/LivePreview.tsx`**: Update the Sandpack configuration to include all project files (not just the active one), mapping the `fileContents` record to Sandpack's file format. This allows multi-file React projects to render correctly.
-
----
-
-## Technical Details
-
-### MonacoEditor.tsx changes (Veyl removal)
-- Remove line 24: `import { VeylStage } from "@/components/VeylStage";`
-- Remove lines 421-431: The portal block
-- Remove "Veyl Stage" dropdown item (lines 410-415)
-- Keep `isBuilding`, `buildError`, `lastSaveTick` props as they may be used elsewhere
-
-### monacoThemes.ts changes
-- Change type from `'matrix' | 'cyber' | 'vaporwave' | 'veyl-stage'` to `'matrix' | 'cyber' | 'vaporwave'`
-- Delete the `veyl-stage` theme data object
-
-### AIChatPanel.tsx chat isolation fix
 ```text
-// In loadChatHistory:
-if (!currentProjectId) {
-  setMessages([WELCOME_MESSAGE]);
-  return; // Don't load orphaned messages
-}
+CREATE TABLE public.project_exports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
+  export_type TEXT NOT NULL,        -- 'pwa', 'windows', 'linux', 'mac', 'zip', 'web'
+  project_name TEXT NOT NULL,
+  file_count INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
 
-// Add effect to reset on project change:
-useEffect(() => {
-  setMessages([WELCOME_MESSAGE]);
-  setApplyHistory({});
-}, [currentProjectId]);
+ALTER TABLE public.project_exports ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own exports"
+  ON public.project_exports FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own exports"
+  ON public.project_exports FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own exports"
+  ON public.project_exports FOR DELETE
+  USING (auth.uid() = user_id);
 ```
 
-### PublishDialog.tsx (new component)
-- Modal with 4 deployment cards: PWA, Web Deploy, ZIP Download, Windows Package
-- PWA option: auto-generates manifest.json + sw.js into project files, then triggers ZIP
-- Web Deploy: links to Vercel/Netlify with instructions
-- ZIP: triggers existing ProjectDownloader
-- Windows Package: bundles project + Electron config into ZIP with README for local build
+This table stores metadata about each export. We do NOT store the actual ZIP blob (too large for DB rows). Instead, the "Re-download" action in the Completed Projects tab will re-generate the package on the fly from the project's current files.
 
-### LivePreview.tsx multi-file support
-- Accept `allFileContents?: Record<string, string>` prop
-- In Sandpack mode, convert `allFileContents` to Sandpack file format
-- This enables cross-file imports to resolve in the preview
+---
+
+## 3. Record Exports from PublishDialog
+
+**File: `src/components/PublishDialog.tsx`**
+
+- Accept a new optional prop: `projectId?: string`
+- After each successful download (PWA, Windows, Linux, Mac, ZIP), insert a row into `project_exports` with the export type, project name, and file count
+- Pass `currentProject?.id` from `StudioLayout.tsx` to `PublishDialog`
+
+**File: `src/components/StudioLayout.tsx`**
+
+- Pass `projectId={currentProject?.id}` to `<PublishDialog>`
+
+---
+
+## 4. "Completed Projects" Tab on Projects Page
+
+**File: `src/pages/Projects.tsx`**
+
+Add a tab bar at the top of the content area with two tabs: "Your Projects" (existing grid) and "Completed Builds" (new).
+
+The "Completed Builds" tab:
+- Queries `project_exports` table ordered by `created_at DESC`
+- Displays a card for each export showing: project name, export type badge (PWA/Windows/Linux/macOS/ZIP), date
+- Each card has a "Re-download" button that:
+  - Loads the project's files from `project_files` table
+  - Calls the same ZIP generation logic as PublishDialog for that export type
+  - Downloads the package
+- Also has a delete button to remove the export record
+
+The re-download logic will be extracted into a shared utility:
+
+**New file: `src/lib/exportGenerators.ts`**
+
+Extract the ZIP generation functions from `PublishDialog.tsx` into reusable functions:
+- `generatePWAPackage(projectName, fileContents): Promise<Blob>`
+- `generateWindowsPackage(projectName, fileContents): Promise<Blob>`
+- `generateLinuxPackage(projectName, fileContents): Promise<Blob>`
+- `generateMacPackage(projectName, fileContents): Promise<Blob>`
+- `generateZipPackage(projectName, fileContents): Promise<Blob>`
+
+Both `PublishDialog` and the Projects page "Re-download" button will use these shared functions.
 
 ---
 
@@ -118,14 +113,17 @@ useEffect(() => {
 
 | Action | File |
 |--------|------|
-| Delete | `src/components/VeylStage.tsx` |
-| Modify | `src/components/MonacoEditor.tsx` |
-| Modify | `src/lib/monacoThemes.ts` |
-| Modify | `src/hooks/useVoicePlayback.ts` |
-| Modify | `src/components/AIChatPanel.tsx` |
-| Modify | `src/pages/Projects.tsx` (or `src/hooks/useProject.ts`) |
-| Create | `src/components/PublishDialog.tsx` |
-| Modify | `src/components/StudioHeader.tsx` |
-| Modify | `src/components/StudioLayout.tsx` |
-| Modify | `src/components/LivePreview.tsx` |
+| Create | `src/lib/exportGenerators.ts` -- shared ZIP generation functions |
+| Modify | `src/components/PublishDialog.tsx` -- add Linux/Mac options, record exports to DB, use shared generators |
+| Modify | `src/components/StudioLayout.tsx` -- pass `projectId` to PublishDialog |
+| Modify | `src/pages/Projects.tsx` -- add "Completed Builds" tab with re-download |
+| Migration | Create `project_exports` table with RLS policies |
+
+---
+
+## Technical Notes
+
+- No actual binary compilation happens in-browser. Each "package" is a ZIP containing source + Electron config + build scripts + README. The user runs `npm run package:linux` (or `:mac`, `:win`) locally.
+- The `project_exports` table is lightweight metadata only (no blobs). Re-downloads regenerate the ZIP from current project files.
+- Linux config targets: AppImage, deb, rpm. Mac config targets: dmg, zip. Windows config targets: nsis, portable.
 
