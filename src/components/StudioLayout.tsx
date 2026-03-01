@@ -375,6 +375,7 @@ export const StudioLayout = () => {
           projectName={currentProject?.name || 'MyProject'}
           fileContents={fileContents}
           onShowDownloader={() => setShowDownloader(true)}
+          projectId={currentProject?.id}
         />
         
         <DevModeIndicator />

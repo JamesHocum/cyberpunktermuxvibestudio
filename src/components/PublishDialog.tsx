@@ -1,16 +1,15 @@
 import React, { useState } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Globe, Smartphone, Download, Monitor, ExternalLink, Loader2, Check } from "lucide-react";
+import { Globe, Smartphone, Download, Monitor, ExternalLink, Loader2, Terminal as TerminalIcon, Laptop } from "lucide-react";
 import { toast } from "sonner";
-import JSZip from "jszip";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  generatePWAPackage, generateWindowsPackage, generateLinuxPackage,
+  generateMacPackage, downloadBlob,
+} from "@/lib/exportGenerators";
 
 interface PublishDialogProps {
   open: boolean;
@@ -18,159 +17,76 @@ interface PublishDialogProps {
   projectName: string;
   fileContents: Record<string, string>;
   onShowDownloader?: () => void;
+  projectId?: string;
 }
 
 export const PublishDialog = ({
-  open,
-  onOpenChange,
-  projectName,
-  fileContents,
-  onShowDownloader,
+  open, onOpenChange, projectName, fileContents, onShowDownloader, projectId,
 }: PublishDialogProps) => {
   const [generating, setGenerating] = useState<string | null>(null);
 
-  const handlePWADownload = async () => {
-    setGenerating("pwa");
+  const recordExport = async (exportType: string) => {
     try {
-      const zip = new JSZip();
-      // Add all project files
-      Object.entries(fileContents).forEach(([path, content]) => {
-        zip.file(path, content);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !projectId) return;
+      await supabase.from("project_exports").insert({
+        project_id: projectId,
+        user_id: user.id,
+        export_type: exportType,
+        project_name: projectName,
+        file_count: Object.keys(fileContents).length,
       });
-      // Add PWA manifest
-      zip.file("public/manifest.json", JSON.stringify({
-        name: projectName,
-        short_name: projectName,
-        start_url: "/",
-        display: "standalone",
-        background_color: "#0d1117",
-        theme_color: "#00ff88",
-        icons: [
-          { src: "/favicon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "/favicon-512.png", sizes: "512x512", type: "image/png" },
-        ]
-      }, null, 2));
-      // Add service worker
-      zip.file("public/sw.js", `const CACHE = 'pwa-v1';
-const ASSETS = ['/'];
-self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))));
-self.addEventListener('fetch', e => e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))));`);
-      // Add README
-      zip.file("README.md", `# ${projectName} (PWA)\n\nProgressive Web App ready for deployment.\n\n## Deploy\n\n1. \`npm install\`\n2. \`npm run build\`\n3. Deploy the \`dist/\` folder to any static host (Vercel, Netlify, etc.)\n`);
-
-      const blob = await zip.generateAsync({ type: "blob" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${projectName}-pwa.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("PWA package downloaded!");
-      onOpenChange(false);
-    } catch (err) {
-      toast.error("Failed to generate PWA package");
-    } finally {
-      setGenerating(null);
-    }
+    } catch { /* silent */ }
   };
 
-  const handleWindowsPackage = async () => {
-    setGenerating("windows");
+  const handle = async (id: string, gen: () => Promise<Blob>, filename: string, msg: string) => {
+    setGenerating(id);
     try {
-      const zip = new JSZip();
-      Object.entries(fileContents).forEach(([path, content]) => {
-        zip.file(`src/${path}`, content);
-      });
-      // Add Electron main
-      zip.file("electron/main.cjs", `const { app, BrowserWindow } = require('electron');
-const path = require('path');
-function createWindow() {
-  const win = new BrowserWindow({ width: 1280, height: 800, webPreferences: { nodeIntegration: false, contextIsolation: true } });
-  win.loadFile(path.join(__dirname, '../dist/index.html'));
-}
-app.whenReady().then(createWindow);
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });`);
-      // Add package.json with build scripts
-      zip.file("package.json", JSON.stringify({
-        name: projectName.toLowerCase().replace(/\s+/g, "-"),
-        version: "1.0.0",
-        main: "electron/main.cjs",
-        scripts: {
-          dev: "vite",
-          build: "vite build",
-          "package:win": "vite build && electron-builder --win --config electron-builder.config.js"
-        },
-        devDependencies: {
-          electron: "^28.0.0",
-          "electron-builder": "^24.9.1",
-          vite: "^5.0.0"
-        }
-      }, null, 2));
-      // Add electron-builder config
-      zip.file("electron-builder.config.js", `module.exports = {
-  appId: 'com.${projectName.toLowerCase().replace(/\s+/g, "")}.app',
-  productName: '${projectName}',
-  directories: { output: 'release', buildResources: 'build' },
-  files: ['dist/**/*', 'electron/**/*', 'package.json'],
-  win: { target: ['nsis', 'portable'], artifactName: '\${productName}-\${version}-Setup.\${ext}' },
-  nsis: { oneClick: false, allowToChangeInstallationDirectory: true, createDesktopShortcut: true }
-};`);
-      zip.file("README.md", `# ${projectName} — Windows Installer Package\n\n## Build the .exe installer\n\n1. \`npm install\`\n2. \`npm run package:win\`\n3. Find your installer in the \`release/\` folder\n\nRequires Node.js 18+ and Windows (or Wine on Linux/macOS).\n`);
-
-      const blob = await zip.generateAsync({ type: "blob" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${projectName}-windows-package.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Windows package downloaded! Run `npm run package:win` to build the .exe");
+      const blob = await gen();
+      downloadBlob(blob, filename);
+      toast.success(msg);
+      await recordExport(id);
       onOpenChange(false);
-    } catch (err) {
-      toast.error("Failed to generate Windows package");
-    } finally {
-      setGenerating(null);
-    }
+    } catch { toast.error("Failed to generate package"); }
+    finally { setGenerating(null); }
   };
 
   const options = [
     {
-      id: "pwa",
-      icon: <Smartphone className="h-6 w-6" />,
-      title: "PWA Package",
+      id: "pwa", icon: <Smartphone className="h-6 w-6" />, title: "PWA Package",
       desc: "Download as Progressive Web App with manifest & service worker",
-      action: handlePWADownload,
+      action: () => handle("pwa", () => generatePWAPackage(projectName, fileContents), `${projectName}-pwa.zip`, "PWA package downloaded!"),
       badge: "OFFLINE READY",
     },
     {
-      id: "web",
-      icon: <Globe className="h-6 w-6" />,
-      title: "Web Deploy",
+      id: "web", icon: <Globe className="h-6 w-6" />, title: "Web Deploy",
       desc: "Deploy to Vercel or Netlify (connect GitHub first)",
-      action: () => {
-        window.open("https://vercel.com/new", "_blank");
-        toast.info("Push your code to GitHub, then import the repo on Vercel");
-      },
+      action: () => { window.open("https://vercel.com/new", "_blank"); toast.info("Push code to GitHub, then import on Vercel"); },
       badge: "CLOUD",
     },
     {
-      id: "zip",
-      icon: <Download className="h-6 w-6" />,
-      title: "ZIP Download",
+      id: "zip", icon: <Download className="h-6 w-6" />, title: "ZIP Download",
       desc: "Download all project files as a ZIP archive",
-      action: () => {
-        onOpenChange(false);
-        onShowDownloader?.();
-      },
+      action: () => { onOpenChange(false); onShowDownloader?.(); },
       badge: "LOCAL",
     },
     {
-      id: "windows",
-      icon: <Monitor className="h-6 w-6" />,
-      title: "Windows .exe Package",
-      desc: "Download with Electron config — run npm run package:win locally",
-      action: handleWindowsPackage,
+      id: "windows", icon: <Monitor className="h-6 w-6" />, title: "Windows .exe",
+      desc: "Electron config — run npm run package:win locally",
+      action: () => handle("windows", () => generateWindowsPackage(projectName, fileContents), `${projectName}-windows.zip`, "Windows package downloaded!"),
       badge: "DESKTOP",
+    },
+    {
+      id: "linux", icon: <TerminalIcon className="h-6 w-6" />, title: "Linux AppImage",
+      desc: "Electron config — run npm run package:linux locally",
+      action: () => handle("linux", () => generateLinuxPackage(projectName, fileContents), `${projectName}-linux.zip`, "Linux package downloaded!"),
+      badge: "LINUX",
+    },
+    {
+      id: "mac", icon: <Laptop className="h-6 w-6" />, title: "macOS DMG",
+      desc: "Electron config — run npm run package:mac locally",
+      action: () => handle("mac", () => generateMacPackage(projectName, fileContents), `${projectName}-macos.zip`, "macOS package downloaded!"),
+      badge: "MACOS",
     },
   ];
 
@@ -183,7 +99,7 @@ app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(
             Choose a deployment target for <span className="text-primary">{projectName}</span>
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-1 gap-3 mt-2">
+        <div className="grid grid-cols-1 gap-3 mt-2 max-h-[60vh] overflow-y-auto pr-1">
           {options.map((opt) => (
             <button
               key={opt.id}

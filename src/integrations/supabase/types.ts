@@ -221,6 +221,44 @@ export type Database = {
           },
         ]
       }
+      project_exports: {
+        Row: {
+          created_at: string | null
+          export_type: string
+          file_count: number | null
+          id: string
+          project_id: string | null
+          project_name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          export_type: string
+          file_count?: number | null
+          id?: string
+          project_id?: string | null
+          project_name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          export_type?: string
+          file_count?: number | null
+          id?: string
+          project_id?: string | null
+          project_name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_exports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_files: {
         Row: {
           content: string | null
