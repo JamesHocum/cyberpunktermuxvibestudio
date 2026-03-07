@@ -64,6 +64,28 @@ export async function generateMacPackage(projectName: string, fileContents: Reco
   return zip.generateAsync({ type: "blob" });
 }
 
+export async function generateAndroidPackage(projectName: string, fileContents: Record<string, string>): Promise<Blob> {
+  const zip = new JSZip();
+  const slug = projectName.toLowerCase().replace(/\s+/g, "-");
+  Object.entries(fileContents).forEach(([p, c]) => zip.file(`src/${p}`, c));
+  zip.file("capacitor.config.ts", `import { CapacitorConfig } from '@capacitor/cli';\n\nconst config: CapacitorConfig = {\n  appId: 'com.${slug}.app',\n  appName: '${projectName}',\n  webDir: 'dist',\n  plugins: {\n    SplashScreen: {\n      launchShowDuration: 0\n    }\n  }\n};\n\nexport default config;\n`);
+  zip.file("package.json", JSON.stringify({
+    name: slug, version: "1.0.0",
+    scripts: {
+      dev: "vite", build: "vite build",
+      "cap:init": "npx cap init",
+      "cap:add:android": "npx cap add android",
+      "cap:sync": "npx cap sync",
+      "cap:run:android": "npx cap run android",
+      "android": "npm run build && npx cap sync && npx cap run android",
+    },
+    dependencies: { "@capacitor/core": "^7.4.3", "@capacitor/android": "^7.4.3" },
+    devDependencies: { "@capacitor/cli": "^7.4.3", vite: "^5.0.0" },
+  }, null, 2));
+  zip.file("README.md", `# ${projectName} — Android APK\n\n## Build\n1. \`npm install\`\n2. \`npx cap add android\`\n3. \`npm run android\`\n\nRequires Android Studio and Node.js 18+.\n`);
+  return zip.generateAsync({ type: "blob" });
+}
+
 export async function generateZipPackage(projectName: string, fileContents: Record<string, string>): Promise<Blob> {
   const zip = new JSZip();
   Object.entries(fileContents).forEach(([path, content]) => zip.file(path, content));

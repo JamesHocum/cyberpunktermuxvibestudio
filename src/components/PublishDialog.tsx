@@ -3,12 +3,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Globe, Smartphone, Download, Monitor, ExternalLink, Loader2, Terminal as TerminalIcon, Laptop } from "lucide-react";
+import { Globe, Smartphone, Download, Monitor, ExternalLink, Loader2, Terminal as TerminalIcon, Laptop, TabletSmartphone } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   generatePWAPackage, generateWindowsPackage, generateLinuxPackage,
-  generateMacPackage, downloadBlob,
+  generateMacPackage, generateAndroidPackage, downloadBlob,
 } from "@/lib/exportGenerators";
 
 interface PublishDialogProps {
@@ -87,6 +87,12 @@ export const PublishDialog = ({
       desc: "Electron config — run npm run package:mac locally",
       action: () => handle("mac", () => generateMacPackage(projectName, fileContents), `${projectName}-macos.zip`, "macOS package downloaded!"),
       badge: "MACOS",
+    },
+    {
+      id: "android", icon: <TabletSmartphone className="h-6 w-6" />, title: "Android APK",
+      desc: "Capacitor config — run npm run android locally with Android Studio",
+      action: () => handle("android", () => generateAndroidPackage(projectName, fileContents), `${projectName}-android.zip`, "Android package downloaded!"),
+      badge: "ANDROID",
     },
   ];
 
