@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { StackProfile } from '@/components/SettingsPanel';
 import {
   generatePWAPackage, generateWindowsPackage, generateLinuxPackage,
-  generateMacPackage, generateZipPackage, downloadBlob,
+  generateMacPackage, generateAndroidPackage, generateZipPackage, downloadBlob,
 } from '@/lib/exportGenerators';
 
 // Generate a unique gradient from project name
@@ -66,6 +66,7 @@ const EXPORT_BADGE_MAP: Record<string, { label: string; variant: 'default' | 'se
   windows: { label: 'Windows', variant: 'secondary' },
   linux: { label: 'Linux', variant: 'secondary' },
   mac: { label: 'macOS', variant: 'secondary' },
+  android: { label: 'Android', variant: 'secondary' },
   zip: { label: 'ZIP', variant: 'outline' },
   web: { label: 'Web', variant: 'outline' },
 };
@@ -133,6 +134,7 @@ const Projects = () => {
         windows: () => generateWindowsPackage(exp.project_name, fc),
         linux: () => generateLinuxPackage(exp.project_name, fc),
         mac: () => generateMacPackage(exp.project_name, fc),
+        android: () => generateAndroidPackage(exp.project_name, fc),
         zip: () => generateZipPackage(exp.project_name, fc),
       };
 
@@ -196,7 +198,7 @@ const Projects = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-terminal">
+    <div className="min-h-screen bg-background text-foreground font-terminal overflow-y-auto">
       <div className="fixed inset-0 bg-gradient-to-br from-[hsl(var(--neon-purple)/0.08)] via-background to-[hsl(var(--neon-green)/0.05)]" />
       <div className="fixed inset-0 animate-scanlines pointer-events-none opacity-30" />
 

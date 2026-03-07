@@ -300,7 +300,7 @@ serve(async (req) => {
       'google/gemini-3-flash-preview', 'google/gemini-2.5-flash', 'google/gemini-2.5-pro',
       'google/gemini-3-pro-preview', 'openai/gpt-5', 'openai/gpt-5-mini', 'openai/gpt-5.2'
     ];
-    const defaultModel = 'google/gemini-3-flash-preview';
+    const defaultModel = 'openai/gpt-5.2';
     const model = requestedModel && SUPPORTED_MODELS.includes(requestedModel) ? requestedModel : defaultModel;
     
     const buildCtx: BuildModeContext = { buildMode, existingFiles };

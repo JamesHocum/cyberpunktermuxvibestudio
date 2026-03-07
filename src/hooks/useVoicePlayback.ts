@@ -96,6 +96,14 @@ export function useVoicePlayback(): UseVoicePlaybackReturn {
     try {
       abortControllerRef.current = new AbortController();
 
+      // Get the user's actual session token for auth
+      const { data: sessionData } = await (await import('@/integrations/supabase/client')).supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      
+      if (!accessToken) {
+        throw new Error('Not authenticated — please sign in');
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
         {
@@ -103,10 +111,10 @@ export function useVoicePlayback(): UseVoicePlaybackReturn {
           headers: {
             'Content-Type': 'application/json',
             'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
-            text: cleanText.substring(0, 5000), // Limit text length
+            text: cleanText.substring(0, 5000),
             voiceId: currentVoice.voiceId,
           }),
           signal: abortControllerRef.current.signal,
