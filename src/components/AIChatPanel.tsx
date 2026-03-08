@@ -151,6 +151,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [currentAction, setCurrentAction] = useState<CodexAction>('chat');
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showLargePromptOverlay, setShowLargePromptOverlay] = useState(false);
 
   // Per-message apply history for undo
   type AppliedFileHistory = { filename: string; previousContent: string };
