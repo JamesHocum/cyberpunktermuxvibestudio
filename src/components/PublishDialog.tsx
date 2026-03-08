@@ -3,12 +3,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Globe, Smartphone, Download, Monitor, ExternalLink, Loader2, Terminal as TerminalIcon, Laptop, TabletSmartphone } from "lucide-react";
+import { Globe, Smartphone, Download, Monitor, ExternalLink, Loader2, Terminal as TerminalIcon, Laptop, TabletSmartphone, Tablet } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   generatePWAPackage, generateWindowsPackage, generateLinuxPackage,
-  generateMacPackage, generateAndroidPackage, downloadBlob,
+  generateMacPackage, generateAndroidPackage, generateIOSPackage, downloadBlob,
 } from "@/lib/exportGenerators";
 
 interface PublishDialogProps {
@@ -93,6 +94,12 @@ export const PublishDialog = ({
       desc: "Capacitor config — run npm run android locally with Android Studio",
       action: () => handle("android", () => generateAndroidPackage(projectName, fileContents), `${projectName}-android.zip`, "Android package downloaded!"),
       badge: "ANDROID",
+    },
+    {
+      id: "ios", icon: <Tablet className="h-6 w-6" />, title: "iOS IPA",
+      desc: "Capacitor config — requires macOS + Xcode to build locally",
+      action: () => handle("ios", () => generateIOSPackage(projectName, fileContents), `${projectName}-ios.zip`, "iOS package downloaded!"),
+      badge: "iOS",
     },
   ];
 

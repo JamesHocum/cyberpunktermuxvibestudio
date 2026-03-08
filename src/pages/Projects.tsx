@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { StackProfile } from '@/components/SettingsPanel';
 import {
   generatePWAPackage, generateWindowsPackage, generateLinuxPackage,
-  generateMacPackage, generateAndroidPackage, generateZipPackage, downloadBlob,
+  generateMacPackage, generateAndroidPackage, generateIOSPackage, generateZipPackage, downloadBlob,
 } from '@/lib/exportGenerators';
 
 // Generate a unique gradient from project name
@@ -67,6 +67,7 @@ const EXPORT_BADGE_MAP: Record<string, { label: string; variant: 'default' | 'se
   linux: { label: 'Linux', variant: 'secondary' },
   mac: { label: 'macOS', variant: 'secondary' },
   android: { label: 'Android', variant: 'secondary' },
+  ios: { label: 'iOS', variant: 'secondary' },
   zip: { label: 'ZIP', variant: 'outline' },
   web: { label: 'Web', variant: 'outline' },
 };
@@ -135,6 +136,7 @@ const Projects = () => {
         linux: () => generateLinuxPackage(exp.project_name, fc),
         mac: () => generateMacPackage(exp.project_name, fc),
         android: () => generateAndroidPackage(exp.project_name, fc),
+        ios: () => generateIOSPackage(exp.project_name, fc),
         zip: () => generateZipPackage(exp.project_name, fc),
       };
 

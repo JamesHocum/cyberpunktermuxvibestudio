@@ -76,20 +76,18 @@ export function useVoicePlayback(): UseVoicePlaybackReturn {
 
     // Clean text for TTS (remove markdown, code blocks, etc.)
     const cleanText = text
-      .replace(/```[\s\S]*?```/g, '') // Remove code blocks
-      .replace(/`[^`]+`/g, '') // Remove inline code
-      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold markers
-      .replace(/\*([^*]+)\*/g, '$1') // Remove italic markers
-      .replace(/#+\s/g, '') // Remove headers
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links, keep text
-      .replace(/[•\-]\s/g, '') // Remove bullet points
+      .replace(/```[\s\S]*?```/g, '')
+      .replace(/`[^`]+`/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/#+\s/g, '')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/[•\-]\s/g, '')
       .trim();
 
     if (!cleanText) return;
 
-    // Stop any current playback
     stop();
-
     setIsLoading(true);
     setError(null);
 
@@ -98,10 +96,25 @@ export function useVoicePlayback(): UseVoicePlaybackReturn {
 
       // Get the user's actual session token for auth
       const { data: sessionData } = await (await import('@/integrations/supabase/client')).supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      
-      if (!accessToken) {
-        throw new Error('Not authenticated — please sign in');
+      const session = sessionData?.session;
+
+      if (!session) {
+        const msg = 'Please sign in to use voice playback';
+        setError(msg);
+        setIsLoading(false);
+        const { toast } = await import('sonner');
+        toast.error(msg);
+        return;
+      }
+
+      const accessToken = session.access_token;
+
+      if (import.meta.env.DEV) {
+        console.debug('[TTS] Requesting voice playback', {
+          voiceId: currentVoice.voiceId,
+          textLength: cleanText.length,
+          tokenExpiry: new Date((session.expires_at ?? 0) * 1000).toISOString(),
+        });
       }
 
       const response = await fetch(
@@ -123,10 +136,28 @@ export function useVoicePlayback(): UseVoicePlaybackReturn {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `TTS request failed: ${response.status}`);
+        const status = response.status;
+        let userMsg: string;
+
+        if (status === 401) {
+          userMsg = 'Authentication expired — please sign in again';
+        } else if (status === 429) {
+          userMsg = 'Rate limit reached — try again in a minute';
+        } else if (status === 400) {
+          userMsg = errorData.error || 'Invalid TTS request';
+        } else {
+          userMsg = errorData.error || `Voice service error (${status})`;
+        }
+
+        throw new Error(userMsg);
       }
 
       const audioBlob = await response.blob();
+
+      if (!audioBlob || audioBlob.size === 0) {
+        throw new Error('Empty audio response from voice service');
+      }
+
       const audioUrl = URL.createObjectURL(audioBlob);
 
       audioRef.current = new Audio(audioUrl);
@@ -144,28 +175,26 @@ export function useVoicePlayback(): UseVoicePlaybackReturn {
       setIsSpeaking(true);
       await audioRef.current.play();
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        // Cancelled, ignore
-        return;
+      if (err instanceof Error && err.name === 'AbortError') return;
+
+      if (import.meta.env.DEV) {
+        console.error('[TTS] Voice playback error:', err);
       }
-      console.error('Voice playback error:', err);
+
       const errorMsg = err instanceof Error ? err.message : 'Voice playback failed';
       setError(errorMsg);
       setIsLoading(false);
       setIsSpeaking(false);
-      // Surface error to the user via toast
       const { toast } = await import('sonner');
-      toast.error(`TTS failed: ${errorMsg}`);
+      toast.error(errorMsg);
     }
   }, [currentVoice, stop]);
 
-  // speak() respects the global voiceEnabled toggle (for auto-read)
   const speak = useCallback(async (text: string) => {
     if (!voiceEnabled) return;
     return doSpeak(text);
   }, [voiceEnabled, doSpeak]);
 
-  // speakDirect() bypasses voiceEnabled — for explicit speaker button clicks
   const speakDirect = useCallback(async (text: string) => {
     return doSpeak(text);
   }, [doSpeak]);
