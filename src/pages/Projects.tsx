@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { StackProfile } from '@/components/SettingsPanel';
 import {
   generatePWAPackage, generateWindowsPackage, generateLinuxPackage,
-  generateMacPackage, generateAndroidPackage, generateZipPackage, downloadBlob,
+  generateMacPackage, generateAndroidPackage, generateIOSPackage, generateZipPackage, downloadBlob,
 } from '@/lib/exportGenerators';
 
 // Generate a unique gradient from project name
