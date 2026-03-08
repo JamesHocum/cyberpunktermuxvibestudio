@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   generatePWAPackage, generateWindowsPackage, generateLinuxPackage,
-  generateMacPackage, generateAndroidPackage, downloadBlob,
+  generateMacPackage, generateAndroidPackage, generateIOSPackage, downloadBlob,
 } from "@/lib/exportGenerators";
 
 interface PublishDialogProps {
