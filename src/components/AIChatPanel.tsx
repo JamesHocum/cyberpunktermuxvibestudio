@@ -471,12 +471,53 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
     try {
       const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       
-      // Format messages for API
+      // Check if the user message needs chunking (>50k chars)
+      const userContent = currentInput;
+      const chunks = chunkPrompt(userContent);
+      const isChunked = chunks.length > 1;
+
+      if (isChunked) {
+        console.log(`[Chat] Large prompt detected: ${userContent.length} chars → ${chunks.length} chunks`);
+      }
+
+      // For chunked prompts, send context-setting chunks first (no streaming response expected)
+      if (isChunked) {
+        for (let i = 0; i < chunks.length - 1; i++) {
+          const chunk = chunks[i];
+          const contextMsg = [{
+            role: 'user' as const,
+            content: wrapChunk(chunk),
+          }];
+          
+          await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/codex-chat`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${authToken}`,
+              },
+              body: JSON.stringify({
+                messages: contextMsg,
+                action: effectiveAction,
+                model: loadPersonaSettings().model,
+                systemPrompt: loadPersonaSettings().systemPrompt,
+                stackProfile: loadStackProfile(currentProjectId),
+              }),
+            }
+          );
+          // We don't need the response for context chunks — they prime the model
+        }
+      }
+
+      // Format messages for the final (or only) API call
       const apiMessages = updatedMessages
         .filter(m => m.id !== 'welcome')
         .map(m => ({
           role: m.role,
-          content: m.content,
+          content: isChunked && m.id === userMessage.id
+            ? wrapChunk(chunks[chunks.length - 1])
+            : m.content,
           attachments: m.attachments?.map(a => ({
             id: a.id,
             type: a.type,
