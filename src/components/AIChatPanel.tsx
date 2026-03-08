@@ -963,10 +963,23 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                 </Button>
               </div>
 
-              {/* Upload hint */}
-              <p className="text-[10px] text-muted-foreground text-center font-terminal">
-                📎 Drop files • 📷 Ctrl+V for screenshots • Supports images, code, and text files
-              </p>
+              {/* Character counter & upload hint */}
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground font-terminal">
+                    {input.length > 0 ? `${input.length.toLocaleString()} chars` : ''}
+                  </span>
+                  {input.length >= 40000 && (
+                    <Badge variant="destructive" className="text-[9px] h-4">⚠ Very large prompt</Badge>
+                  )}
+                  {input.length >= 20000 && input.length < 40000 && (
+                    <Badge variant="secondary" className="text-[9px] h-4">📝 Large prompt</Badge>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground font-terminal">
+                  📎 Drop files • 📷 Ctrl+V • ⇧Enter newline
+                </p>
+              </div>
             </div>
           </TabsContent>
 
