@@ -1096,6 +1096,24 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
           </TabsContent>
         </Tabs>
       )}
+
+      {/* Large Prompt Overlay */}
+      <LargePromptOverlay
+        open={showLargePromptOverlay}
+        onClose={() => setShowLargePromptOverlay(false)}
+        onSubmit={(text) => {
+          setInput(text);
+          // Trigger send after state update
+          setTimeout(() => {
+            const textarea = document.querySelector<HTMLTextAreaElement>('.cyber-border.bg-studio-terminal.matrix-text');
+            if (textarea) {
+              textarea.style.height = 'auto';
+              textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+            }
+          }, 50);
+        }}
+        disabled={isTyping || isCloning}
+      />
     </div>
   );
 };
