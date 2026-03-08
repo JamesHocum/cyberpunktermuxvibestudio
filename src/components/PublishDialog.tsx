@@ -3,7 +3,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Globe, Smartphone, Download, Monitor, ExternalLink, Loader2, Terminal as TerminalIcon, Laptop, TabletSmartphone } from "lucide-react";
+import { Globe, Smartphone, Download, Monitor, ExternalLink, Loader2, Terminal as TerminalIcon, Laptop, TabletSmartphone, Apple } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
