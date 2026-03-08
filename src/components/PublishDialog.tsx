@@ -96,7 +96,7 @@ export const PublishDialog = ({
       badge: "ANDROID",
     },
     {
-      id: "ios", icon: <Apple className="h-6 w-6" />, title: "iOS IPA",
+      id: "ios", icon: <Tablet className="h-6 w-6" />, title: "iOS IPA",
       desc: "Capacitor config — requires macOS + Xcode to build locally",
       action: () => handle("ios", () => generateIOSPackage(projectName, fileContents), `${projectName}-ios.zip`, "iOS package downloaded!"),
       badge: "iOS",
