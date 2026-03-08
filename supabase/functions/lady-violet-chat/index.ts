@@ -71,8 +71,8 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (msg.content.length > 4000) {
-        return new Response(JSON.stringify({ error: 'Message too long (max 4000 characters)' }), {
+      if (msg.content.length > 100000) {
+        return new Response(JSON.stringify({ error: 'Message too long (max 100,000 characters)' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });

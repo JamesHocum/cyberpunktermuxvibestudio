@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageContent } from "./MessageContent";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -928,13 +928,24 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                 </Button>
 
                 {/* Text Input */}
-                <Input
+                <Textarea
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    // Auto-resize
+                    e.target.style.height = 'auto';
+                    e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
                   placeholder={getPlaceholder(currentAction)}
-                  className="flex-1 cyber-border bg-studio-terminal matrix-text font-terminal placeholder:text-muted-foreground"
+                  className="flex-1 cyber-border bg-studio-terminal matrix-text font-terminal placeholder:text-muted-foreground min-h-[44px] max-h-[200px] resize-none py-2"
                   disabled={isCloning}
+                  rows={1}
                 />
 
                 {/* Send Button */}
@@ -952,10 +963,23 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                 </Button>
               </div>
 
-              {/* Upload hint */}
-              <p className="text-[10px] text-muted-foreground text-center font-terminal">
-                📎 Drop files • 📷 Ctrl+V for screenshots • Supports images, code, and text files
-              </p>
+              {/* Character counter & upload hint */}
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground font-terminal">
+                    {input.length > 0 ? `${input.length.toLocaleString()} chars` : ''}
+                  </span>
+                  {input.length >= 40000 && (
+                    <Badge variant="destructive" className="text-[9px] h-4">⚠ Very large prompt</Badge>
+                  )}
+                  {input.length >= 20000 && input.length < 40000 && (
+                    <Badge variant="secondary" className="text-[9px] h-4">📝 Large prompt</Badge>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground font-terminal">
+                  📎 Drop files • 📷 Ctrl+V • ⇧Enter newline
+                </p>
+              </div>
             </div>
           </TabsContent>
 
