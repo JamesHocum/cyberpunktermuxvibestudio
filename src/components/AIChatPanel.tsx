@@ -782,11 +782,14 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                       </span>
                     </div>
                     
-                    <div className={`p-3 rounded-lg cyber-border ${
-                      message.role === 'user' 
-                        ? 'bg-primary/10 neon-glow' 
-                        : 'bg-muted/20 terminal-glow'
-                    }`}>
+                    <CollapsibleMessage
+                      content={message.content}
+                      className={`p-3 rounded-lg cyber-border ${
+                        message.role === 'user' 
+                          ? 'bg-primary/10 neon-glow' 
+                          : 'bg-muted/20 terminal-glow'
+                      }`}
+                    >
                       {/* Message attachments */}
                       {message.attachments && message.attachments.length > 0 && (
                         <MessageAttachments attachments={message.attachments} />
@@ -800,7 +803,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                         autoApply={message.role === 'assistant' && message.action === 'generate' && !!applyHistory[message.id]}
                         onDownloadProject={message.role === 'assistant' ? () => onDeploy?.('zip') : undefined}
                       />
-                    </div>
+                    </CollapsibleMessage>
                     
                     {message.role === 'assistant' && message.id !== 'welcome' && (
                       <div className="flex items-center space-x-2">
