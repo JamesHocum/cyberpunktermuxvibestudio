@@ -1,129 +1,48 @@
 
 
-# Add Linux/macOS Export, Completed Projects Tab, and End-to-End Testing
+# Expand Chat Input & Remove 4000-Character Limit
 
-## Overview
+## Problem
+The chat input is a single-line `<Input>` element, and a hard 4000-character limit exists in three places:
+1. `src/lib/inputValidation.ts` — Zod schema `.max(4000)`
+2. `supabase/functions/lady-violet-chat/index.ts` line 74 — `msg.content.length > 4000`
+3. `src/components/AIChatPanel.tsx` line 338 — calls `validateMessage()` which enforces the limit
 
-Three features to implement:
-1. Add Linux AppImage and macOS DMG export options to the Publish dialog
-2. Create a `project_exports` database table and a "Completed Projects" tab on the Projects page with re-download capability
-3. Wire export events to persist in the database so completed builds appear in the new tab
+The `codex-chat` edge function has NO such limit. Database column `chat_messages.content` is `text` (unbounded). So the only bottlenecks are the three spots above plus the single-line input.
 
----
+## Changes
 
-## 1. Add Linux AppImage and macOS DMG to Publish Dialog
+### 1. Replace `<Input>` with auto-expanding `<Textarea>` in AIChatPanel
+**File: `src/components/AIChatPanel.tsx`**
+- Replace the `<Input>` on line 931 with a `<Textarea>` that:
+  - Has `min-height: 44px`, `max-height: 200px`, auto-grows with content, scrolls internally beyond max
+  - Handles Enter to send, Shift+Enter for newline
+  - Preserves line breaks and formatting
+- Add a live character counter below the input showing `{length} chars`
+- Show warning badges at 20,000+ ("large prompt") and 40,000+ ("very large prompt") — purely informational, never blocking
 
-**File: `src/components/PublishDialog.tsx`**
+### 2. Raise validation limit to 100,000 characters
+**File: `src/lib/inputValidation.ts`**
+- Change `.max(4000, ...)` to `.max(100000, "Message too long (max 100,000 characters)")`
+- This is a soft safety ceiling, not a UX blocker for normal use
 
-Add two new export handlers and option cards alongside the existing Windows .exe:
+### 3. Remove backend 4000-char limit in lady-violet-chat
+**File: `supabase/functions/lady-violet-chat/index.ts`**
+- Change `msg.content.length > 4000` to `msg.content.length > 100000` with matching error message
+- This function is the legacy chat endpoint; codex-chat already has no limit
 
-- **`handleLinuxPackage`**: Generates a ZIP with project files, Electron main process, `package.json` with `package:linux` script (`electron-builder --linux`), and `electron-builder.config.js` targeting `AppImage`, `deb`, and `rpm`. Includes a README with build instructions.
+### 4. Terminal validation passthrough
+**File: `src/components/Terminal.tsx`**
+- The terminal also calls `validateMessage()` — it will automatically benefit from the raised limit in step 2. No additional changes needed.
 
-- **`handleMacPackage`**: Same pattern but targets `dmg` and `zip` for macOS, with `package:mac` script. Config includes `mac.category`, `mac.darkModeSupport`, and DMG layout settings.
-
-- Add two new entries to the `options` array:
-  - `{ id: "linux", icon: <Terminal>, title: "Linux AppImage", badge: "LINUX", desc: "Download with Electron config -- run npm run package:linux locally" }`
-  - `{ id: "mac", icon: <Apple/Monitor>, title: "macOS DMG", badge: "MACOS", desc: "Download with Electron config -- run npm run package:mac locally" }`
-
-- Import `Terminal` icon from lucide-react for Linux (there's no Apple icon in lucide, so we'll use a custom label or the `Laptop` icon).
-
-- After each successful download, record the export to the database (see section 3).
-
----
-
-## 2. Database: `project_exports` Table
-
-**New migration** to create a table that tracks completed exports/builds:
-
-```text
-CREATE TABLE public.project_exports (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id UUID REFERENCES public.projects(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL,
-  export_type TEXT NOT NULL,        -- 'pwa', 'windows', 'linux', 'mac', 'zip', 'web'
-  project_name TEXT NOT NULL,
-  file_count INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE public.project_exports ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own exports"
-  ON public.project_exports FOR SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own exports"
-  ON public.project_exports FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own exports"
-  ON public.project_exports FOR DELETE
-  USING (auth.uid() = user_id);
-```
-
-This table stores metadata about each export. We do NOT store the actual ZIP blob (too large for DB rows). Instead, the "Re-download" action in the Completed Projects tab will re-generate the package on the fly from the project's current files.
-
----
-
-## 3. Record Exports from PublishDialog
-
-**File: `src/components/PublishDialog.tsx`**
-
-- Accept a new optional prop: `projectId?: string`
-- After each successful download (PWA, Windows, Linux, Mac, ZIP), insert a row into `project_exports` with the export type, project name, and file count
-- Pass `currentProject?.id` from `StudioLayout.tsx` to `PublishDialog`
-
-**File: `src/components/StudioLayout.tsx`**
-
-- Pass `projectId={currentProject?.id}` to `<PublishDialog>`
-
----
-
-## 4. "Completed Projects" Tab on Projects Page
-
-**File: `src/pages/Projects.tsx`**
-
-Add a tab bar at the top of the content area with two tabs: "Your Projects" (existing grid) and "Completed Builds" (new).
-
-The "Completed Builds" tab:
-- Queries `project_exports` table ordered by `created_at DESC`
-- Displays a card for each export showing: project name, export type badge (PWA/Windows/Linux/macOS/ZIP), date
-- Each card has a "Re-download" button that:
-  - Loads the project's files from `project_files` table
-  - Calls the same ZIP generation logic as PublishDialog for that export type
-  - Downloads the package
-- Also has a delete button to remove the export record
-
-The re-download logic will be extracted into a shared utility:
-
-**New file: `src/lib/exportGenerators.ts`**
-
-Extract the ZIP generation functions from `PublishDialog.tsx` into reusable functions:
-- `generatePWAPackage(projectName, fileContents): Promise<Blob>`
-- `generateWindowsPackage(projectName, fileContents): Promise<Blob>`
-- `generateLinuxPackage(projectName, fileContents): Promise<Blob>`
-- `generateMacPackage(projectName, fileContents): Promise<Blob>`
-- `generateZipPackage(projectName, fileContents): Promise<Blob>`
-
-Both `PublishDialog` and the Projects page "Re-download" button will use these shared functions.
-
----
+### 5. No chunking needed now
+The AI gateway accepts large payloads. The model context windows (GPT-5.2, Gemini) handle 100K+ tokens. No auto-chunking is needed at this stage — the limit raise is sufficient.
 
 ## Files Summary
 
-| Action | File |
-|--------|------|
-| Create | `src/lib/exportGenerators.ts` -- shared ZIP generation functions |
-| Modify | `src/components/PublishDialog.tsx` -- add Linux/Mac options, record exports to DB, use shared generators |
-| Modify | `src/components/StudioLayout.tsx` -- pass `projectId` to PublishDialog |
-| Modify | `src/pages/Projects.tsx` -- add "Completed Builds" tab with re-download |
-| Migration | Create `project_exports` table with RLS policies |
-
----
-
-## Technical Notes
-
-- No actual binary compilation happens in-browser. Each "package" is a ZIP containing source + Electron config + build scripts + README. The user runs `npm run package:linux` (or `:mac`, `:win`) locally.
-- The `project_exports` table is lightweight metadata only (no blobs). Re-downloads regenerate the ZIP from current project files.
-- Linux config targets: AppImage, deb, rpm. Mac config targets: dmg, zip. Windows config targets: nsis, portable.
+| Action | File | What |
+|--------|------|------|
+| Modify | `src/lib/inputValidation.ts` | Raise max from 4000 → 100000 |
+| Modify | `src/components/AIChatPanel.tsx` | Replace Input with auto-expanding Textarea, add char counter + warnings |
+| Modify | `supabase/functions/lady-violet-chat/index.ts` | Raise backend limit from 4000 → 100000 |
 
