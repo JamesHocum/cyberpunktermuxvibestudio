@@ -67,6 +67,7 @@ const EXPORT_BADGE_MAP: Record<string, { label: string; variant: 'default' | 'se
   linux: { label: 'Linux', variant: 'secondary' },
   mac: { label: 'macOS', variant: 'secondary' },
   android: { label: 'Android', variant: 'secondary' },
+  ios: { label: 'iOS', variant: 'secondary' },
   zip: { label: 'ZIP', variant: 'outline' },
   web: { label: 'Web', variant: 'outline' },
 };
