@@ -928,13 +928,24 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                 </Button>
 
                 {/* Text Input */}
-                <Input
+                <Textarea
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    // Auto-resize
+                    e.target.style.height = 'auto';
+                    e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
                   placeholder={getPlaceholder(currentAction)}
-                  className="flex-1 cyber-border bg-studio-terminal matrix-text font-terminal placeholder:text-muted-foreground"
+                  className="flex-1 cyber-border bg-studio-terminal matrix-text font-terminal placeholder:text-muted-foreground min-h-[44px] max-h-[200px] resize-none py-2"
                   disabled={isCloning}
+                  rows={1}
                 />
 
                 {/* Send Button */}

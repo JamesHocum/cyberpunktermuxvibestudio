@@ -4,7 +4,7 @@ export const messageSchema = z.object({
   content: z
     .string()
     .min(1, "Message cannot be empty")
-    .max(4000, "Message too long (max 4000 characters)")
+    .max(100000, "Message too long (max 100,000 characters)")
     .refine(
       (val) => val.trim().length > 0,
       "Message cannot be only whitespace"
