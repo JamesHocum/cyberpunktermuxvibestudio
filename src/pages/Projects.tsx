@@ -136,6 +136,7 @@ const Projects = () => {
         linux: () => generateLinuxPackage(exp.project_name, fc),
         mac: () => generateMacPackage(exp.project_name, fc),
         android: () => generateAndroidPackage(exp.project_name, fc),
+        ios: () => generateIOSPackage(exp.project_name, fc),
         zip: () => generateZipPackage(exp.project_name, fc),
       };
 
