@@ -57,6 +57,11 @@ const CollapsibleMessage: React.FC<{
     return <div className={className}>{children}</div>;
   }
 
+  const handleCopyFull = () => {
+    navigator.clipboard.writeText(content);
+    toast.success("Copied full message to clipboard");
+  };
+
   return (
     <div className={className}>
       <div
@@ -68,18 +73,30 @@ const CollapsibleMessage: React.FC<{
           <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background/90 to-transparent pointer-events-none" />
         )}
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="w-full h-7 text-[11px] font-terminal text-muted-foreground hover:text-foreground gap-1 mt-1"
-        onClick={() => setExpanded(!expanded)}
-      >
-        {expanded ? (
-          <><ChevronUp className="h-3 w-3" /> Show less</>
-        ) : (
-          <><ChevronDown className="h-3 w-3" /> Show more ({content.length.toLocaleString()} chars)</>
+      <div className="flex items-center gap-1 mt-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="flex-1 h-7 text-[11px] font-terminal text-muted-foreground hover:text-foreground gap-1"
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? (
+            <><ChevronUp className="h-3 w-3" /> Show less</>
+          ) : (
+            <><ChevronDown className="h-3 w-3" /> Show more ({content.length.toLocaleString()} chars)</>
+          )}
+        </Button>
+        {!expanded && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-[11px] font-terminal text-muted-foreground hover:text-foreground gap-1"
+            onClick={handleCopyFull}
+          >
+            <Copy className="h-3 w-3" /> Copy all
+          </Button>
         )}
-      </Button>
+      </div>
     </div>
   );
 };
