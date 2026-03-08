@@ -39,6 +39,49 @@ interface AIChatPanelProps {
   onDeploy?: (target: 'vercel' | 'netlify' | 'zip') => void;
 }
 
+// Collapsible wrapper for long messages (>2000 chars)
+const COLLAPSE_THRESHOLD = 2000;
+const PREVIEW_HEIGHT = 200; // px
+
+const CollapsibleMessage: React.FC<{
+  content: string;
+  className?: string;
+  children: React.ReactNode;
+}> = ({ content, className, children }) => {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = content.length > COLLAPSE_THRESHOLD;
+
+  if (!isLong) {
+    return <div className={className}>{children}</div>;
+  }
+
+  return (
+    <div className={className}>
+      <div
+        className={`relative ${!expanded ? 'overflow-hidden' : ''}`}
+        style={!expanded ? { maxHeight: `${PREVIEW_HEIGHT}px` } : undefined}
+      >
+        {children}
+        {!expanded && (
+          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background/90 to-transparent pointer-events-none" />
+        )}
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="w-full h-7 text-[11px] font-terminal text-muted-foreground hover:text-foreground gap-1 mt-1"
+        onClick={() => setExpanded(!expanded)}
+      >
+        {expanded ? (
+          <><ChevronUp className="h-3 w-3" /> Show less</>
+        ) : (
+          <><ChevronDown className="h-3 w-3" /> Show more ({content.length.toLocaleString()} chars)</>
+        )}
+      </Button>
+    </div>
+  );
+};
+
 // Extract GitHub repo URL from message
 const extractRepoUrl = (message: string): string | null => {
   const match = message.match(/https?:\/\/github\.com\/[\w.-]+\/[\w.-]+/);
