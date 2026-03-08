@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare, Paperclip, Camera, Image, Volume2 } from "lucide-react";
+import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare, Paperclip, Camera, Image, Volume2, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { z } from "zod";
@@ -38,6 +38,49 @@ interface AIChatPanelProps {
   onSelectFile?: (path: string) => void;
   onDeploy?: (target: 'vercel' | 'netlify' | 'zip') => void;
 }
+
+// Collapsible wrapper for long messages (>2000 chars)
+const COLLAPSE_THRESHOLD = 2000;
+const PREVIEW_HEIGHT = 200; // px
+
+const CollapsibleMessage: React.FC<{
+  content: string;
+  className?: string;
+  children: React.ReactNode;
+}> = ({ content, className, children }) => {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = content.length > COLLAPSE_THRESHOLD;
+
+  if (!isLong) {
+    return <div className={className}>{children}</div>;
+  }
+
+  return (
+    <div className={className}>
+      <div
+        className={`relative ${!expanded ? 'overflow-hidden' : ''}`}
+        style={!expanded ? { maxHeight: `${PREVIEW_HEIGHT}px` } : undefined}
+      >
+        {children}
+        {!expanded && (
+          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background/90 to-transparent pointer-events-none" />
+        )}
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="w-full h-7 text-[11px] font-terminal text-muted-foreground hover:text-foreground gap-1 mt-1"
+        onClick={() => setExpanded(!expanded)}
+      >
+        {expanded ? (
+          <><ChevronUp className="h-3 w-3" /> Show less</>
+        ) : (
+          <><ChevronDown className="h-3 w-3" /> Show more ({content.length.toLocaleString()} chars)</>
+        )}
+      </Button>
+    </div>
+  );
+};
 
 // Extract GitHub repo URL from message
 const extractRepoUrl = (message: string): string | null => {
@@ -782,11 +825,14 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                       </span>
                     </div>
                     
-                    <div className={`p-3 rounded-lg cyber-border ${
-                      message.role === 'user' 
-                        ? 'bg-primary/10 neon-glow' 
-                        : 'bg-muted/20 terminal-glow'
-                    }`}>
+                    <CollapsibleMessage
+                      content={message.content}
+                      className={`p-3 rounded-lg cyber-border ${
+                        message.role === 'user' 
+                          ? 'bg-primary/10 neon-glow' 
+                          : 'bg-muted/20 terminal-glow'
+                      }`}
+                    >
                       {/* Message attachments */}
                       {message.attachments && message.attachments.length > 0 && (
                         <MessageAttachments attachments={message.attachments} />
@@ -800,7 +846,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                         autoApply={message.role === 'assistant' && message.action === 'generate' && !!applyHistory[message.id]}
                         onDownloadProject={message.role === 'assistant' ? () => onDeploy?.('zip') : undefined}
                       />
-                    </div>
+                    </CollapsibleMessage>
                     
                     {message.role === 'assistant' && message.id !== 'welcome' && (
                       <div className="flex items-center space-x-2">
