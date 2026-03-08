@@ -1017,6 +1017,18 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                   <Camera className="h-4 w-4" />
                 </Button>
 
+                {/* Large prompt overlay button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-muted-foreground hover:text-matrix-green hover:bg-matrix-green/10"
+                  title="Paste large prompt (full-screen)"
+                  onClick={() => setShowLargePromptOverlay(true)}
+                  disabled={isCloning}
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+
                 {/* Text Input */}
                 <Textarea
                   value={input}
