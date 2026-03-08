@@ -19,6 +19,8 @@ import { CodexActionBar, CodexAction } from "./CodexActionBar";
 import { VoiceSelector } from "./VoiceSelector";
 import { useVoicePlayback } from "@/hooks/useVoicePlayback";
 import { loadPersonaSettings, loadStackProfile } from "./SettingsPanel";
+import { needsChunking, chunkPrompt, wrapChunk } from "@/lib/promptChunker";
+import LargePromptOverlay from "./LargePromptOverlay";
 
 interface Message {
   id: string;
