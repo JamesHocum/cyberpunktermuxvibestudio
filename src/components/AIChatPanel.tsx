@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare, Paperclip, Camera, Image, Volume2, ChevronDown, ChevronUp } from "lucide-react";
+import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare, Paperclip, Camera, Image, Volume2, ChevronDown, ChevronUp, Maximize2 } from "lucide-react";
 import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { z } from "zod";
@@ -19,6 +19,8 @@ import { CodexActionBar, CodexAction } from "./CodexActionBar";
 import { VoiceSelector } from "./VoiceSelector";
 import { useVoicePlayback } from "@/hooks/useVoicePlayback";
 import { loadPersonaSettings, loadStackProfile } from "./SettingsPanel";
+import { needsChunking, chunkPrompt, wrapChunk } from "@/lib/promptChunker";
+import LargePromptOverlay from "./LargePromptOverlay";
 
 interface Message {
   id: string;
@@ -149,6 +151,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [currentAction, setCurrentAction] = useState<CodexAction>('chat');
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showLargePromptOverlay, setShowLargePromptOverlay] = useState(false);
 
   // Per-message apply history for undo
   type AppliedFileHistory = { filename: string; previousContent: string };
@@ -468,12 +471,53 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
     try {
       const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       
-      // Format messages for API
+      // Check if the user message needs chunking (>50k chars)
+      const userContent = currentInput;
+      const chunks = chunkPrompt(userContent);
+      const isChunked = chunks.length > 1;
+
+      if (isChunked) {
+        console.log(`[Chat] Large prompt detected: ${userContent.length} chars → ${chunks.length} chunks`);
+      }
+
+      // For chunked prompts, send context-setting chunks first (no streaming response expected)
+      if (isChunked) {
+        for (let i = 0; i < chunks.length - 1; i++) {
+          const chunk = chunks[i];
+          const contextMsg = [{
+            role: 'user' as const,
+            content: wrapChunk(chunk),
+          }];
+          
+          await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/codex-chat`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${authToken}`,
+              },
+              body: JSON.stringify({
+                messages: contextMsg,
+                action: effectiveAction,
+                model: loadPersonaSettings().model,
+                systemPrompt: loadPersonaSettings().systemPrompt,
+                stackProfile: loadStackProfile(currentProjectId),
+              }),
+            }
+          );
+          // We don't need the response for context chunks — they prime the model
+        }
+      }
+
+      // Format messages for the final (or only) API call
       const apiMessages = updatedMessages
         .filter(m => m.id !== 'welcome')
         .map(m => ({
           role: m.role,
-          content: m.content,
+          content: isChunked && m.id === userMessage.id
+            ? wrapChunk(chunks[chunks.length - 1])
+            : m.content,
           attachments: m.attachments?.map(a => ({
             id: a.id,
             type: a.type,
@@ -973,6 +1017,18 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                   <Camera className="h-4 w-4" />
                 </Button>
 
+                {/* Large prompt overlay button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-muted-foreground hover:text-matrix-green hover:bg-matrix-green/10"
+                  title="Paste large prompt (full-screen)"
+                  onClick={() => setShowLargePromptOverlay(true)}
+                  disabled={isCloning}
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+
                 {/* Text Input */}
                 <Textarea
                   value={input}
@@ -1040,6 +1096,24 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
           </TabsContent>
         </Tabs>
       )}
+
+      {/* Large Prompt Overlay */}
+      <LargePromptOverlay
+        open={showLargePromptOverlay}
+        onClose={() => setShowLargePromptOverlay(false)}
+        onSubmit={(text) => {
+          setInput(text);
+          // Trigger send after state update
+          setTimeout(() => {
+            const textarea = document.querySelector<HTMLTextAreaElement>('.cyber-border.bg-studio-terminal.matrix-text');
+            if (textarea) {
+              textarea.style.height = 'auto';
+              textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px';
+            }
+          }, 50);
+        }}
+        disabled={isTyping || isCloning}
+      />
     </div>
   );
 };
