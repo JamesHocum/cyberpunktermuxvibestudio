@@ -41,6 +41,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PWAInstallPrompt } from './PWAInstallPrompt';
 import { MobileHeaderMenu } from './MobileHeaderMenu';
 import { Badge } from "@/components/ui/badge";
+import { ProjectTimers } from './ProjectTimers';
 
 interface StudioHeaderProps {
   onToggleChat: () => void;
