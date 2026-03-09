@@ -220,6 +220,8 @@ export const StudioLayout = () => {
               hasUnsavedChanges={hasUnsavedChanges}
               currentProjectName={currentProject?.name}
               onRun={handleRun}
+              thoughtSeconds={thoughtSeconds}
+              workedSeconds={workedSeconds}
             />
             {showApiConfig && (
               <div className="p-4 border-b bg-muted/50">
