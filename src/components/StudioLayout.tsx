@@ -140,6 +140,7 @@ export const StudioLayout = () => {
 
   const handleFileChange = useCallback((filename: string, content: string) => {
     updateFileContent(filename, content);
+    emitActivity('keystroke');
   }, [updateFileContent]);
 
   const handleSave = useCallback(() => {
