@@ -67,6 +67,8 @@ interface StudioHeaderProps {
   isSaving?: boolean;
   hasUnsavedChanges?: boolean;
   currentProjectName?: string;
+  thoughtSeconds?: number;
+  workedSeconds?: number;
 }
 
 export const StudioHeader = ({ 
