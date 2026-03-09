@@ -48,6 +48,8 @@ export const StudioLayout = () => {
     toggleFolder
   } = useProjectContext();
 
+  const { thoughtSeconds, workedSeconds } = useProjectTimers(currentProject?.id);
+
   useEffect(() => {
     document.body.style.background = '#111';
     document.body.style.overflow = 'hidden';
