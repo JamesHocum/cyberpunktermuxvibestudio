@@ -41,6 +41,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PWAInstallPrompt } from './PWAInstallPrompt';
 import { MobileHeaderMenu } from './MobileHeaderMenu';
 import { Badge } from "@/components/ui/badge";
+import { ProjectTimers } from './ProjectTimers';
 
 interface StudioHeaderProps {
   onToggleChat: () => void;
@@ -66,6 +67,8 @@ interface StudioHeaderProps {
   isSaving?: boolean;
   hasUnsavedChanges?: boolean;
   currentProjectName?: string;
+  thoughtSeconds?: number;
+  workedSeconds?: number;
 }
 
 export const StudioHeader = ({ 
@@ -86,7 +89,9 @@ export const StudioHeader = ({
   showDownloader,
   showTesting,
   showIntegrations,
-  onRun
+  onRun,
+  thoughtSeconds = 0,
+  workedSeconds = 0,
 }: StudioHeaderProps) => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -223,6 +228,7 @@ export const StudioHeader = ({
           className={`flex items-center space-x-2 overflow-x-auto scrollbar-thin scrollbar-thumb-neon max-w-[60vw] px-2 drag-scroll-container ${isDragging ? 'is-dragging' : ''}`}
           {...dragHandlers}
         >
+          <ProjectTimers thoughtSeconds={thoughtSeconds} workedSeconds={workedSeconds} />
           <Button 
             variant={showTerminal ? "secondary" : "ghost"} 
             size="sm"

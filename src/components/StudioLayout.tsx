@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { emitActivity } from "@/lib/projectTimers";
+import { useProjectTimers } from "@/hooks/useProjectTimers";
 import { useNavigate } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { StudioSidebar } from "./StudioSidebar";
@@ -45,6 +47,8 @@ export const StudioLayout = () => {
     clearProject,
     toggleFolder
   } = useProjectContext();
+
+  const { thoughtSeconds, workedSeconds } = useProjectTimers(currentProject?.id);
 
   useEffect(() => {
     document.body.style.background = '#111';
@@ -136,11 +140,13 @@ export const StudioLayout = () => {
 
   const handleFileChange = useCallback((filename: string, content: string) => {
     updateFileContent(filename, content);
+    emitActivity('keystroke');
   }, [updateFileContent]);
 
   const handleSave = useCallback(() => {
     saveProject();
     setLastSaveTick(Date.now());
+    emitActivity('file_save');
   }, [saveProject]);
 
   // "Run" button: re-fetch project files and auto-select entry
@@ -148,6 +154,7 @@ export const StudioLayout = () => {
     if (!currentProject?.id) return;
     setIsRunningBuild(true);
     setBuildError(null);
+    emitActivity('build_action');
     try {
       await loadProject(currentProject.id);
     } catch (err) {
@@ -213,6 +220,8 @@ export const StudioLayout = () => {
               hasUnsavedChanges={hasUnsavedChanges}
               currentProjectName={currentProject?.name}
               onRun={handleRun}
+              thoughtSeconds={thoughtSeconds}
+              workedSeconds={workedSeconds}
             />
             {showApiConfig && (
               <div className="p-4 border-b bg-muted/50">
