@@ -146,6 +146,7 @@ export const StudioLayout = () => {
   const handleSave = useCallback(() => {
     saveProject();
     setLastSaveTick(Date.now());
+    emitActivity('file_save');
   }, [saveProject]);
 
   // "Run" button: re-fetch project files and auto-select entry
