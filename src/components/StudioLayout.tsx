@@ -154,6 +154,7 @@ export const StudioLayout = () => {
     if (!currentProject?.id) return;
     setIsRunningBuild(true);
     setBuildError(null);
+    emitActivity('build_action');
     try {
       await loadProject(currentProject.id);
     } catch (err) {
