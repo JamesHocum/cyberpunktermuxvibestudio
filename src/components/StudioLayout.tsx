@@ -48,7 +48,7 @@ export const StudioLayout = () => {
     toggleFolder
   } = useProjectContext();
 
-  const { thoughtSeconds, workedSeconds } = useProjectTimers(currentProject?.id);
+  const { thoughtSeconds, workedSeconds, sessionThoughtSeconds, sessionWorkedSeconds } = useProjectTimers(currentProject?.id);
 
   useEffect(() => {
     document.body.style.background = '#111';
@@ -222,6 +222,8 @@ export const StudioLayout = () => {
               onRun={handleRun}
               thoughtSeconds={thoughtSeconds}
               workedSeconds={workedSeconds}
+              sessionThoughtSeconds={sessionThoughtSeconds}
+              sessionWorkedSeconds={sessionWorkedSeconds}
             />
             {showApiConfig && (
               <div className="p-4 border-b bg-muted/50">

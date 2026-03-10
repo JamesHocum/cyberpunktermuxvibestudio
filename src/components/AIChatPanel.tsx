@@ -21,6 +21,7 @@ import { useVoicePlayback } from "@/hooks/useVoicePlayback";
 import { loadPersonaSettings, loadStackProfile } from "./SettingsPanel";
 import { needsChunking, chunkPrompt, wrapChunk } from "@/lib/promptChunker";
 import LargePromptOverlay from "./LargePromptOverlay";
+import { emitActivity } from "@/lib/projectTimers";
 
 interface Message {
   id: string;
@@ -394,6 +395,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
 
   const sendMessage = async () => {
     if ((!input.trim() && attachments.length === 0) || isTyping || isCloning) return;
+    emitActivity('prompt_submit');
 
     // Validate input
     if (input.trim()) {

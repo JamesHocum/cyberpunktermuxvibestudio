@@ -8,6 +8,7 @@ import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
+import { emitActivity } from "@/lib/projectTimers";
 
 interface TerminalProps {
   fileTree?: any;
@@ -123,6 +124,7 @@ export const Terminal = ({ fileTree, fileContents = {}, onCodeGenerated, project
 
   const executeCommand = async () => {
     if (!command.trim() || isProcessing) return;
+    emitActivity('terminal_command');
 
     // Validate input
     try {

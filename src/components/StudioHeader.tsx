@@ -69,6 +69,8 @@ interface StudioHeaderProps {
   currentProjectName?: string;
   thoughtSeconds?: number;
   workedSeconds?: number;
+  sessionThoughtSeconds?: number;
+  sessionWorkedSeconds?: number;
 }
 
 export const StudioHeader = ({ 
@@ -92,6 +94,8 @@ export const StudioHeader = ({
   onRun,
   thoughtSeconds = 0,
   workedSeconds = 0,
+  sessionThoughtSeconds = 0,
+  sessionWorkedSeconds = 0,
 }: StudioHeaderProps) => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -228,7 +232,7 @@ export const StudioHeader = ({
           className={`flex items-center space-x-2 overflow-x-auto scrollbar-thin scrollbar-thumb-neon max-w-[60vw] px-2 drag-scroll-container ${isDragging ? 'is-dragging' : ''}`}
           {...dragHandlers}
         >
-          <ProjectTimers thoughtSeconds={thoughtSeconds} workedSeconds={workedSeconds} />
+          <ProjectTimers thoughtSeconds={thoughtSeconds} workedSeconds={workedSeconds} sessionThoughtSeconds={sessionThoughtSeconds} sessionWorkedSeconds={sessionWorkedSeconds} />
           <Button 
             variant={showTerminal ? "secondary" : "ghost"} 
             size="sm"

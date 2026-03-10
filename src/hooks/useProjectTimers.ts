@@ -13,11 +13,14 @@ const PERSIST_INTERVAL_MS = 10_000; // save every 10s
 export function useProjectTimers(projectId: string | undefined) {
   const [thought, setThought] = useState(0);
   const [worked, setWorked] = useState(0);
+  const [sessionThought, setSessionThought] = useState(0);
+  const [sessionWorked, setSessionWorked] = useState(0);
   const lastActivityRef = useRef(0);
   const isVisibleRef = useRef(!document.hidden);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
   const persistRef = useRef<ReturnType<typeof setInterval>>();
   const stateRef = useRef<TimerState>({ thoughtSeconds: 0, workedSeconds: 0, lastSavedAt: 0 });
+  const sessionRef = useRef({ thought: 0, worked: 0 });
 
   // Load persisted state when project changes
   useEffect(() => {
@@ -26,7 +29,10 @@ export function useProjectTimers(projectId: string | undefined) {
     stateRef.current = saved;
     setThought(saved.thoughtSeconds);
     setWorked(saved.workedSeconds);
-    lastActivityRef.current = 0; // reset activity for new project
+    sessionRef.current = { thought: 0, worked: 0 };
+    setSessionThought(0);
+    setSessionWorked(0);
+    lastActivityRef.current = 0;
   }, [projectId]);
 
   // Core tick — runs every second
@@ -38,13 +44,17 @@ export function useProjectTimers(projectId: string | undefined) {
 
       // Thought always increments while tab visible
       stateRef.current.thoughtSeconds += 1;
+      sessionRef.current.thought += 1;
       setThought(stateRef.current.thoughtSeconds);
+      setSessionThought(sessionRef.current.thought);
 
       // Worked increments only if recent activity
       const now = Date.now();
       if (lastActivityRef.current > 0 && now - lastActivityRef.current < INACTIVITY_THRESHOLD_MS) {
         stateRef.current.workedSeconds += 1;
+        sessionRef.current.worked += 1;
         setWorked(stateRef.current.workedSeconds);
+        setSessionWorked(sessionRef.current.worked);
       }
     };
 
@@ -60,7 +70,6 @@ export function useProjectTimers(projectId: string | undefined) {
     }, PERSIST_INTERVAL_MS);
     return () => {
       clearInterval(persistRef.current);
-      // Save on unmount
       saveTimerState(projectId, stateRef.current);
     };
   }, [projectId]);
@@ -79,10 +88,15 @@ export function useProjectTimers(projectId: string | undefined) {
     });
   }, []);
 
-  // Manual signal for components that import the hook directly
   const signalActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
   }, []);
 
-  return { thoughtSeconds: thought, workedSeconds: worked, signalActivity };
+  return {
+    thoughtSeconds: thought,
+    workedSeconds: worked,
+    sessionThoughtSeconds: sessionThought,
+    sessionWorkedSeconds: sessionWorked,
+    signalActivity,
+  };
 }
