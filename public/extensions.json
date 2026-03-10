@@ -68,5 +68,131 @@
     "description": "Automatically format code on save with configurable Prettier rules.",
     "author": "Cypher Dev",
     "url": "https://cdn.jsdelivr.net/gh/example/extensions/autoFormatter.js"
+  },
+  {
+    "id": "git-lens",
+    "name": "Git Lens",
+    "description": "Inline git blame annotations, commit history per line, and branch visualization.",
+    "author": "Cypher Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/gitLens.js"
+  },
+  {
+    "id": "regex-tester",
+    "name": "Regex Lab",
+    "description": "Interactive regex builder and tester with real-time match highlighting and capture groups.",
+    "author": "Neon Coder",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/regexLab.js"
+  },
+  {
+    "id": "api-tester",
+    "name": "API Request Builder",
+    "description": "Send HTTP requests, inspect responses, and save collections — a built-in Postman alternative.",
+    "author": "Cypher Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/apiTester.js"
+  },
+  {
+    "id": "json-visualizer",
+    "name": "JSON Tree Visualizer",
+    "description": "Render JSON data as interactive collapsible trees with search and path copying.",
+    "author": "Neon Coder",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/jsonVisualizer.js"
+  },
+  {
+    "id": "markdown-preview",
+    "name": "Markdown Live Preview",
+    "description": "Split-pane markdown preview with cyberpunk-styled rendering and export to HTML/PDF.",
+    "author": "Synth Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/markdownPreview.js"
+  },
+  {
+    "id": "hacker-typer",
+    "name": "Hacker Typer Mode",
+    "description": "Type random code with authentic hacking sound effects for presentations and fun.",
+    "author": "Synth Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/hackerTyper.js"
+  },
+  {
+    "id": "crt-filter",
+    "name": "CRT Monitor Filter",
+    "description": "Apply retro CRT scanline, phosphor glow, and screen curvature effects to the IDE.",
+    "author": "Synth Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/crtFilter.js"
+  },
+  {
+    "id": "ascii-art-gen",
+    "name": "ASCII Art Generator",
+    "description": "Convert text to ASCII art banners with multiple font styles for code comments and headers.",
+    "author": "Neon Coder",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/asciiArtGen.js"
+  },
+  {
+    "id": "dependency-graph",
+    "name": "Dependency Graph",
+    "description": "Visualize your project's import/dependency tree as an interactive force-directed graph.",
+    "author": "Cypher Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/dependencyGraph.js"
+  },
+  {
+    "id": "todo-scanner",
+    "name": "TODO/FIXME Scanner",
+    "description": "Scan your codebase for TODO, FIXME, HACK, and BUG comments and list them in one panel.",
+    "author": "Cypher Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/todoScanner.js"
+  },
+  {
+    "id": "browser-ext-scaffold",
+    "name": "Browser Extension Scaffold",
+    "description": "Generate Chrome/Firefox extension boilerplate with manifest v3, popup, content scripts, and options page.",
+    "author": "Cypher Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/browserExtScaffold.js"
+  },
+  {
+    "id": "ide-ext-creator",
+    "name": "IDE Extension Creator",
+    "description": "Scaffold new Cyberpunk Termux IDE extensions with the required API hooks and sandbox config.",
+    "author": "Synth Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/ideExtCreator.js"
+  },
+  {
+    "id": "neon-minimap",
+    "name": "Neon Code Minimap",
+    "description": "A glowing minimap sidebar showing a condensed view of your entire file with syntax colors.",
+    "author": "Neon Coder",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/neonMinimap.js"
+  },
+  {
+    "id": "cyber-keybindings",
+    "name": "Cyber Keybinding Editor",
+    "description": "Customize all keyboard shortcuts with a visual editor and import/export profiles.",
+    "author": "Cypher Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/cyberKeybindings.js"
+  },
+  {
+    "id": "ambient-soundscapes",
+    "name": "Ambient Soundscapes",
+    "description": "Play looping cyberpunk ambience — rain, synth drones, neon hum — while you code.",
+    "author": "Synth Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/ambientSoundscapes.js"
+  },
+  {
+    "id": "port-scanner",
+    "name": "Port Scanner Widget",
+    "description": "Scan and display open local ports with service detection for quick debugging.",
+    "author": "Cypher Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/portScanner.js"
+  },
+  {
+    "id": "base64-toolkit",
+    "name": "Base64 & Encoding Toolkit",
+    "description": "Encode/decode Base64, URL, HTML entities, and JWT tokens inline in the editor.",
+    "author": "Neon Coder",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/base64Toolkit.js"
+  },
+  {
+    "id": "css-glitch-gen",
+    "name": "CSS Glitch Generator",
+    "description": "Generate cyberpunk glitch text effects with customizable intensity, colors, and animation speed.",
+    "author": "Synth Dev",
+    "url": "https://cdn.jsdelivr.net/gh/example/extensions/cssGlitchGen.js"
   }
 ]

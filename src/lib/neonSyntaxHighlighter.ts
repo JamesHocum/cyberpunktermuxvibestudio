@@ -3,7 +3,7 @@
 // Cyberpunk-themed syntax highlighting engine
 // ============================================
 
-export type NeonTheme = 'matrix' | 'cyber' | 'vaporwave';
+export type NeonTheme = 'matrix' | 'cyber' | 'vaporwave' | 'noir' | 'hackergreen' | 'synthwave' | 'bloodmoon' | 'ghostshell';
 
 interface ThemeColors {
   keyword: string;
@@ -51,6 +51,61 @@ const themes: Record<NeonTheme, ThemeColors> = {
     tag: 'hsl(var(--neon-pink))',
     attribute: 'hsl(var(--neon-green))',
   },
+  noir: {
+    keyword: '#e0e0e0',
+    string: '#a0a0a0',
+    number: '#ffffff',
+    comment: '#555555',
+    function: '#ffffff',
+    variable: '#b0b0b0',
+    operator: '#888888',
+    tag: '#cccccc',
+    attribute: '#999999',
+  },
+  hackergreen: {
+    keyword: '#00cc00',
+    string: '#66ff66',
+    number: '#99ff99',
+    comment: '#1a6e1a',
+    function: '#88ff88',
+    variable: '#33ff33',
+    operator: '#00aa00',
+    tag: '#33ff33',
+    attribute: '#66ff66',
+  },
+  synthwave: {
+    keyword: '#fede5d',
+    string: '#ff8b39',
+    number: '#f97fdb',
+    comment: '#6943a0',
+    function: '#36f9f6',
+    variable: '#ff7edb',
+    operator: '#fede5d',
+    tag: '#ff7edb',
+    attribute: '#36f9f6',
+  },
+  bloodmoon: {
+    keyword: '#ff4444',
+    string: '#ff8866',
+    number: '#ffaa88',
+    comment: '#5a2a2a',
+    function: '#ff9966',
+    variable: '#cc5544',
+    operator: '#993333',
+    tag: '#ff4444',
+    attribute: '#ff8866',
+  },
+  ghostshell: {
+    keyword: '#44aacc',
+    string: '#66ddaa',
+    number: '#aaddee',
+    comment: '#3a5a6a',
+    function: '#99ddcc',
+    variable: '#88ccdd',
+    operator: '#558899',
+    tag: '#44aacc',
+    attribute: '#66ddaa',
+  },
 };
 
 const patterns = {
@@ -68,33 +123,26 @@ export function highlightCode(code: string, theme: NeonTheme = 'matrix'): string
   const colors = themes[theme];
   let highlighted = code;
 
-  // Escape HTML
   highlighted = highlighted
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 
-  // Apply syntax highlighting in order
   highlighted = highlighted.replace(patterns.comment, (match) => 
     `<span style="color: ${colors.comment}; font-style: italic;">${match}</span>`
   );
-
   highlighted = highlighted.replace(patterns.string, (match) => 
     `<span style="color: ${colors.string}; text-shadow: 0 0 5px currentColor;">${match}</span>`
   );
-
   highlighted = highlighted.replace(patterns.keyword, (match) => 
     `<span style="color: ${colors.keyword}; font-weight: 600; text-shadow: 0 0 8px currentColor;">${match}</span>`
   );
-
   highlighted = highlighted.replace(patterns.function, (match) => 
     `<span style="color: ${colors.function}; text-shadow: 0 0 6px currentColor;">${match}</span>`
   );
-
   highlighted = highlighted.replace(patterns.number, (match) => 
     `<span style="color: ${colors.number};">${match}</span>`
   );
-
   highlighted = highlighted.replace(patterns.operator, (match) => 
     `<span style="color: ${colors.operator};">${match}</span>`
   );
