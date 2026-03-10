@@ -8,6 +8,7 @@ import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
+import { emitActivity } from "@/lib/projectTimers";
 
 interface TerminalProps {
   fileTree?: any;
