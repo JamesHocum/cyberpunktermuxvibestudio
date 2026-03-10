@@ -69,6 +69,8 @@ interface StudioHeaderProps {
   currentProjectName?: string;
   thoughtSeconds?: number;
   workedSeconds?: number;
+  sessionThoughtSeconds?: number;
+  sessionWorkedSeconds?: number;
 }
 
 export const StudioHeader = ({ 
