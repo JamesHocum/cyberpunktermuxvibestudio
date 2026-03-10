@@ -341,25 +341,25 @@ export default ${name};`;
                 <Palette className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="cyber-border terminal-glow bg-studio-sidebar">
-              <DropdownMenuItem 
-                onClick={() => changeTheme('matrix')}
-                className="neon-green font-terminal"
-              >
-                Matrix Theme
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => changeTheme('cyber')}
-                className="text-cyber-cyan font-terminal"
-              >
-                Cyber Theme
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => changeTheme('vaporwave')}
-                className="text-neon-pink font-terminal"
-              >
-                Vaporwave Theme
-              </DropdownMenuItem>
+            <DropdownMenuContent className="cyber-border terminal-glow bg-studio-sidebar max-h-[300px] overflow-y-auto">
+              {([
+                { id: 'matrix' as const, label: 'Matrix', color: 'text-[#00ff41]' },
+                { id: 'cyber' as const, label: 'Cyber', color: 'text-[#00d4ff]' },
+                { id: 'vaporwave' as const, label: 'Vaporwave', color: 'text-[#ff006e]' },
+                { id: 'noir' as const, label: 'Noir', color: 'text-[#c0c0c0]' },
+                { id: 'hackergreen' as const, label: 'Hacker Green', color: 'text-[#33ff33]' },
+                { id: 'synthwave' as const, label: 'Synthwave', color: 'text-[#f97fdb]' },
+                { id: 'bloodmoon' as const, label: 'Blood Moon', color: 'text-[#ff4444]' },
+                { id: 'ghostshell' as const, label: 'Ghost in Shell', color: 'text-[#88ccdd]' },
+              ]).map(t => (
+                <DropdownMenuItem
+                  key={t.id}
+                  onClick={() => changeTheme(t.id)}
+                  className={`${t.color} font-terminal`}
+                >
+                  {syntaxTheme === t.id ? '● ' : '○ '}{t.label}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
