@@ -94,6 +94,8 @@ export const StudioHeader = ({
   onRun,
   thoughtSeconds = 0,
   workedSeconds = 0,
+  sessionThoughtSeconds = 0,
+  sessionWorkedSeconds = 0,
 }: StudioHeaderProps) => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
