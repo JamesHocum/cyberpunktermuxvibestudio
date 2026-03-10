@@ -102,6 +102,18 @@ export const PublishDialog = ({
       action: () => handle("ios", () => generateIOSPackage(projectName, fileContents), `${projectName}-ios.zip`, "iOS package downloaded!"),
       badge: "iOS",
     },
+    {
+      id: "chrome-ext", icon: <Chrome className="h-6 w-6" />, title: "Chrome Extension",
+      desc: "Manifest V3 browser extension with popup, content script, and background worker",
+      action: () => handle("chrome-ext", () => generateChromeExtPackage(projectName, fileContents), `${projectName}-chrome-ext.zip`, "Chrome Extension package downloaded!"),
+      badge: "BROWSER",
+    },
+    {
+      id: "ide-ext", icon: <Puzzle className="h-6 w-6" />, title: "IDE Extension",
+      desc: "Scaffold a Cyberpunk Termux IDE extension with metadata and entry point",
+      action: () => handle("ide-ext", () => generateIDEExtensionPackage(projectName, fileContents), `${projectName}-ide-ext.zip`, "IDE Extension package downloaded!"),
+      badge: "EXTENSION",
+    },
   ];
 
   return (
