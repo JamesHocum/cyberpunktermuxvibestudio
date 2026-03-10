@@ -48,7 +48,7 @@ export const StudioLayout = () => {
     toggleFolder
   } = useProjectContext();
 
-  const { thoughtSeconds, workedSeconds } = useProjectTimers(currentProject?.id);
+  const { thoughtSeconds, workedSeconds, sessionThoughtSeconds, sessionWorkedSeconds } = useProjectTimers(currentProject?.id);
 
   useEffect(() => {
     document.body.style.background = '#111';
