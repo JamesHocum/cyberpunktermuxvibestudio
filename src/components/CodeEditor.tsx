@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type NeonTheme = 'matrix' | 'cyber' | 'vaporwave';
+type NeonTheme = 'matrix' | 'cyber' | 'vaporwave' | 'noir' | 'hackergreen' | 'synthwave' | 'bloodmoon' | 'ghostshell';
 
 const themeStyles = {
   matrix: {
