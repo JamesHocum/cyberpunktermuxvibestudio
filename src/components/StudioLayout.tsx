@@ -222,6 +222,8 @@ export const StudioLayout = () => {
               onRun={handleRun}
               thoughtSeconds={thoughtSeconds}
               workedSeconds={workedSeconds}
+              sessionThoughtSeconds={sessionThoughtSeconds}
+              sessionWorkedSeconds={sessionWorkedSeconds}
             />
             {showApiConfig && (
               <div className="p-4 border-b bg-muted/50">
