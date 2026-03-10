@@ -15,61 +15,30 @@ import {
 
 type NeonTheme = 'matrix' | 'cyber' | 'vaporwave' | 'noir' | 'hackergreen' | 'synthwave' | 'bloodmoon' | 'ghostshell';
 
-const themeStyles = {
-  matrix: {
-    ...tomorrow,
-    'pre[class*="language-"]': {
-      ...tomorrow['pre[class*="language-"]'],
-      background: 'transparent',
-      margin: 0,
-      padding: 0,
-    },
-    'code[class*="language-"]': {
-      ...tomorrow['code[class*="language-"]'],
-      color: '#00ff41',
-      fontFamily: 'JetBrains Mono, Monaco, Menlo, monospace',
-    },
-    keyword: { color: '#8c00ff' },
-    string: { color: '#00ff41' },
-    function: { color: '#00d4ff' },
-    comment: { color: '#666', fontStyle: 'italic' },
+const baseStyle = (color: string) => ({
+  ...tomorrow,
+  'pre[class*="language-"]': {
+    ...tomorrow['pre[class*="language-"]'],
+    background: 'transparent',
+    margin: 0,
+    padding: 0,
   },
-  cyber: {
-    ...tomorrow,
-    'pre[class*="language-"]': {
-      ...tomorrow['pre[class*="language-"]'],
-      background: 'transparent',
-      margin: 0,
-      padding: 0,
-    },
-    'code[class*="language-"]': {
-      ...tomorrow['code[class*="language-"]'],
-      color: '#00d4ff',
-      fontFamily: 'JetBrains Mono, Monaco, Menlo, monospace',
-    },
-    keyword: { color: '#ff006e' },
-    string: { color: '#00d4ff' },
-    function: { color: '#ffbe0b' },
-    comment: { color: '#666', fontStyle: 'italic' },
+  'code[class*="language-"]': {
+    ...tomorrow['code[class*="language-"]'],
+    color,
+    fontFamily: 'JetBrains Mono, Monaco, Menlo, monospace',
   },
-  vaporwave: {
-    ...tomorrow,
-    'pre[class*="language-"]': {
-      ...tomorrow['pre[class*="language-"]'],
-      background: 'transparent',
-      margin: 0,
-      padding: 0,
-    },
-    'code[class*="language-"]': {
-      ...tomorrow['code[class*="language-"]'],
-      color: '#ff006e',
-      fontFamily: 'JetBrains Mono, Monaco, Menlo, monospace',
-    },
-    keyword: { color: '#8c00ff' },
-    string: { color: '#ff006e' },
-    function: { color: '#00d4ff' },
-    comment: { color: '#666', fontStyle: 'italic' },
-  },
+});
+
+const themeStyles: Record<NeonTheme, Record<string, any>> = {
+  matrix: { ...baseStyle('#00ff41'), keyword: { color: '#8c00ff' }, string: { color: '#00ff41' }, function: { color: '#00d4ff' }, comment: { color: '#666', fontStyle: 'italic' } },
+  cyber: { ...baseStyle('#00d4ff'), keyword: { color: '#ff006e' }, string: { color: '#00d4ff' }, function: { color: '#ffbe0b' }, comment: { color: '#666', fontStyle: 'italic' } },
+  vaporwave: { ...baseStyle('#ff006e'), keyword: { color: '#8c00ff' }, string: { color: '#ff006e' }, function: { color: '#00d4ff' }, comment: { color: '#666', fontStyle: 'italic' } },
+  noir: { ...baseStyle('#c0c0c0'), keyword: { color: '#e0e0e0' }, string: { color: '#a0a0a0' }, function: { color: '#ffffff' }, comment: { color: '#555', fontStyle: 'italic' } },
+  hackergreen: { ...baseStyle('#33ff33'), keyword: { color: '#00cc00' }, string: { color: '#66ff66' }, function: { color: '#88ff88' }, comment: { color: '#1a6e1a', fontStyle: 'italic' } },
+  synthwave: { ...baseStyle('#f97fdb'), keyword: { color: '#fede5d' }, string: { color: '#ff8b39' }, function: { color: '#36f9f6' }, comment: { color: '#6943a0', fontStyle: 'italic' } },
+  bloodmoon: { ...baseStyle('#cc4444'), keyword: { color: '#ff4444' }, string: { color: '#ff8866' }, function: { color: '#ff9966' }, comment: { color: '#5a2a2a', fontStyle: 'italic' } },
+  ghostshell: { ...baseStyle('#88ccdd'), keyword: { color: '#44aacc' }, string: { color: '#66ddaa' }, function: { color: '#99ddcc' }, comment: { color: '#3a5a6a', fontStyle: 'italic' } },
 };
 
 const saveTheme = (theme: NeonTheme) => {
