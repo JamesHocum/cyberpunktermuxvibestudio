@@ -124,6 +124,7 @@ export const Terminal = ({ fileTree, fileContents = {}, onCodeGenerated, project
 
   const executeCommand = async () => {
     if (!command.trim() || isProcessing) return;
+    emitActivity('terminal_command');
 
     // Validate input
     try {

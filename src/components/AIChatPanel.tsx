@@ -395,6 +395,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
 
   const sendMessage = async () => {
     if ((!input.trim() && attachments.length === 0) || isTyping || isCloning) return;
+    emitActivity('prompt_submit');
 
     // Validate input
     if (input.trim()) {
