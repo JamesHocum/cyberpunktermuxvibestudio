@@ -270,7 +270,7 @@ export const StudioLayout = () => {
                 </ResizablePanelGroup>
               </ResizablePanel>
               
-              {showPreview && (
+              {showPreview && !isChatMaximized && (
                 <>
                   <ResizableHandle />
                   <ResizablePanel defaultSize={40} minSize={25} maxSize={60}>
@@ -284,6 +284,7 @@ export const StudioLayout = () => {
                   </ResizablePanel>
                 </>
               )}
+              )
               
               {showChat && (
                 <>
