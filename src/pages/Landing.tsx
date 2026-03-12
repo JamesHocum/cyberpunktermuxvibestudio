@@ -262,6 +262,7 @@ export default function Landing() {
 
       {/* ====== WHAT MAKES IT SPECIAL ====== */}
       <section id="special" className="relative z-10 py-24 border-t border-border/30">
+        <div className="max-w-4xl mx-auto px-4">
           <AnimatedSection className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-cyber font-bold mb-4">
               <Zap className="inline h-8 w-8 mr-2 text-[hsl(var(--neon-cyan))]" />
