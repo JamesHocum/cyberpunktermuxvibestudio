@@ -822,6 +822,28 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                   <Sparkles className="h-3 w-3 mr-1 flicker" />
                   {canUseAI ? 'ONLINE' : 'AUTH'}
                 </Badge>
+                {onToggleMaximize && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onToggleMaximize}
+                    className="h-6 w-6 p-0 text-muted-foreground hover:neon-green"
+                    title={isMaximized ? 'Restore panel' : 'Maximize panel'}
+                  >
+                    {isMaximized ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+                  </Button>
+                )}
+                {onMinimize && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onMinimize}
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-yellow-400"
+                    title="Minimize panel"
+                  >
+                    <Minus className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
             </div>
           </Tabs>
