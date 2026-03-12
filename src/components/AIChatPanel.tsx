@@ -40,6 +40,9 @@ interface AIChatPanelProps {
   onUpdateFileContent?: (path: string, content: string) => void;
   onSelectFile?: (path: string) => void;
   onDeploy?: (target: 'vercel' | 'netlify' | 'zip') => void;
+  isMaximized?: boolean;
+  onToggleMaximize?: () => void;
+  onMinimize?: () => void;
 }
 
 // Collapsible wrapper for long messages (>2000 chars)
