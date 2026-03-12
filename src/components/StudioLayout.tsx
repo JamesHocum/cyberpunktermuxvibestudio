@@ -98,6 +98,7 @@ export const StudioLayout = () => {
   const [buildError, setBuildError] = useState<string | null>(null);
   const [lastSaveTick, setLastSaveTick] = useState<number | null>(null);
   const [showPublish, setShowPublish] = useState(false);
+  const [isChatMaximized, setIsChatMaximized] = useState(false);
   
   // Ref for triggering sidebar matrix tools
   const [matrixModalToOpen, setMatrixModalToOpen] = useState<ModalType>(null);
