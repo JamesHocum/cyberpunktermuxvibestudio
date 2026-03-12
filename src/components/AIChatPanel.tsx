@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare, Paperclip, Camera, Image, Volume2, ChevronDown, ChevronUp, Maximize2 } from "lucide-react";
+import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare, Paperclip, Camera, Image, Volume2, ChevronDown, ChevronUp, Maximize2, Minimize2, Minus } from "lucide-react";
 import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { z } from "zod";
@@ -40,6 +40,9 @@ interface AIChatPanelProps {
   onUpdateFileContent?: (path: string, content: string) => void;
   onSelectFile?: (path: string) => void;
   onDeploy?: (target: 'vercel' | 'netlify' | 'zip') => void;
+  isMaximized?: boolean;
+  onToggleMaximize?: () => void;
+  onMinimize?: () => void;
 }
 
 // Collapsible wrapper for long messages (>2000 chars)
@@ -159,7 +162,7 @@ const getPlaceholder = (action: CodexAction): string => {
   }
 };
 
-export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents = {}, onCreateFile, onUpdateFileContent, onSelectFile, onDeploy }: AIChatPanelProps) => {
+export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents = {}, onCreateFile, onUpdateFileContent, onSelectFile, onDeploy, isMaximized, onToggleMaximize, onMinimize }: AIChatPanelProps) => {
   const { session, user, isAuthenticated, isDevBypass } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("chat");
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
@@ -819,6 +822,28 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                   <Sparkles className="h-3 w-3 mr-1 flicker" />
                   {canUseAI ? 'ONLINE' : 'AUTH'}
                 </Badge>
+                {onToggleMaximize && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onToggleMaximize}
+                    className="h-6 w-6 p-0 text-muted-foreground hover:neon-green"
+                    title={isMaximized ? 'Restore panel' : 'Maximize panel'}
+                  >
+                    {isMaximized ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+                  </Button>
+                )}
+                {onMinimize && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onMinimize}
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-yellow-400"
+                    title="Minimize panel"
+                  >
+                    <Minus className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
             </div>
           </Tabs>

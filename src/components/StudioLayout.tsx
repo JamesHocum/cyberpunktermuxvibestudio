@@ -98,6 +98,7 @@ export const StudioLayout = () => {
   const [buildError, setBuildError] = useState<string | null>(null);
   const [lastSaveTick, setLastSaveTick] = useState<number | null>(null);
   const [showPublish, setShowPublish] = useState(false);
+  const [isChatMaximized, setIsChatMaximized] = useState(false);
   
   // Ref for triggering sidebar matrix tools
   const [matrixModalToOpen, setMatrixModalToOpen] = useState<ModalType>(null);
@@ -232,61 +233,65 @@ export const StudioLayout = () => {
             )}
             
             <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
-              <ResizablePanel defaultSize={showChat || showPreview ? 60 : 100} minSize={40}>
-                <ResizablePanelGroup direction="vertical" className="h-full">
-                  <ResizablePanel defaultSize={showTerminal ? 70 : 100} minSize={30}>
-                    <MonacoCodeEditor 
-                      activeFile={activeFile} 
-                      openFiles={openFiles}
-                      onCloseFile={handleCloseFile}
-                      onSelectFile={setActiveFile}
-                      fileContents={fileContents}
-                      onFileChange={handleFileChange}
-                      onSave={handleSave}
-                      hasUnsavedChanges={hasUnsavedChanges}
-                      isBuilding={isRunningBuild}
-                      buildError={buildError}
-                      lastSaveTick={lastSaveTick}
-                    />
+              {(!showChat || !isChatMaximized) && (
+                <>
+                  <ResizablePanel defaultSize={showChat || showPreview ? 60 : 100} minSize={40}>
+                    <ResizablePanelGroup direction="vertical" className="h-full">
+                      <ResizablePanel defaultSize={showTerminal ? 70 : 100} minSize={30}>
+                        <MonacoCodeEditor 
+                          activeFile={activeFile} 
+                          openFiles={openFiles}
+                          onCloseFile={handleCloseFile}
+                          onSelectFile={setActiveFile}
+                          fileContents={fileContents}
+                          onFileChange={handleFileChange}
+                          onSave={handleSave}
+                          hasUnsavedChanges={hasUnsavedChanges}
+                          isBuilding={isRunningBuild}
+                          buildError={buildError}
+                          lastSaveTick={lastSaveTick}
+                        />
+                      </ResizablePanel>
+                      
+                      {showTerminal && (
+                        <>
+                          <ResizableHandle />
+                          <ResizablePanel defaultSize={30} minSize={20}>
+                            <Terminal 
+                              fileTree={fileTree}
+                              fileContents={fileContents}
+                              onCodeGenerated={handleCodeGenerated}
+                              projectId={currentProject?.id}
+                              onClose={() => setShowTerminal(false)}
+                              onMinimize={() => setShowTerminal(false)}
+                            />
+                          </ResizablePanel>
+                        </>
+                      )}
+                    </ResizablePanelGroup>
                   </ResizablePanel>
                   
-                  {showTerminal && (
+                  {showPreview && (
                     <>
                       <ResizableHandle />
-                      <ResizablePanel defaultSize={30} minSize={20}>
-                        <Terminal 
-                          fileTree={fileTree}
-                          fileContents={fileContents}
-                          onCodeGenerated={handleCodeGenerated}
-                          projectId={currentProject?.id}
-                          onClose={() => setShowTerminal(false)}
-                          onMinimize={() => setShowTerminal(false)}
+                      <ResizablePanel defaultSize={40} minSize={25} maxSize={60}>
+                        <LivePreview 
+                          content={activeFile ? (fileContents[activeFile] || '') : ''}
+                          filename={activeFile || 'untitled'}
+                          onClose={() => setShowPreview(false)}
+                          projectFiles={Object.keys(fileContents)}
+                          allFileContents={fileContents}
                         />
                       </ResizablePanel>
                     </>
                   )}
-                </ResizablePanelGroup>
-              </ResizablePanel>
-              
-              {showPreview && (
-                <>
-                  <ResizableHandle />
-                  <ResizablePanel defaultSize={40} minSize={25} maxSize={60}>
-                    <LivePreview 
-                      content={activeFile ? (fileContents[activeFile] || '') : ''}
-                      filename={activeFile || 'untitled'}
-                      onClose={() => setShowPreview(false)}
-                      projectFiles={Object.keys(fileContents)}
-                      allFileContents={fileContents}
-                    />
-                  </ResizablePanel>
                 </>
               )}
               
               {showChat && (
                 <>
-                  <ResizableHandle />
-                  <ResizablePanel defaultSize={30} minSize={25} maxSize={50}>
+                  {!isChatMaximized && <ResizableHandle />}
+                  <ResizablePanel defaultSize={isChatMaximized ? 100 : 30} minSize={isChatMaximized ? 100 : 25} maxSize={isChatMaximized ? 100 : 50}>
                     <AIChatPanel 
                       onProjectCreated={loadProject}
                       currentProjectId={currentProject?.id}
@@ -303,6 +308,9 @@ export const StudioLayout = () => {
                           window.open('https://app.netlify.com/start', '_blank');
                         }
                       }}
+                      isMaximized={isChatMaximized}
+                      onToggleMaximize={() => setIsChatMaximized(prev => !prev)}
+                      onMinimize={() => setShowChat(false)}
                     />
                   </ResizablePanel>
                 </>
