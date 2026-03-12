@@ -24,7 +24,7 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     if (isDevBypass) return;
     
     if (!authLoading && !isAuthenticated) {
-      navigate('/auth', { replace: true });
+      navigate('/', { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate, isDevBypass]);
 
