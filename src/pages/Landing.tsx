@@ -105,10 +105,17 @@ function AnimatedSection({ children, className = "" }: { children: React.ReactNo
 export default function Landing() {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading } = useAuth();
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) navigate("/", { replace: true });
+    if (!isLoading && isAuthenticated) navigate("/ide", { replace: true });
   }, [isAuthenticated, isLoading, navigate]);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
@@ -119,13 +126,56 @@ export default function Landing() {
         <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-[hsl(var(--neon-green)/0.5)] to-transparent" />
       </div>
 
+      {/* ====== STICKY NAV ====== */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-background/90 backdrop-blur-md border-b border-border/40 shadow-lg shadow-[hsl(var(--neon-green)/0.05)]" : "bg-transparent"}`}>
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img
+              src="/icons/termux-cyberpunk-48.png"
+              alt="Cyberpunk Termux Codex"
+              className="w-9 h-9 rounded-full shadow-neon-green"
+            />
+            <span className="font-cyber font-bold text-lg tracking-wider bg-gradient-to-r from-[hsl(var(--neon-green))] to-[hsl(var(--neon-cyan))] bg-clip-text text-transparent hidden sm:inline">
+              CYBERPUNK TERMUX
+            </span>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <button
+              onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}
+              className="text-sm font-terminal text-muted-foreground hover:text-[hsl(var(--neon-green))] transition-colors hidden sm:inline"
+            >
+              Features
+            </button>
+            <button
+              onClick={() => document.getElementById("special")?.scrollIntoView({ behavior: "smooth" })}
+              className="text-sm font-terminal text-muted-foreground hover:text-[hsl(var(--neon-cyan))] transition-colors hidden sm:inline"
+            >
+              Why Us
+            </button>
+            <button
+              onClick={() => document.getElementById("compare")?.scrollIntoView({ behavior: "smooth" })}
+              className="text-sm font-terminal text-muted-foreground hover:text-[hsl(var(--neon-purple))] transition-colors hidden sm:inline"
+            >
+              Compare
+            </button>
+            <Button
+              size="sm"
+              onClick={() => navigate("/auth")}
+              className="bg-gradient-to-r from-[hsl(var(--neon-green))] to-[hsl(var(--neon-cyan))] text-background font-cyber shadow-neon-green hover:shadow-cyber transition-shadow"
+            >
+              <Rocket className="mr-1.5 h-4 w-4" /> Enter
+            </Button>
+          </div>
+        </div>
+      </nav>
+
       {/* ====== HERO ====== */}
-      <section className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 text-center">
+      <section className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 text-center pt-16">
         <div className="animate-veyl-breathe mb-6">
           <img
-            src="/icons/termux-cyberpunk-192.png"
+            src="/icons/termux-cyberpunk-256.png"
             alt="Cyberpunk Termux Codex"
-            className="w-28 h-28 rounded-full shadow-neon-green"
+            className="w-36 h-36 md:w-44 md:h-44 rounded-full shadow-neon-green ring-2 ring-[hsl(var(--neon-green)/0.3)] ring-offset-4 ring-offset-background"
           />
         </div>
         <h1 className="text-5xl md:text-7xl font-cyber font-bold tracking-wider mb-4">
@@ -133,6 +183,9 @@ export default function Landing() {
             CYBERPUNK TERMUX
           </span>
         </h1>
+        <p className="text-xs md:text-sm font-cyber tracking-[0.3em] text-[hsl(var(--neon-green)/0.7)] uppercase mb-2">
+          C O D E X &nbsp; I D E
+        </p>
         <p className="text-lg md:text-2xl font-terminal text-muted-foreground max-w-2xl mb-2">
           The Zero-Install, AI-Native Development Environment
         </p>
