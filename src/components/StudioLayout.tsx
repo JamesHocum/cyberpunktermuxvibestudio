@@ -233,6 +233,7 @@ export const StudioLayout = () => {
             )}
             
             <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
+              {(!showChat || !isChatMaximized) && (
               <ResizablePanel defaultSize={showChat || showPreview ? 60 : 100} minSize={40}>
                 <ResizablePanelGroup direction="vertical" className="h-full">
                   <ResizablePanel defaultSize={showTerminal ? 70 : 100} minSize={30}>
