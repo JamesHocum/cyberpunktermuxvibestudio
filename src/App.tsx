@@ -24,6 +24,7 @@ const App = () => {
         <BrowserRouter>
           <ProjectProvider>
             <Routes>
+              <Route path="/landing" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/oauth/callback" element={<OAuthCallback />} />
               <Route path="/github/callback" element={<GitHubCallback />} />
