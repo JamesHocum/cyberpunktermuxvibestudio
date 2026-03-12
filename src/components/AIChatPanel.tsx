@@ -162,7 +162,7 @@ const getPlaceholder = (action: CodexAction): string => {
   }
 };
 
-export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents = {}, onCreateFile, onUpdateFileContent, onSelectFile, onDeploy }: AIChatPanelProps) => {
+export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents = {}, onCreateFile, onUpdateFileContent, onSelectFile, onDeploy, isMaximized, onToggleMaximize, onMinimize }: AIChatPanelProps) => {
   const { session, user, isAuthenticated, isDevBypass } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("chat");
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
