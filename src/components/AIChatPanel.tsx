@@ -1167,6 +1167,8 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                 </p>
               </div>
             </div>
+            </>
+            )}
           </TabsContent>
 
           {/* Analyzer Tab */}
