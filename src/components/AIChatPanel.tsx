@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { MessageContent } from "./MessageContent";
 import { Textarea } from "@/components/ui/textarea";
