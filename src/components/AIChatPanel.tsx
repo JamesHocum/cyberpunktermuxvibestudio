@@ -913,6 +913,22 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           {/* Chat Tab */}
           <TabsContent value="chat" className="flex-1 flex flex-col m-0 min-h-0 overflow-hidden data-[state=inactive]:hidden">
+            {/* Live Voice Mode Overlay */}
+            {showLiveVoice ? (
+              <LiveVoiceMode
+                onTranscript={(role, text) => {
+                  const newMsg: Message = {
+                    id: Date.now().toString(),
+                    role,
+                    content: text,
+                    timestamp: new Date(),
+                  };
+                  setMessages(prev => [...prev, newMsg]);
+                }}
+                onClose={() => setShowLiveVoice(false)}
+              />
+            ) : (
+            <>
             {/* Messages */}
             <ScrollArea className="h-0 flex-grow p-4 cyber-scrollbar" ref={scrollRef}>
               <div className="space-y-4">
