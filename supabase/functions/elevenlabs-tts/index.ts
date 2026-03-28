@@ -109,6 +109,23 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("ElevenLabs API error:", errorText);
+
+      // Detect quota exceeded
+      let isQuotaExceeded = false;
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed?.detail?.status === 'quota_exceeded' || errorText.includes('quota_exceeded')) {
+          isQuotaExceeded = true;
+        }
+      } catch { /* not JSON */ }
+
+      if (isQuotaExceeded) {
+        return new Response(
+          JSON.stringify({ error: 'Voice credit quota exceeded — please upgrade your ElevenLabs plan or wait for reset' }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
         JSON.stringify({ error: `TTS service error: ${response.status}` }),
         { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
