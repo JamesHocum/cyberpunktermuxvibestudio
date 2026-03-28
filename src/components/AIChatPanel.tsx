@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { MessageContent } from "./MessageContent";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare, Paperclip, Camera, Image, Volume2, ChevronDown, ChevronUp, Maximize2, Minimize2, Minus } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare, Paperclip, Camera, Image, Volume2, ChevronDown, ChevronUp, Maximize2, Minimize2, Minus, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { z } from "zod";
@@ -22,6 +24,7 @@ import { loadPersonaSettings, loadStackProfile } from "./SettingsPanel";
 import { needsChunking, chunkPrompt, wrapChunk } from "@/lib/promptChunker";
 import LargePromptOverlay from "./LargePromptOverlay";
 import { emitActivity } from "@/lib/projectTimers";
+import { LiveVoiceMode } from "./LiveVoiceMode";
 
 interface Message {
   id: string;
@@ -173,6 +176,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
   const [currentAction, setCurrentAction] = useState<CodexAction>('chat');
   const [isDragOver, setIsDragOver] = useState(false);
   const [showLargePromptOverlay, setShowLargePromptOverlay] = useState(false);
+  const [showLiveVoice, setShowLiveVoice] = useState(false);
 
   // Per-message apply history for undo
   type AppliedFileHistory = { filename: string; previousContent: string };
@@ -794,6 +798,26 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                   onToggle={voicePlayback.setVoiceEnabled}
                   onStop={voicePlayback.stop}
                 />
+
+                {/* Live Voice Button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-7 w-7 p-0",
+                        showLiveVoice ? "neon-green" : "text-muted-foreground"
+                      )}
+                      onClick={() => setShowLiveVoice(!showLiveVoice)}
+                    >
+                      <Radio className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p className="font-terminal text-xs">Live Voice Mode</p>
+                  </TooltipContent>
+                </Tooltip>
                 
                 {isLoadingHistory && activeTab === 'chat' && (
                   <Badge variant="secondary" className="bg-blue-500/20 text-blue-400 border-blue-500/30 font-terminal text-xs">
@@ -889,6 +913,22 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           {/* Chat Tab */}
           <TabsContent value="chat" className="flex-1 flex flex-col m-0 min-h-0 overflow-hidden data-[state=inactive]:hidden">
+            {/* Live Voice Mode Overlay */}
+            {showLiveVoice ? (
+              <LiveVoiceMode
+                onTranscript={(role, text) => {
+                  const newMsg: Message = {
+                    id: Date.now().toString(),
+                    role,
+                    content: text,
+                    timestamp: new Date(),
+                  };
+                  setMessages(prev => [...prev, newMsg]);
+                }}
+                onClose={() => setShowLiveVoice(false)}
+              />
+            ) : (
+            <>
             {/* Messages */}
             <ScrollArea className="h-0 flex-grow p-4 cyber-scrollbar" ref={scrollRef}>
               <div className="space-y-4">
@@ -1127,6 +1167,8 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                 </p>
               </div>
             </div>
+            </>
+            )}
           </TabsContent>
 
           {/* Analyzer Tab */}

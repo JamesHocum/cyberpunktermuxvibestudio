@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Volume2, VolumeX, Loader2, Square, Upload, Mic, Plus } from 'lucide-react';
+import { Volume2, VolumeX, Loader2, Square, Upload, Mic, Plus, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { VoiceManagementPanel } from './VoiceManagementPanel';
 import type { Voice } from '@/hooks/useVoicePlayback';
 
 interface VoiceSelectorProps {
@@ -49,9 +50,11 @@ export const VoiceSelector = ({
   onStop,
 }: VoiceSelectorProps) => {
   const [showCloneDialog, setShowCloneDialog] = useState(false);
+  const [showManageDialog, setShowManageDialog] = useState(false);
   const [cloneName, setCloneName] = useState('');
   const [cloneFile, setCloneFile] = useState<File | null>(null);
   const [isCloning, setIsCloning] = useState(false);
+  const [cloneSuccess, setCloneSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,9 +122,13 @@ export const VoiceSelector = ({
       localStorage.setItem('custom-voices', JSON.stringify(stored));
 
       onVoiceChange(newVoice);
-      setShowCloneDialog(false);
-      setCloneName('');
-      setCloneFile(null);
+      setCloneSuccess(true);
+      setTimeout(() => {
+        setShowCloneDialog(false);
+        setCloneName('');
+        setCloneFile(null);
+        setCloneSuccess(false);
+      }, 1500);
       toast.success(`Voice "${cloneName}" created successfully!`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Voice cloning failed';
@@ -233,12 +240,39 @@ export const VoiceSelector = ({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+
+          {/* Manage Voices Button */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:neon-green"
+                  onClick={() => setShowManageDialog(true)}
+                >
+                  <Settings2 className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p className="font-terminal text-xs">Manage voices</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </>
       )}
 
+      {/* Voice Management Panel */}
+      <VoiceManagementPanel
+        open={showManageDialog}
+        onOpenChange={setShowManageDialog}
+        currentVoice={currentVoice}
+        onVoiceChange={onVoiceChange}
+      />
+
       {/* Clone Voice Dialog */}
-      <Dialog open={showCloneDialog} onOpenChange={setShowCloneDialog}>
-        <DialogContent className="cyber-border bg-studio-sidebar border-primary/30 max-w-md">
+      <Dialog open={showCloneDialog} onOpenChange={(open) => { setShowCloneDialog(open); if (!open) { setCloneFile(null); setCloneName(''); setCloneSuccess(false); } }}>
+        <DialogContent className={cn("cyber-border bg-studio-sidebar border-primary/30 max-w-md transition-colors duration-500", cloneSuccess && "border-green-500/60")}>
           <DialogHeader>
             <DialogTitle className="font-terminal neon-green flex items-center gap-2">
               <Mic className="h-5 w-5" />

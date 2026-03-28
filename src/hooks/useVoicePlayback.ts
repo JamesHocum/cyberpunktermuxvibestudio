@@ -41,7 +41,18 @@ export function useVoicePlayback(): UseVoicePlaybackReturn {
   });
   const [currentVoice, setCurrentVoiceState] = useState<Voice>(() => {
     const storedId = localStorage.getItem('voice-id');
-    return PRESET_VOICES.find(v => v.id === storedId) || PRESET_VOICES[0];
+    if (storedId) {
+      // Check preset voices first
+      const preset = PRESET_VOICES.find(v => v.id === storedId);
+      if (preset) return preset;
+      // Check custom voices
+      if (storedId.startsWith('custom-')) {
+        const customVoices: Voice[] = JSON.parse(localStorage.getItem('custom-voices') || '[]');
+        const custom = customVoices.find(v => v.id === storedId);
+        if (custom) return custom;
+      }
+    }
+    return PRESET_VOICES[0];
   });
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
