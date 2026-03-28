@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import termuxLogo from '@/assets/termux-logo.png';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useDragScroll } from '@/hooks/useDragScroll';
@@ -143,9 +144,12 @@ export const StudioHeader = ({
   return (
     <header className="flex-shrink-0 z-50 flex items-center justify-between bg-[hsl(0,0%,7%)]/95 py-2 md:py-4 px-3 md:px-6 border-b border-purple-600/20 backdrop-blur-md shadow-[0_0_30px_rgba(179,0,255,0.25)]">
       {/* Logo - Always visible */}
-      <h1 className="text-lg md:text-3xl font-extrabold neon-text whitespace-nowrap">
-        {isMobile ? 'CYBER·T' : 'CYBERPUNK TERMUX'}
-      </h1>
+      <div className="flex items-center gap-2">
+        <img src={termuxLogo} alt="Cyberpunk Termux" className="h-8 w-8 md:h-10 md:w-10 rounded-full ring-2 ring-primary/40" />
+        <h1 className="text-lg md:text-3xl font-extrabold neon-text whitespace-nowrap">
+          {isMobile ? 'CYBER·T' : 'CYBERPUNK TERMUX'}
+        </h1>
+      </div>
       
       {/* Primary Actions - Always visible */}
       <div className="flex items-center space-x-1 md:space-x-2">
