@@ -152,6 +152,8 @@ export function useVoicePlayback(): UseVoicePlaybackReturn {
 
         if (status === 401) {
           userMsg = 'Authentication expired — please sign in again';
+        } else if (status === 402) {
+          userMsg = 'Voice credits exhausted — upgrade your ElevenLabs plan or wait for quota reset';
         } else if (status === 429) {
           userMsg = 'Rate limit reached — try again in a minute';
         } else if (status === 400) {
