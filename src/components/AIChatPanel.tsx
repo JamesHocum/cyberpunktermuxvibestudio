@@ -174,6 +174,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
   const [currentAction, setCurrentAction] = useState<CodexAction>('chat');
   const [isDragOver, setIsDragOver] = useState(false);
   const [showLargePromptOverlay, setShowLargePromptOverlay] = useState(false);
+  const [showLiveVoice, setShowLiveVoice] = useState(false);
 
   // Per-message apply history for undo
   type AppliedFileHistory = { filename: string; previousContent: string };
@@ -795,6 +796,26 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                   onToggle={voicePlayback.setVoiceEnabled}
                   onStop={voicePlayback.stop}
                 />
+
+                {/* Live Voice Button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-7 w-7 p-0",
+                        showLiveVoice ? "neon-green" : "text-muted-foreground"
+                      )}
+                      onClick={() => setShowLiveVoice(!showLiveVoice)}
+                    >
+                      <Radio className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p className="font-terminal text-xs">Live Voice Mode</p>
+                  </TooltipContent>
+                </Tooltip>
                 
                 {isLoadingHistory && activeTab === 'chat' && (
                   <Badge variant="secondary" className="bg-blue-500/20 text-blue-400 border-blue-500/30 font-terminal text-xs">
