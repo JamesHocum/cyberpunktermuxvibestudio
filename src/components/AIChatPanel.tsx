@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare, Paperclip, Camera, Image, Volume2, ChevronDown, ChevronUp, Maximize2, Minimize2, Minus } from "lucide-react";
+import { Send, Bot, User, Copy, ThumbsUp, ThumbsDown, Sparkles, LogIn, Lock, GitBranch, Loader2, Trash2, FileSearch, MessageSquare, Paperclip, Camera, Image, Volume2, ChevronDown, ChevronUp, Maximize2, Minimize2, Minus, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { z } from "zod";
@@ -22,6 +22,7 @@ import { loadPersonaSettings, loadStackProfile } from "./SettingsPanel";
 import { needsChunking, chunkPrompt, wrapChunk } from "@/lib/promptChunker";
 import LargePromptOverlay from "./LargePromptOverlay";
 import { emitActivity } from "@/lib/projectTimers";
+import { LiveVoiceMode } from "./LiveVoiceMode";
 
 interface Message {
   id: string;
