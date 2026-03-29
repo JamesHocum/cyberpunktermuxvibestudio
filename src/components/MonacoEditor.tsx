@@ -35,6 +35,7 @@ interface MonacoEditorProps {
   isBuilding?: boolean;
   buildError?: string | null;
   lastSaveTick?: number | null;
+  onMinimize?: () => void;
 }
 
 const defaultSampleCode = `// Welcome to Matrix DevStudio
