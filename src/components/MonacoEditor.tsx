@@ -8,7 +8,7 @@ loader.config({ monaco });
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X, Save, Copy, Maximize2, File, Palette, Check, Minimize2, RefreshCw } from "lucide-react";
+import { X, Save, Copy, Maximize2, File, Palette, Check, Minimize2, RefreshCw, Minus } from "lucide-react";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -35,6 +35,7 @@ interface MonacoEditorProps {
   isBuilding?: boolean;
   buildError?: string | null;
   lastSaveTick?: number | null;
+  onMinimize?: () => void;
 }
 
 const defaultSampleCode = `// Welcome to Matrix DevStudio
@@ -78,6 +79,7 @@ export const MonacoCodeEditor = ({
   isBuilding = false,
   buildError = null,
   lastSaveTick = null,
+  onMinimize,
 }: MonacoEditorProps) => {
   const [localOpenTabs, setLocalOpenTabs] = useState<string[]>(["Welcome.tsx"]);
   const [activeTab, setActiveTab] = useState("Welcome.tsx");
@@ -377,6 +379,17 @@ export default ${name};`;
               <Maximize2 className="h-4 w-4" />
             )}
           </Button>
+          {onMinimize && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:neon-glow"
+              onClick={onMinimize}
+              title="Minimize editor"
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

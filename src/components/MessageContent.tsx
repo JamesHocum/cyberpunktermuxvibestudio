@@ -175,13 +175,13 @@ export const MessageContent: React.FC<MessageContentProps> = ({ content, onApply
   };
 
   return (
-    <div>
+    <div className="min-w-0 overflow-hidden">
       {segments.map((segment, idx) => {
         if (segment.type === 'code' && segment.codeBlock) {
           return <CodeBlockWithApply key={idx} block={segment.codeBlock} onApply={onApplyCode ? handleApplySingle : undefined} />;
         }
         return (
-          <pre key={idx} className="whitespace-pre-wrap text-sm font-terminal text-muted-foreground">
+          <pre key={idx} className="whitespace-pre-wrap break-words text-sm font-terminal text-muted-foreground" style={{ overflowWrap: 'anywhere' }}>
             {segment.content}
           </pre>
         );

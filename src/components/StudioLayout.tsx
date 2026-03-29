@@ -26,6 +26,8 @@ import { useProjectContext } from "@/contexts/ProjectContext";
 import { useRecentFiles } from "@/hooks/useRecentFiles";
 import { ModalType } from "./MatrixToolsPanel";
 import { detectEntryFile } from "@/lib/fileDetection";
+import { Button } from "@/components/ui/button";
+import { Maximize2 } from "lucide-react";
 export const StudioLayout = () => {
   const navigate = useNavigate();
   const {
@@ -82,6 +84,7 @@ export const StudioLayout = () => {
       }
     }
   }, [currentProject?.id, fileKeys.length]);
+  const [showEditor, setShowEditor] = useState(true);
   const [showChat, setShowChat] = useState(false);
   const [showTerminal, setShowTerminal] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
@@ -237,6 +240,7 @@ export const StudioLayout = () => {
                 <>
                   <ResizablePanel defaultSize={showChat || showPreview ? 60 : 100} minSize={40}>
                     <ResizablePanelGroup direction="vertical" className="h-full">
+                      {showEditor ? (
                       <ResizablePanel defaultSize={showTerminal ? 70 : 100} minSize={30}>
                         <MonacoCodeEditor 
                           activeFile={activeFile} 
@@ -250,8 +254,21 @@ export const StudioLayout = () => {
                           isBuilding={isRunningBuild}
                           buildError={buildError}
                           lastSaveTick={lastSaveTick}
+                          onMinimize={() => setShowEditor(false)}
                         />
                       </ResizablePanel>
+                      ) : (
+                        <div className="h-8 bg-studio-header border-b cyber-border flex items-center px-3">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 text-xs font-terminal neon-green hover:neon-glow gap-1"
+                            onClick={() => setShowEditor(true)}
+                          >
+                            <Maximize2 className="h-3 w-3" /> Restore Editor
+                          </Button>
+                        </div>
+                      )}
                       
                       {showTerminal && (
                         <>
