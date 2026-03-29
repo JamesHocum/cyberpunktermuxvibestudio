@@ -955,7 +955,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                     
                     <CollapsibleMessage
                       content={message.content}
-                      className={`p-3 rounded-lg cyber-border ${
+                      className={`p-3 rounded-lg cyber-border min-w-0 overflow-hidden ${
                         message.role === 'user' 
                           ? 'bg-primary/10 neon-glow' 
                           : 'bg-muted/20 terminal-glow'
