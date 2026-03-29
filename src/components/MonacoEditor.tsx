@@ -79,6 +79,7 @@ export const MonacoCodeEditor = ({
   isBuilding = false,
   buildError = null,
   lastSaveTick = null,
+  onMinimize,
 }: MonacoEditorProps) => {
   const [localOpenTabs, setLocalOpenTabs] = useState<string[]>(["Welcome.tsx"]);
   const [activeTab, setActiveTab] = useState("Welcome.tsx");
