@@ -26,6 +26,8 @@ import { useProjectContext } from "@/contexts/ProjectContext";
 import { useRecentFiles } from "@/hooks/useRecentFiles";
 import { ModalType } from "./MatrixToolsPanel";
 import { detectEntryFile } from "@/lib/fileDetection";
+import { Button } from "@/components/ui/button";
+import { Maximize2 } from "lucide-react";
 export const StudioLayout = () => {
   const navigate = useNavigate();
   const {
