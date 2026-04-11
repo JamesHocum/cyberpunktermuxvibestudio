@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserPlan } from "@/hooks/useUserPlan";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CodebaseAnalyzer } from "./CodebaseAnalyzer";

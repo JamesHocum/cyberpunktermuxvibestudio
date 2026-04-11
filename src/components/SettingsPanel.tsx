@@ -248,7 +248,96 @@ export const SettingsPanel = ({ isVisible, onClose }: SettingsPanelProps) => {
               </div>
             </TabsContent>
 
-            {/* Persona */}
+            {/* AI & Usage */}
+            <TabsContent value="ai" className="space-y-6 mt-4">
+              <div className="space-y-4">
+                {/* Plan Badge */}
+                <div className="flex items-center justify-between">
+                  <Label className="font-terminal neon-green">Current Plan</Label>
+                  <Badge className={`font-terminal text-xs uppercase ${planBadgeColor[userPlan.plan]}`}>
+                    {userPlan.plan === 'premium' && <Crown className="h-3 w-3 mr-1" />}
+                    {userPlan.plan}
+                  </Badge>
+                </div>
+
+                {/* Daily Usage */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-terminal matrix-text text-xs">Daily Usage</Label>
+                    <span className="font-terminal text-xs neon-green">{userPlan.dailyUsed} / {userPlan.dailyLimit}</span>
+                  </div>
+                  <Progress value={(userPlan.dailyUsed / userPlan.dailyLimit) * 100} className="h-2" />
+                </div>
+
+                {/* Monthly Usage */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-terminal matrix-text text-xs">Monthly Usage</Label>
+                    <span className="font-terminal text-xs neon-green">{userPlan.monthlyUsed} / {userPlan.monthlyLimit}</span>
+                  </div>
+                  <Progress value={(userPlan.monthlyUsed / userPlan.monthlyLimit) * 100} className="h-2" />
+                </div>
+
+                {/* Model Access */}
+                <div className="space-y-2">
+                  <Label className="font-terminal neon-green">Available Models</Label>
+                  <div className="space-y-1">
+                    {AVAILABLE_MODELS.map(m => {
+                      const allowed = userPlan.allowedModels.includes(m.value);
+                      return (
+                        <div key={m.value} className={`flex items-center justify-between text-xs font-terminal p-1.5 rounded ${allowed ? 'text-foreground' : 'text-muted-foreground opacity-50'}`}>
+                          <span>{m.label}</span>
+                          {!allowed && <Lock className="h-3 w-3 text-amber-500" />}
+                          {allowed && <span className="text-green-400">✓</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* BYOK Section */}
+                {userPlan.byokEnabled ? (
+                  <div className="space-y-2 cyber-border rounded p-3 bg-studio-terminal">
+                    <Label className="font-terminal neon-purple">Bring Your Own Key (OpenAI)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="password"
+                        value={byokKey}
+                        onChange={(e) => setByokKey(e.target.value)}
+                        placeholder="sk-..."
+                        className="cyber-border bg-studio-terminal matrix-text font-terminal text-xs"
+                      />
+                      <Button size="sm" onClick={saveByokKey} disabled={!byokKey.trim() || isSavingKey} className="font-terminal text-xs">
+                        Save
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground font-terminal">
+                      Your key is stored securely and used for OpenAI models only.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="cyber-border rounded p-3 bg-studio-terminal text-center">
+                    <p className="text-xs text-muted-foreground font-terminal">
+                      <Lock className="h-3 w-3 inline mr-1" />
+                      BYOK available on Pro & Premium plans
+                    </p>
+                  </div>
+                )}
+
+                {/* Upgrade CTA */}
+                {userPlan.isFree && (
+                  <Button
+                    variant="outline"
+                    className="w-full cyber-border font-terminal text-amber-400 hover:text-amber-300 border-amber-500/30"
+                    onClick={() => toast.info('Plan upgrades coming soon!')}
+                  >
+                    <Crown className="h-4 w-4 mr-2" />
+                    Upgrade to Pro
+                  </Button>
+                )}
+              </div>
+            </TabsContent>
+
             <TabsContent value="persona" className="space-y-6 mt-4">
               <div className="space-y-4">
                 <div className="space-y-2">
