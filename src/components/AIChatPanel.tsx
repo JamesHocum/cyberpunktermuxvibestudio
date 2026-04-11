@@ -664,6 +664,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
       }
 
       setIsTyping(false);
+      userPlan.refreshPlan(); // Update usage counts
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error("Error sending message:", error);
@@ -858,6 +859,19 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                   <Sparkles className="h-3 w-3 mr-1 flicker" />
                   {canUseAI ? 'ONLINE' : 'AUTH'}
                 </Badge>
+                {/* Usage badge */}
+                {canUseAI && !userPlan.isLoading && (
+                  <Badge
+                    variant="secondary"
+                    className={`font-terminal text-xs ${
+                      userPlan.dailyRemaining <= 3 ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                      userPlan.dailyRemaining <= 8 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                      'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
+                    }`}
+                  >
+                    {userPlan.dailyRemaining}/{userPlan.dailyLimit} today
+                  </Badge>
+                )}
                 {onToggleMaximize && (
                   <Button
                     variant="ghost"
