@@ -168,6 +168,7 @@ const getPlaceholder = (action: CodexAction): string => {
 
 export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents = {}, onCreateFile, onUpdateFileContent, onSelectFile, onDeploy, isMaximized, onToggleMaximize, onMinimize }: AIChatPanelProps) => {
   const { session, user, isAuthenticated, isDevBypass } = useAuth();
+  const userPlan = useUserPlan();
   const [activeTab, setActiveTab] = useState<string>("chat");
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
@@ -404,6 +405,16 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
   const sendMessage = async () => {
     if ((!input.trim() && attachments.length === 0) || isTyping || isCloning) return;
     emitActivity('prompt_submit');
+
+    // Plan-based usage check
+    if (!userPlan.isLoading && userPlan.dailyRemaining <= 0) {
+      toast.error('Daily AI limit reached — upgrade your plan for more');
+      return;
+    }
+    if (!userPlan.isLoading && userPlan.monthlyRemaining <= 0) {
+      toast.error('Monthly AI limit reached — upgrade your plan for more');
+      return;
+    }
 
     // Validate input
     if (input.trim()) {
