@@ -41,6 +41,33 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_usage_log: {
+        Row: {
+          created_at: string
+          id: string
+          model_used: string | null
+          source: string
+          tokens_used: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          model_used?: string | null
+          source?: string
+          tokens_used?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          model_used?: string | null
+          source?: string
+          tokens_used?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           attachments: Json | null
@@ -373,6 +400,42 @@ export type Database = {
           created_at?: string
           id?: string
           service?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_plans: {
+        Row: {
+          allowed_models: string[]
+          byok_enabled: boolean
+          created_at: string
+          daily_limit: number
+          id: string
+          monthly_limit: number
+          plan: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowed_models?: string[]
+          byok_enabled?: boolean
+          created_at?: string
+          daily_limit?: number
+          id?: string
+          monthly_limit?: number
+          plan?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowed_models?: string[]
+          byok_enabled?: boolean
+          created_at?: string
+          daily_limit?: number
+          id?: string
+          monthly_limit?: number
+          plan?: string
           updated_at?: string
           user_id?: string
         }

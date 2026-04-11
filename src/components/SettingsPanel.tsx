@@ -7,8 +7,13 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, X, Palette, Type, Keyboard, Zap, Bot, Server } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { Settings, X, Palette, Type, Keyboard, Zap, Bot, Server, Cpu, Lock, Crown } from 'lucide-react';
 import { toast } from 'sonner';
+import { useUserPlan } from '@/hooks/useUserPlan';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SettingsPanelProps {
   isVisible: boolean;
@@ -44,14 +49,17 @@ const DEFAULT_STACK: StackProfile = {
 };
 
 const AVAILABLE_MODELS = [
-  { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash (Default)' },
-  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-  { value: 'google/gemini-3-pro-preview', label: 'Gemini 3 Pro' },
-  { value: 'openai/gpt-5', label: 'GPT-5' },
-  { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
-  { value: 'openai/gpt-5.2', label: 'GPT-5.2 (Latest)' },
+  { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash (Default)', tier: 'free' as const },
+  { value: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', tier: 'free' as const },
+  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash', tier: 'pro' as const },
+  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro', tier: 'pro' as const },
+  { value: 'google/gemini-3-pro-preview', label: 'Gemini 3 Pro', tier: 'premium' as const },
+  { value: 'openai/gpt-5', label: 'GPT-5', tier: 'premium' as const },
+  { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini', tier: 'pro' as const },
+  { value: 'openai/gpt-5.2', label: 'GPT-5.2 (Latest)', tier: 'premium' as const },
 ];
+
+export { AVAILABLE_MODELS };
 
 export const loadPersonaSettings = (): PersonaSettings => {
   try {
@@ -76,6 +84,8 @@ export const loadStackProfile = (projectId?: string): StackProfile => {
 export { DEFAULT_STACK };
 
 export const SettingsPanel = ({ isVisible, onClose }: SettingsPanelProps) => {
+  const { session } = useAuth();
+  const userPlan = useUserPlan();
   const [fontSize, setFontSize] = useState([14]);
   const [tabSize, setTabSize] = useState('2');
   const [theme, setTheme] = useState('cyberpunk');
@@ -83,6 +93,8 @@ export const SettingsPanel = ({ isVisible, onClose }: SettingsPanelProps) => {
   const [lineNumbers, setLineNumbers] = useState(true);
   const [minimap, setMinimap] = useState(false);
   const [wordWrap, setWordWrap] = useState(false);
+  const [byokKey, setByokKey] = useState('');
+  const [isSavingKey, setIsSavingKey] = useState(false);
 
   // Persona settings
   const [persona, setPersona] = useState<PersonaSettings>(loadPersonaSettings);
@@ -95,6 +107,29 @@ export const SettingsPanel = ({ isVisible, onClose }: SettingsPanelProps) => {
     } catch {}
     return DEFAULT_STACK;
   });
+
+  const saveByokKey = async () => {
+    if (!byokKey.trim() || !session?.access_token) return;
+    setIsSavingKey(true);
+    try {
+      const res = await supabase.functions.invoke('save-api-key', {
+        body: { service: 'openai', token: byokKey.trim() },
+      });
+      if (res.error) throw res.error;
+      toast.success('OpenAI API key saved');
+      setByokKey('');
+    } catch (err) {
+      toast.error('Failed to save API key');
+    } finally {
+      setIsSavingKey(false);
+    }
+  };
+
+  const planBadgeColor = {
+    free: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
+    pro: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+    premium: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  };
 
   if (!isVisible) return null;
 
@@ -123,7 +158,7 @@ export const SettingsPanel = ({ isVisible, onClose }: SettingsPanelProps) => {
         {/* Content */}
         <div className="flex-1 overflow-auto p-4">
           <Tabs defaultValue="appearance" className="w-full">
-            <TabsList className="grid w-full grid-cols-6 cyber-border">
+            <TabsList className="grid w-full grid-cols-7 cyber-border">
               <TabsTrigger value="appearance" className="font-terminal text-xs">
                 <Palette className="h-4 w-4 mr-1" />
                 Theme
@@ -131,6 +166,10 @@ export const SettingsPanel = ({ isVisible, onClose }: SettingsPanelProps) => {
               <TabsTrigger value="editor" className="font-terminal text-xs">
                 <Type className="h-4 w-4 mr-1" />
                 Editor
+              </TabsTrigger>
+              <TabsTrigger value="ai" className="font-terminal text-xs">
+                <Cpu className="h-4 w-4 mr-1" />
+                AI
               </TabsTrigger>
               <TabsTrigger value="persona" className="font-terminal text-xs">
                 <Bot className="h-4 w-4 mr-1" />
@@ -209,7 +248,96 @@ export const SettingsPanel = ({ isVisible, onClose }: SettingsPanelProps) => {
               </div>
             </TabsContent>
 
-            {/* Persona */}
+            {/* AI & Usage */}
+            <TabsContent value="ai" className="space-y-6 mt-4">
+              <div className="space-y-4">
+                {/* Plan Badge */}
+                <div className="flex items-center justify-between">
+                  <Label className="font-terminal neon-green">Current Plan</Label>
+                  <Badge className={`font-terminal text-xs uppercase ${planBadgeColor[userPlan.plan]}`}>
+                    {userPlan.plan === 'premium' && <Crown className="h-3 w-3 mr-1" />}
+                    {userPlan.plan}
+                  </Badge>
+                </div>
+
+                {/* Daily Usage */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-terminal matrix-text text-xs">Daily Usage</Label>
+                    <span className="font-terminal text-xs neon-green">{userPlan.dailyUsed} / {userPlan.dailyLimit}</span>
+                  </div>
+                  <Progress value={(userPlan.dailyUsed / userPlan.dailyLimit) * 100} className="h-2" />
+                </div>
+
+                {/* Monthly Usage */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-terminal matrix-text text-xs">Monthly Usage</Label>
+                    <span className="font-terminal text-xs neon-green">{userPlan.monthlyUsed} / {userPlan.monthlyLimit}</span>
+                  </div>
+                  <Progress value={(userPlan.monthlyUsed / userPlan.monthlyLimit) * 100} className="h-2" />
+                </div>
+
+                {/* Model Access */}
+                <div className="space-y-2">
+                  <Label className="font-terminal neon-green">Available Models</Label>
+                  <div className="space-y-1">
+                    {AVAILABLE_MODELS.map(m => {
+                      const allowed = userPlan.allowedModels.includes(m.value);
+                      return (
+                        <div key={m.value} className={`flex items-center justify-between text-xs font-terminal p-1.5 rounded ${allowed ? 'text-foreground' : 'text-muted-foreground opacity-50'}`}>
+                          <span>{m.label}</span>
+                          {!allowed && <Lock className="h-3 w-3 text-amber-500" />}
+                          {allowed && <span className="text-green-400">✓</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* BYOK Section */}
+                {userPlan.byokEnabled ? (
+                  <div className="space-y-2 cyber-border rounded p-3 bg-studio-terminal">
+                    <Label className="font-terminal neon-purple">Bring Your Own Key (OpenAI)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="password"
+                        value={byokKey}
+                        onChange={(e) => setByokKey(e.target.value)}
+                        placeholder="sk-..."
+                        className="cyber-border bg-studio-terminal matrix-text font-terminal text-xs"
+                      />
+                      <Button size="sm" onClick={saveByokKey} disabled={!byokKey.trim() || isSavingKey} className="font-terminal text-xs">
+                        Save
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground font-terminal">
+                      Your key is stored securely and used for OpenAI models only.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="cyber-border rounded p-3 bg-studio-terminal text-center">
+                    <p className="text-xs text-muted-foreground font-terminal">
+                      <Lock className="h-3 w-3 inline mr-1" />
+                      BYOK available on Pro & Premium plans
+                    </p>
+                  </div>
+                )}
+
+                {/* Upgrade CTA */}
+                {userPlan.isFree && (
+                  <Button
+                    variant="outline"
+                    className="w-full cyber-border font-terminal text-amber-400 hover:text-amber-300 border-amber-500/30"
+                    onClick={() => toast.info('Plan upgrades coming soon!')}
+                  >
+                    <Crown className="h-4 w-4 mr-2" />
+                    Upgrade to Pro
+                  </Button>
+                )}
+              </div>
+            </TabsContent>
+
             <TabsContent value="persona" className="space-y-6 mt-4">
               <div className="space-y-4">
                 <div className="space-y-2">

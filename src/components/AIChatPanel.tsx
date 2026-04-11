@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { validateMessage, RateLimiter } from "@/lib/inputValidation";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserPlan } from "@/hooks/useUserPlan";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CodebaseAnalyzer } from "./CodebaseAnalyzer";
@@ -167,6 +168,7 @@ const getPlaceholder = (action: CodexAction): string => {
 
 export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents = {}, onCreateFile, onUpdateFileContent, onSelectFile, onDeploy, isMaximized, onToggleMaximize, onMinimize }: AIChatPanelProps) => {
   const { session, user, isAuthenticated, isDevBypass } = useAuth();
+  const userPlan = useUserPlan();
   const [activeTab, setActiveTab] = useState<string>("chat");
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
@@ -403,6 +405,16 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
   const sendMessage = async () => {
     if ((!input.trim() && attachments.length === 0) || isTyping || isCloning) return;
     emitActivity('prompt_submit');
+
+    // Plan-based usage check
+    if (!userPlan.isLoading && userPlan.dailyRemaining <= 0) {
+      toast.error('Daily AI limit reached — upgrade your plan for more');
+      return;
+    }
+    if (!userPlan.isLoading && userPlan.monthlyRemaining <= 0) {
+      toast.error('Monthly AI limit reached — upgrade your plan for more');
+      return;
+    }
 
     // Validate input
     if (input.trim()) {
@@ -652,6 +664,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
       }
 
       setIsTyping(false);
+      userPlan.refreshPlan(); // Update usage counts
     } catch (error) {
       if (import.meta.env.DEV) {
         console.error("Error sending message:", error);
@@ -807,9 +820,16 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                       size="sm"
                       className={cn(
                         "h-7 w-7 p-0",
+                        userPlan.isFree ? "text-muted-foreground/40 cursor-not-allowed" :
                         showLiveVoice ? "neon-green" : "text-muted-foreground"
                       )}
-                      onClick={() => setShowLiveVoice(!showLiveVoice)}
+                      onClick={() => {
+                        if (userPlan.isFree) {
+                          toast.info('Live Voice requires Premium plan');
+                          return;
+                        }
+                        setShowLiveVoice(!showLiveVoice);
+                      }}
                     >
                       <Radio className="h-4 w-4" />
                     </Button>
@@ -846,6 +866,19 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                   <Sparkles className="h-3 w-3 mr-1 flicker" />
                   {canUseAI ? 'ONLINE' : 'AUTH'}
                 </Badge>
+                {/* Usage badge */}
+                {canUseAI && !userPlan.isLoading && (
+                  <Badge
+                    variant="secondary"
+                    className={`font-terminal text-xs ${
+                      userPlan.dailyRemaining <= 3 ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                      userPlan.dailyRemaining <= 8 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                      'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
+                    }`}
+                  >
+                    {userPlan.dailyRemaining}/{userPlan.dailyLimit} today
+                  </Badge>
+                )}
                 {onToggleMaximize && (
                   <Button
                     variant="ghost"
