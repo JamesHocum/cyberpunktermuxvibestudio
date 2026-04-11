@@ -345,10 +345,17 @@ body {
             {filename}
           </span>
           {error && (
-            <Badge variant="destructive" className="text-xs">
-              <AlertTriangle className="h-3 w-3 mr-1" />
-              {error}
-            </Badge>
+            error.toLowerCase().includes('connect') || error.toLowerCase().includes('bundler') ? (
+              <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-400 border-amber-500/30">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                Preview may be temporarily unavailable — works at published URL
+              </Badge>
+            ) : (
+              <Badge variant="destructive" className="text-xs">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                {error}
+              </Badge>
+            )
           )}
         </div>
 

@@ -820,9 +820,16 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                       size="sm"
                       className={cn(
                         "h-7 w-7 p-0",
+                        userPlan.isFree ? "text-muted-foreground/40 cursor-not-allowed" :
                         showLiveVoice ? "neon-green" : "text-muted-foreground"
                       )}
-                      onClick={() => setShowLiveVoice(!showLiveVoice)}
+                      onClick={() => {
+                        if (userPlan.isFree) {
+                          toast.info('Live Voice requires Premium plan');
+                          return;
+                        }
+                        setShowLiveVoice(!showLiveVoice);
+                      }}
                     >
                       <Radio className="h-4 w-4" />
                     </Button>
