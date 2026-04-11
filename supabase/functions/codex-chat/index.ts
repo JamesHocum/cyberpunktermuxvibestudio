@@ -20,6 +20,7 @@ interface StackProfile {
   autoWireBackend: boolean;
   autoWireMiddleware: boolean;
 }
+
 interface ChatAttachment {
   id: string;
   type: 'file' | 'image' | 'code';
@@ -35,6 +36,22 @@ interface ChatMessage {
   content: string;
   attachments?: ChatAttachment[];
 }
+
+interface UserPlanRow {
+  plan: string;
+  daily_limit: number;
+  monthly_limit: number;
+  allowed_models: string[];
+  byok_enabled: boolean;
+}
+
+const FREE_DEFAULTS: UserPlanRow = {
+  plan: 'free',
+  daily_limit: 15,
+  monthly_limit: 100,
+  allowed_models: ['google/gemini-3-flash-preview', 'google/gemini-2.5-flash-lite'],
+  byok_enabled: false,
+};
 
 const getSystemPrompt = (action: CodexAction, hasImages: boolean, stackProfile?: StackProfile, buildCtx?: BuildModeContext): string => {
   const codeFormattingRules = `
@@ -179,31 +196,22 @@ Rules:
 
 const formatMessagesForAI = (messages: ChatMessage[], hasImages: boolean) => {
   return messages.map(msg => {
-    // Check if this message has image attachments
     const imageAttachments = msg.attachments?.filter(a => a.type === 'image') || [];
     
     if (imageAttachments.length > 0 && hasImages) {
-      // Format for multimodal (Gemini vision)
       const content: any[] = [{ type: 'text', text: msg.content }];
       
       for (const attachment of imageAttachments) {
         if (attachment.base64) {
-          content.push({
-            type: 'image_url',
-            image_url: { url: attachment.base64 }
-          });
+          content.push({ type: 'image_url', image_url: { url: attachment.base64 } });
         } else if (attachment.url) {
-          content.push({
-            type: 'image_url',
-            image_url: { url: attachment.url }
-          });
+          content.push({ type: 'image_url', image_url: { url: attachment.url } });
         }
       }
       
       return { role: msg.role, content };
     }
     
-    // For code/file attachments, append content to the message
     let textContent = msg.content;
     const codeAttachments = msg.attachments?.filter(a => a.type === 'code' || a.type === 'file') || [];
     
@@ -217,13 +225,68 @@ const formatMessagesForAI = (messages: ChatMessage[], hasImages: boolean) => {
   });
 };
 
+// ─── Plan-aware helpers ───
+
+async function getUserPlan(serviceClient: any, userId: string): Promise<UserPlanRow> {
+  const { data } = await serviceClient
+    .from('user_plans')
+    .select('plan, daily_limit, monthly_limit, allowed_models, byok_enabled')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  return data || FREE_DEFAULTS;
+}
+
+async function getUsageCounts(serviceClient: any, userId: string): Promise<{ daily: number; monthly: number }> {
+  const now = new Date();
+  
+  const todayStart = new Date(now);
+  todayStart.setUTCHours(0, 0, 0, 0);
+
+  const monthStart = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1);
+
+  const { count: daily } = await serviceClient
+    .from('ai_usage_log')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('created_at', todayStart.toISOString());
+
+  const { count: monthly } = await serviceClient
+    .from('ai_usage_log')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .gte('created_at', monthStart.toISOString());
+
+  return { daily: daily || 0, monthly: monthly || 0 };
+}
+
+async function logUsage(serviceClient: any, userId: string, model: string, source: 'managed' | 'byok') {
+  await serviceClient.from('ai_usage_log').insert({
+    user_id: userId,
+    model_used: model,
+    tokens_used: 0,
+    source,
+  });
+}
+
+async function getUserByokKey(serviceClient: any, userId: string, service: string): Promise<string | null> {
+  const { data } = await serviceClient
+    .from('user_api_keys')
+    .select('api_key')
+    .eq('user_id', userId)
+    .eq('service', service)
+    .maybeSingle();
+  return data?.api_key || null;
+}
+
+// ─── Main handler ───
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -248,23 +311,42 @@ serve(async (req) => {
       );
     }
 
-    // Apply rate limiting per user
+    // Safety-net rate limiting
     const rateLimit = checkRateLimit(user.id, { maxRequests: 30, windowMs: 60000 });
     if (!rateLimit.allowed) {
       return new Response(
         JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-        { 
-          status: 429, 
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json',
-            ...createRateLimitHeaders(rateLimit.resetAt, rateLimit.remaining)
-          } 
-        }
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', ...createRateLimitHeaders(rateLimit.resetAt, rateLimit.remaining) } }
       );
     }
 
     console.log(`[CodexChat] Authenticated user: ${user.id}`);
+
+    // ─── Plan-aware gating ───
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const userPlan = await getUserPlan(serviceClient, user.id);
+    const usage = await getUsageCounts(serviceClient, user.id);
+
+    const dailyRemaining = Math.max(0, userPlan.daily_limit - usage.daily);
+    const monthlyRemaining = Math.max(0, userPlan.monthly_limit - usage.monthly);
+
+    if (dailyRemaining <= 0) {
+      return new Response(
+        JSON.stringify({ error: 'Daily AI usage limit reached. Upgrade your plan for more.', usageExhausted: true }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Plan': userPlan.plan, 'X-Daily-Remaining': '0', 'X-Monthly-Remaining': String(monthlyRemaining) } }
+      );
+    }
+
+    if (monthlyRemaining <= 0) {
+      return new Response(
+        JSON.stringify({ error: 'Monthly AI usage limit reached. Upgrade your plan for more.', usageExhausted: true }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Plan': userPlan.plan, 'X-Daily-Remaining': String(dailyRemaining), 'X-Monthly-Remaining': '0' } }
+      );
+    }
 
     const { messages, action = 'chat', model: requestedModel, systemPrompt: customSystemPrompt, stackProfile, buildMode, existingFiles } = await req.json() as { 
       messages: ChatMessage[]; 
@@ -288,29 +370,50 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    // Check if any message has image attachments
-    const hasImages = messages.some(m => 
-      m.attachments?.some(a => a.type === 'image')
-    );
+    const hasImages = messages.some(m => m.attachments?.some(a => a.type === 'image'));
 
-    console.log(`[CodexChat] Action: ${action}, Has images: ${hasImages}`);
+    console.log(`[CodexChat] Action: ${action}, Has images: ${hasImages}, Plan: ${userPlan.plan}`);
 
-    // Use requested model or default to gemini-3-flash-preview
+    // Model gating — fall back to default if model not in allowed list
     const SUPPORTED_MODELS = [
       'google/gemini-3-flash-preview', 'google/gemini-2.5-flash', 'google/gemini-2.5-pro',
       'google/gemini-3-pro-preview', 'openai/gpt-5', 'openai/gpt-5-mini', 'openai/gpt-5.2'
     ];
-    const defaultModel = 'openai/gpt-5.2';
-    const model = requestedModel && SUPPORTED_MODELS.includes(requestedModel) ? requestedModel : defaultModel;
-    
+    const defaultModel = 'google/gemini-3-flash-preview';
+    let model = requestedModel && SUPPORTED_MODELS.includes(requestedModel) ? requestedModel : defaultModel;
+
+    // Gate model by plan's allowed_models
+    if (!userPlan.allowed_models.includes(model)) {
+      console.log(`[CodexChat] Model ${model} not in user's allowed list, falling back to default`);
+      model = userPlan.allowed_models[0] || defaultModel;
+    }
+
     const buildCtx: BuildModeContext = { buildMode, existingFiles };
     const systemPrompt = customSystemPrompt || getSystemPrompt(action, hasImages, stackProfile, buildCtx);
     const formattedMessages = formatMessagesForAI(messages, hasImages);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // ─── BYOK routing ───
+    let aiEndpoint = "https://ai.gateway.lovable.dev/v1/chat/completions";
+    let aiAuthHeader = `Bearer ${LOVABLE_API_KEY}`;
+    let usageSource: 'managed' | 'byok' = 'managed';
+
+    if (userPlan.byok_enabled) {
+      // Check for OpenAI BYOK key
+      const openaiKey = await getUserByokKey(serviceClient, user.id, 'openai');
+      if (openaiKey && model.startsWith('openai/')) {
+        aiEndpoint = "https://api.openai.com/v1/chat/completions";
+        aiAuthHeader = `Bearer ${openaiKey}`;
+        // Strip the 'openai/' prefix for the OpenAI API
+        model = model.replace('openai/', '');
+        usageSource = 'byok';
+        console.log(`[CodexChat] BYOK routing to OpenAI for model: ${model}`);
+      }
+    }
+
+    const response = await fetch(aiEndpoint, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: aiAuthHeader,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -341,8 +444,17 @@ serve(async (req) => {
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
+    // Log usage after successful response
+    await logUsage(serviceClient, user.id, model, usageSource);
+
     return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "X-Plan": userPlan.plan,
+        "X-Daily-Remaining": String(dailyRemaining - 1),
+        "X-Monthly-Remaining": String(monthlyRemaining - 1),
+      },
     });
 
   } catch (error) {
