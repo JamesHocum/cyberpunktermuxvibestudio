@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, FolderOpen, Loader2, LogOut, Clock, Code2, ArrowRight, ArrowLeft, Server, Database, Globe, Check, Download, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, FolderOpen, Loader2, LogOut, Clock, Code2, ArrowRight, ArrowLeft, Server, Database, Globe, Check, Download, RefreshCw, FileCode, Folder, ShieldCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { StackProfile } from '@/components/SettingsPanel';
@@ -80,6 +80,58 @@ interface ProjectExport {
   file_count: number;
   created_at: string;
 }
+
+interface ProjectFilePreview {
+  path: string;
+  is_folder: boolean;
+}
+
+// Mini file tree preview for project cards
+const ProjectMiniPreview = ({ projectId }: { projectId: string }) => {
+  const [files, setFiles] = useState<ProjectFilePreview[]>([]);
+  const [fileCount, setFileCount] = useState(0);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data, count } = await supabase
+        .from('project_files')
+        .select('path, is_folder', { count: 'exact' })
+        .eq('project_id', projectId)
+        .order('path')
+        .limit(8);
+      if (data) {
+        setFiles(data.map(f => ({ path: f.path, is_folder: f.is_folder ?? false })));
+        setFileCount(count ?? data.length);
+      }
+    };
+    load();
+  }, [projectId]);
+
+  if (files.length === 0) {
+    return (
+      <div className="h-24 flex items-center justify-center bg-muted/20 border-b border-border/20">
+        <Code2 className="h-8 w-8 text-muted-foreground/30" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-24 p-2.5 bg-[hsl(var(--terminal-bg))] border-b border-border/20 overflow-hidden font-mono text-[9px] leading-[14px]">
+      {files.slice(0, 6).map((f, i) => (
+        <div key={i} className="flex items-center gap-1 text-muted-foreground/70 truncate">
+          {f.is_folder
+            ? <Folder className="h-2.5 w-2.5 text-primary/50 shrink-0" />
+            : <FileCode className="h-2.5 w-2.5 text-secondary/50 shrink-0" />
+          }
+          <span className="truncate">{f.path}</span>
+        </div>
+      ))}
+      {fileCount > 6 && (
+        <div className="text-muted-foreground/40 mt-0.5">+{fileCount - 6} more files</div>
+      )}
+    </div>
+  );
+};
 
 const Projects = () => {
   const navigate = useNavigate();
@@ -293,10 +345,7 @@ const Projects = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {projects.map((project) => (
                     <Card key={project.id} className="group cursor-pointer border-border/50 bg-card/60 backdrop-blur-sm hover:border-primary/50 hover:shadow-[0_0_20px_hsl(var(--neon-green)/0.15)] transition-all duration-300 overflow-hidden" onClick={() => handleOpen(project.id)}>
-                      <div className="h-24 flex items-center justify-center relative" style={{ background: getProjectGradient(project.name) }}>
-                        <Code2 className="h-10 w-10 text-white/20" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent" />
-                      </div>
+                      <ProjectMiniPreview projectId={project.id} />
                       <CardHeader className="pb-2 pt-3">
                         <CardTitle className="text-base text-foreground group-hover:text-primary transition-colors truncate">{project.name}</CardTitle>
                         {project.description && <CardDescription className="line-clamp-2 text-xs">{project.description}</CardDescription>}

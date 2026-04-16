@@ -10,6 +10,7 @@ import OAuthCallback from "./pages/OAuthCallback";
 import GitHubCallback from "./pages/GitHubCallback";
 import NotFound from "./pages/NotFound";
 import Projects from "./pages/Projects";
+import SyntheticRedactKit from "./pages/SyntheticRedactKit";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ProjectProvider } from "./contexts/ProjectContext";
 
@@ -41,6 +42,14 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <Index />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/redact"
+                element={
+                  <ProtectedRoute>
+                    <SyntheticRedactKit />
                   </ProtectedRoute>
                 }
               />
