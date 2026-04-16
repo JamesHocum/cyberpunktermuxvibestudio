@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, FolderOpen, Loader2, LogOut, Clock, Code2, ArrowRight, ArrowLeft, Server, Database, Globe, Check, Download, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, FolderOpen, Loader2, LogOut, Clock, Code2, ArrowRight, ArrowLeft, Server, Database, Globe, Check, Download, RefreshCw, FileCode, Folder, ShieldCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { StackProfile } from '@/components/SettingsPanel';
