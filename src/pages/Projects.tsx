@@ -345,10 +345,7 @@ const Projects = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {projects.map((project) => (
                     <Card key={project.id} className="group cursor-pointer border-border/50 bg-card/60 backdrop-blur-sm hover:border-primary/50 hover:shadow-[0_0_20px_hsl(var(--neon-green)/0.15)] transition-all duration-300 overflow-hidden" onClick={() => handleOpen(project.id)}>
-                      <div className="h-24 flex items-center justify-center relative" style={{ background: getProjectGradient(project.name) }}>
-                        <Code2 className="h-10 w-10 text-white/20" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent" />
-                      </div>
+                      <ProjectMiniPreview projectId={project.id} />
                       <CardHeader className="pb-2 pt-3">
                         <CardTitle className="text-base text-foreground group-hover:text-primary transition-colors truncate">{project.name}</CardTitle>
                         {project.description && <CardDescription className="line-clamp-2 text-xs">{project.description}</CardDescription>}
