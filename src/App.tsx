@@ -46,14 +46,6 @@ const App = () => {
                 }
               />
               <Route
-                path="/redact"
-                element={
-                  <ProtectedRoute>
-                    <SyntheticRedactKit />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="/"
                 element={<Landing />}
               />
