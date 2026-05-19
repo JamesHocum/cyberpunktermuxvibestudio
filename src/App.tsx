@@ -10,6 +10,7 @@ import OAuthCallback from "./pages/OAuthCallback";
 import GitHubCallback from "./pages/GitHubCallback";
 import NotFound from "./pages/NotFound";
 import Projects from "./pages/Projects";
+import Docs from "./pages/Docs";
 
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ProjectProvider } from "./contexts/ProjectContext";
@@ -45,6 +46,7 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/docs" element={<Docs />} />
               <Route
                 path="/"
                 element={<Landing />}
