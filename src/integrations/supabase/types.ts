@@ -462,6 +462,42 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_snapshots: {
+        Row: {
+          created_at: string
+          file_count: number
+          files: Json
+          id: string
+          label: string | null
+          project_id: string
+          reason: string
+          size_bytes: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_count?: number
+          files?: Json
+          id?: string
+          label?: string | null
+          project_id: string
+          reason?: string
+          size_bytes?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_count?: number
+          files?: Json
+          id?: string
+          label?: string | null
+          project_id?: string
+          reason?: string
+          size_bytes?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
