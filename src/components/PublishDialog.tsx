@@ -20,10 +20,12 @@ interface PublishDialogProps {
   fileContents: Record<string, string>;
   onShowDownloader?: () => void;
   projectId?: string;
+  /** When true, renders the targets list inline (no Dialog chrome). */
+  embedded?: boolean;
 }
 
 export const PublishDialog = ({
-  open, onOpenChange, projectName, fileContents, onShowDownloader, projectId,
+  open, onOpenChange, projectName, fileContents, onShowDownloader, projectId, embedded = false,
 }: PublishDialogProps) => {
   const [generating, setGenerating] = useState<string | null>(null);
 
