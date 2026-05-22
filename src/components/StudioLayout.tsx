@@ -196,6 +196,7 @@ export const StudioLayout = () => {
             onCreateFile={createFile}
             onDeleteFile={deleteFile}
             currentProjectName={currentProject?.name}
+            currentProjectId={currentProject?.id}
             fileContents={fileContents}
             onDownload={() => setShowDownloader(true)}
           />
