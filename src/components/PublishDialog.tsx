@@ -118,6 +118,33 @@ export const PublishDialog = ({
     },
   ];
 
+  const grid = (
+    <div className="grid grid-cols-1 gap-3 mt-2 max-h-[60vh] overflow-y-auto pr-1">
+      {options.map((opt) => (
+        <button
+          key={opt.id}
+          onClick={opt.action}
+          disabled={generating === opt.id}
+          className="flex items-start gap-4 p-4 rounded-lg border border-border/50 bg-card/40 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group disabled:opacity-60"
+        >
+          <div className="text-primary group-hover:scale-110 transition-transform mt-0.5">
+            {generating === opt.id ? <Loader2 className="h-6 w-6 animate-spin" /> : opt.icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm text-foreground">{opt.title}</span>
+              <Badge variant="secondary" className="text-[10px] font-terminal">{opt.badge}</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">{opt.desc}</p>
+          </div>
+          <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+        </button>
+      ))}
+    </div>
+  );
+
+  if (embedded) return grid;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg bg-[hsl(var(--studio-terminal))] border-[hsl(var(--neon-green)/0.3)]">
@@ -127,28 +154,7 @@ export const PublishDialog = ({
             Choose a deployment target for <span className="text-primary">{projectName}</span>
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-1 gap-3 mt-2 max-h-[60vh] overflow-y-auto pr-1">
-          {options.map((opt) => (
-            <button
-              key={opt.id}
-              onClick={opt.action}
-              disabled={generating === opt.id}
-              className="flex items-start gap-4 p-4 rounded-lg border border-border/50 bg-card/40 hover:border-primary/50 hover:bg-primary/5 transition-all text-left group disabled:opacity-60"
-            >
-              <div className="text-primary group-hover:scale-110 transition-transform mt-0.5">
-                {generating === opt.id ? <Loader2 className="h-6 w-6 animate-spin" /> : opt.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm text-foreground">{opt.title}</span>
-                  <Badge variant="secondary" className="text-[10px] font-terminal">{opt.badge}</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">{opt.desc}</p>
-              </div>
-              <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
-            </button>
-          ))}
-        </div>
+        {grid}
       </DialogContent>
     </Dialog>
   );
