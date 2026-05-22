@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, createRateLimitHeaders } from "../_shared/rateLimiter.ts";
+import { tryProviderChain, lovableAttempt, openaiByokAttempt, ProviderAttempt } from "../_shared/providerChain.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -443,66 +444,67 @@ serve(async (req) => {
     const systemPrompt = customSystemPrompt || getSystemPrompt(action, hasImages, stackProfile, buildCtx);
     const formattedMessages = formatMessagesForAI(messages, hasImages);
 
-    // ─── BYOK routing ───
-    let aiEndpoint = "https://ai.gateway.lovable.dev/v1/chat/completions";
-    let aiAuthHeader = `Bearer ${LOVABLE_API_KEY}`;
-    let usageSource: 'managed' | 'byok' = 'managed';
+    // ─── Build provider chain ───
+    const chain: ProviderAttempt[] = [];
 
-    if (userPlan.byok_enabled) {
-      // Check for OpenAI BYOK key
-      const openaiKey = await getUserByokKey(serviceClient, user.id, 'openai');
-      if (openaiKey && model.startsWith('openai/')) {
-        aiEndpoint = "https://api.openai.com/v1/chat/completions";
-        aiAuthHeader = `Bearer ${openaiKey}`;
-        // Strip the 'openai/' prefix for the OpenAI API
-        model = model.replace('openai/', '');
-        usageSource = 'byok';
-        console.log(`[CodexChat] BYOK routing to OpenAI for model: ${model}`);
+    // BYOK first (only OpenAI for now), if enabled and the requested model maps
+    if (userPlan.byok_enabled && model.startsWith("openai/")) {
+      const openaiKey = await getUserByokKey(serviceClient, user.id, "openai");
+      if (openaiKey) {
+        chain.push(openaiByokAttempt(model, openaiKey));
+        console.log(`[CodexChat] Chain: adding BYOK OpenAI for ${model}`);
       }
     }
 
-    const response = await fetch(aiEndpoint, {
-      method: "POST",
-      headers: {
-        Authorization: aiAuthHeader,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...formattedMessages
-        ],
-        stream: true,
-      }),
-    });
+    // Primary managed hop
+    chain.push(lovableAttempt(model, LOVABLE_API_KEY, "lovable-primary"));
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add more credits." }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      const errorText = await response.text();
-      console.error('[CodexChat] AI Error:', response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+    // Fallback: a different allowed model on the managed gateway, when available
+    const fallbackModel = userPlan.allowed_models.find((m) => m !== model);
+    if (fallbackModel) {
+      const fb = lovableAttempt(fallbackModel, LOVABLE_API_KEY, "lovable-fallback");
+      fb.source = "fallback";
+      chain.push(fb);
     }
 
-    // Log usage after successful response
-    await logUsage(serviceClient, user.id, model, usageSource);
+    const requestBody = {
+      messages: [
+        { role: "system", content: systemPrompt },
+        ...formattedMessages,
+      ],
+    };
 
-    return new Response(response.body, {
+    let result;
+    try {
+      result = await tryProviderChain(chain, requestBody);
+    } catch (e: any) {
+      const status = e?.status ?? 502;
+      if (status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Rate limit exceeded across all providers." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (status === 402) {
+        return new Response(
+          JSON.stringify({ error: "AI credits exhausted across all providers." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      console.error("[CodexChat] Provider chain failed:", e?.message, e?.hops);
+      throw new Error(`AI gateway error: ${status}`);
+    }
+
+    const usageSource = result.used.source === "byok" ? "byok" : "managed";
+    await logUsage(serviceClient, user.id, result.used.model, usageSource);
+
+    return new Response(result.response.body, {
       headers: {
         ...corsHeaders,
         "Content-Type": "text/event-stream",
         "X-Plan": userPlan.plan,
+        "X-Provider": result.used.id,
+        "X-Model-Used": result.used.model,
         "X-Daily-Remaining": String(dailyRemaining - 1),
         "X-Monthly-Remaining": String(monthlyRemaining - 1),
       },
