@@ -292,6 +292,17 @@ export const StudioSidebar = ({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="font-cyber neon-green flex items-center gap-2">
+            <Camera className="h-3 w-3" /> SNAPSHOTS
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <div className="h-64">
+              <SnapshotsPanel projectId={currentProjectId} />
+            </div>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <MatrixToolsPanel
