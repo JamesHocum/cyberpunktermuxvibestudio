@@ -14,8 +14,10 @@ import {
   Code,
   Image,
   Database,
+  Camera,
   Trash2
 } from "lucide-react";
+import { SnapshotsPanel } from "./SnapshotsPanel";
 import { MatrixToolsPanel, ModalType } from "./MatrixToolsPanel";
 import {
   Sidebar,
@@ -40,6 +42,7 @@ interface StudioSidebarProps {
   onCreateFile: (parentPath: string, fileName: string, isFolder?: boolean) => void;
   onDeleteFile: (filePath: string) => void;
   currentProjectName?: string;
+  currentProjectId?: string;
   fileContents?: Record<string, string>;
   onDownload?: () => void;
 }
@@ -79,6 +82,7 @@ export const StudioSidebar = ({
   onCreateFile,
   onDeleteFile,
   currentProjectName,
+  currentProjectId,
   fileContents = {},
   onDownload
 }: StudioSidebarProps) => {
