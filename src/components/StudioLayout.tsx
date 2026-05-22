@@ -8,6 +8,7 @@ import { StudioHeader } from "./StudioHeader";
 import { MonacoCodeEditor } from "./MonacoEditor";
 import { LivePreview } from "./LivePreview";
 import { PublishDialog } from "./PublishDialog";
+import { PublishWizard } from "./PublishWizard";
 import { Terminal } from "./Terminal";
 import { AIChatPanel } from "./AIChatPanel";
 import StudioApiKeySelector from "./StudioApiKeySelector";
@@ -405,7 +406,7 @@ export const StudioLayout = () => {
           onOpenRecentFile={handleFileSelect}
           onClearRecentFiles={clearRecentFiles}
         />
-        <PublishDialog
+        <PublishWizard
           open={showPublish}
           onOpenChange={setShowPublish}
           projectName={currentProject?.name || 'MyProject'}
