@@ -1,177 +1,129 @@
+# Cyberpunk Termux IDE — vNext Upgrade Plan
 
-
-# Flexible AI Access Architecture — Refined Implementation Plan
-
-## Overview
-
-Implement a 5-phase tiered AI system (free, pro, premium, BYOK) across database, edge function, client hook, settings UI, and chat panel feature gating. Each phase is independently deployable and preserves existing IDE stability.
-
-## Design Adjustments from Original Proposal
-
-1. **Preview sandbox**: Per memory `constraints/preview-sandbox-connectivity`, this is a confirmed Lovable platform limitation with the Sandpack bundler proxy. No app-side or config-side fix exists — the published URL works correctly. I will add a contextual error detection banner in `LivePreview.tsx` only as a UX improvement, not as a fix.
-
-2. **BYOK routing**: The existing `save-api-key` edge function and `user_api_keys` table already support storing per-user keys for `openai`, `huggingface`, `elevenlabs`. BYOK will reuse this infrastructure — no new tables needed for key storage. The `codex-chat` function will check `user_api_keys` for a matching provider key when the user's plan has `byok_enabled`.
-
-3. **Model list**: The `AVAILABLE_MODELS` array in `SettingsPanel.tsx` and `SUPPORTED_MODELS` in `codex-chat` will be kept in sync. Premium-only models will be tagged in a shared constant.
-
-4. **Plan enum**: Using a text column with CHECK constraint instead of a custom enum, to avoid migration complexity. Values: `free`, `pro`, `premium`.
+A large, multi-system upgrade. Grouped into phases so each can be approved/tested before moving on. Approve this overall plan and I'll execute phase 1 first, then proceed sequentially (pausing if any phase needs a decision).
 
 ---
 
-## Phase 1: Database Schema
+## Phase 1 — Persistence Foundation (DB + Agent Sessions + Build Reports)
 
-**Migration SQL** — creates two tables:
+**Database migrations**
+- `agent_sessions` (id, project_id, user_id, status, created_at, updated_at)
+- `agent_messages` (id, session_id, role, content, metadata jsonb, created_at)
+- `build_reports` (id, project_id, user_id, prompt, status, files_created jsonb, files_modified jsonb, tests_run jsonb, warnings jsonb, errors jsonb, started_at, completed_at)
+- `agent_activity` (id, project_id, user_id, event_type, message, metadata, created_at) — powers timeline
+- RLS: user_id scoped on all tables; project_id ownership joins enforced.
 
-### `user_plans`
-| Column | Type | Default |
-|--------|------|---------|
-| id | uuid | gen_random_uuid() |
-| user_id | uuid (unique, NOT NULL) | — |
-| plan | text NOT NULL | 'free' |
-| daily_limit | integer | 15 |
-| monthly_limit | integer | 100 |
-| allowed_models | text[] | {'google/gemini-3-flash-preview','google/gemini-2.5-flash-lite'} |
-| byok_enabled | boolean | false |
-| created_at | timestamptz | now() |
-| updated_at | timestamptz | now() |
+**App wiring**
+- New `useAgentSession(projectId)` hook: auto-loads last `active` session, creates one if none, streams messages.
+- Replace in-memory chat state in `AIChatPanel.tsx` with Supabase-backed session.
+- Persist every Codex / Lady Violet exchange to `agent_messages`.
+- Remove "reset to welcome on refresh" behavior.
 
-### `ai_usage_log`
-| Column | Type | Default |
-|--------|------|---------|
-| id | uuid | gen_random_uuid() |
-| user_id | uuid NOT NULL | — |
-| created_at | timestamptz | now() |
-| model_used | text | — |
-| tokens_used | integer | 0 |
-| source | text | 'managed' |
+## Phase 2 — Build Reports + Activity Timeline UI
 
-**RLS policies:**
-- `user_plans`: authenticated users SELECT own row only
-- `ai_usage_log`: authenticated users SELECT own rows; INSERT via service role in edge function
+- `useBuildReports(projectId)` + `BuildReportPanel.tsx` (Build History list, expandable detail card matching the spec example).
+- Hook every Generate/Refactor call to create a `build_reports` row at start, update at completion with parsed file list, warnings, errors.
+- `ActivityTimeline.tsx` sidebar tab fed from `agent_activity` with realtime subscription. Emits events from: git ops, builds, deploys, test runs, preview reloads.
 
-**Key behavior**: If no `user_plans` row exists for a user, the edge function treats them as `free` with default limits. No existing user is broken.
+## Phase 3 — Workspace Awareness Context Injection
+
+- New `lib/workspaceContext.ts`: gathers `{ project, branch, openFiles, recentBuilds, gitStatus, terminalTail }`.
+- Inject as a structured system message prelude on every `codex-agent` / `lady-violet-chat` / `codex-chat` call.
+- Edge functions updated to accept `workspace_context` and prepend it to the system prompt.
+
+## Phase 4 — Preview Routing Fix
+
+- Update `LivePreview.tsx` / `detectEntryFile` priority order:
+  1. `app/page.tsx` → 2. `src/App.tsx` → 3. `pages/index.tsx` → 4. `index.html`
+- `README.md` removed from entry candidates entirely (only used if literally nothing else exists).
+- Add a small "Detected entry: X" badge in the preview header.
+
+## Phase 5 — Provider Abstraction + Multi-Model Router
+
+- `src/lib/providers/openai.ts`, `providers/gemini.ts`, `providers/index.ts` exposing a uniform `chat(opts)` interface.
+- Model profiles: `Economy` (gemini-2.5-flash-lite), `Balanced` (gpt-5.5 / 5.5-mini), `Architect` (gpt-5.5-pro).
+- `lib/modelRouter.ts`: classifies prompt → profile (simple chat→Economy, docs/codegen→Balanced, multi-file/repo analysis→Architect).
+- Profile selector in chat header (Fast / Smart / Agent) with manual override.
+- Edge functions read `profile` from request and map to model.
+- Note: `openai/gpt-5.5` / `gpt-5.5-pro` are available on the Lovable AI Gateway — no new API keys needed.
+
+## Phase 6 — Voice System Foundation
+
+- `src/lib/voice/speechToText.ts`, `textToSpeech.ts`, `voiceRouter.ts` — modular, provider-agnostic.
+- Push-to-talk hook `useVoiceCapture` (already partially exists via LiveVoiceMode — refactor it into this module).
+- Stub OpenAI Realtime adapter ready to plug in when key is enabled.
+
+## Phase 7 — Browser Extension API Surface
+
+- Edge functions: `extension-analyze-page`, `extension-import-repo`, `extension-save-page`, `extension-send-to-codex`.
+- All JWT-verified, rate-limited.
+- `public/extension/` scaffold (manifest v3) — popup posts to these endpoints.
+
+## Phase 8 — Founder Welcome Screen
+
+- Replace blank Codex welcome with a dashboard card showing: Recent Builds, Recent Conversations, Current Project Status, Deployment Status, Git Status. Pulled from the new tables + existing `projects` data.
+
+## Phase 9 — Smart Publish Wizard
+
+- New `PublishWizard.tsx` replaces current `PublishDialog.tsx` as the default flow (old dialog kept as "Advanced Options" expansion).
+- Step 1: `detectProjectType()` reads `package.json` / file tree → returns `{ type, recommended }`.
+- Step 2: Recommendation card with single **Publish Now** + collapsed **Advanced Options**.
+- Step 3: Advanced panel = current 10-target grid.
+- Step 4: Pre-publish summary (Type / Target / Build Status / ETA).
+- After publish: **Deployment Completion Report** modal (URL, framework, method, warnings, next steps) + write a row to `build_reports` with type=`deploy`.
 
 ---
 
-## Phase 2: Edge Function — Plan-Aware Routing
+## Technical Details
 
-**File**: `supabase/functions/codex-chat/index.ts`
+**Edge function changes**
+- `codex-agent`, `codex-chat`, `lady-violet-chat`: accept `{ session_id, profile, workspace_context }`, persist messages server-side after streaming completes, emit `agent_activity` events.
+- New: `create-build-report`, `complete-build-report`, `extension-*` endpoints.
 
-After authentication succeeds (line ~267), add:
+**Realtime**
+- Enable realtime on `agent_messages`, `agent_activity`, `build_reports` for live UI updates.
 
-1. Create a service-role client to query `user_plans` for the authenticated user
-2. If no row, use free defaults: `{ plan: 'free', daily_limit: 15, monthly_limit: 100, allowed_models: ['google/gemini-3-flash-preview', 'google/gemini-2.5-flash-lite'], byok_enabled: false }`
-3. Query `ai_usage_log` COUNT for today and this month for the user
-4. If daily or monthly limit exceeded, return 429 with `{ error: 'Daily/monthly AI usage limit reached', usageExhausted: true }`
-5. Gate the requested model against `allowed_models` — fall back to default if not allowed
-6. **BYOK path**: If `byok_enabled` is true, check `user_api_keys` for an `openai` key. If found, route directly to `https://api.openai.com/v1/chat/completions` with the user's key instead of Lovable AI gateway. Only OpenAI BYOK supported initially.
-7. After successful streaming response starts, INSERT into `ai_usage_log` (using service role client)
-8. Return `X-Plan`, `X-Daily-Remaining`, `X-Monthly-Remaining` headers
-
-Existing rate limiter stays as a safety net. The plan-based limits are checked first.
-
----
-
-## Phase 3: Client Hook — `useUserPlan`
-
-**New file**: `src/hooks/useUserPlan.ts`
-
+**File map (new)**
 ```text
-Exports:
-- plan: 'free' | 'pro' | 'premium'
-- dailyRemaining: number
-- monthlyRemaining: number
-- dailyLimit: number
-- monthlyLimit: number
-- allowedModels: string[]
-- byokEnabled: boolean
-- isFree: boolean
-- isPro: boolean
-- isPremium: boolean
-- refreshPlan(): void
+src/
+  hooks/useAgentSession.ts
+  hooks/useBuildReports.ts
+  hooks/useActivityTimeline.ts
+  hooks/useWorkspaceContext.ts
+  lib/providers/{index,openai,gemini}.ts
+  lib/modelRouter.ts
+  lib/voice/{speechToText,textToSpeech,voiceRouter}.ts
+  lib/workspaceContext.ts
+  lib/detectProjectType.ts
+  components/BuildReportPanel.tsx
+  components/ActivityTimeline.tsx
+  components/PublishWizard.tsx
+  components/FounderDashboard.tsx
+public/extension/{manifest.json,popup.html,popup.js,background.js}
+supabase/functions/{create-build-report,complete-build-report,
+  extension-analyze-page,extension-import-repo,
+  extension-save-page,extension-send-to-codex}/index.ts
 ```
 
-- Fetches from `user_plans` table on auth change
-- Falls back to free defaults if no row exists
-- Queries `ai_usage_log` count for today/month
-- Re-fetches after each chat message send (called from AIChatPanel)
+**Files modified**
+- `AIChatPanel.tsx`, `StudioLayout.tsx`, `StudioSidebar.tsx`, `LivePreview.tsx`,
+  `fileDetection.ts`, `PublishDialog.tsx` (becomes Advanced view),
+  `codex-agent/index.ts`, `codex-chat/index.ts`, `lady-violet-chat/index.ts`.
+
+**Out of scope (explicit)**
+- Real OpenAI Realtime voice connection (foundation only — needs your go-ahead before wiring a Realtime key).
+- Publishing the browser extension to Chrome Web Store (we ship the unpacked scaffold).
+- Stripe / SSO (tracked separately in monetization plan).
 
 ---
 
-## Phase 4: Settings Panel — "AI & Usage" Tab
+## Suggested Execution Order
 
-**File**: `src/components/SettingsPanel.tsx`
+1. Approve plan
+2. Phase 1 migration (I'll write the SQL via the migration tool and wait for approval)
+3. Phases 1–4 in one build pass (persistence + reports + context + preview fix)
+4. Phases 5–6 (router + voice foundation)
+5. Phases 7–9 (extension + welcome + publish wizard)
+6. Final implementation report
 
-Add a 7th tab "AI" (using `Cpu` icon) to the existing 6-tab grid (change to `grid-cols-7`):
-
-- **Plan badge**: Shows current tier (FREE / PRO / PREMIUM) with color coding
-- **Usage bars**: Daily usage (X/Y) and Monthly usage (X/Y) as progress bars
-- **API Key Mode**: Toggle between "Managed AI" and "Bring Your Own Key"
-  - BYOK section: OpenAI API key input, saved via existing `save-api-key` function
-  - Only visible if plan has `byok_enabled` (pro/premium)
-- **Model selector**: Shows allowed models; premium models greyed out with lock icon for free users
-- **Upgrade prompt**: "Upgrade to Pro" / "Upgrade to Premium" CTA (links to future Stripe page, for now shows toast)
-
----
-
-## Phase 5: Chat Panel Feature Gating
-
-**File**: `src/components/AIChatPanel.tsx`
-
-- Import `useUserPlan` hook
-- Before `sendMessage`: check `dailyRemaining > 0` — if exhausted, show toast "Daily AI limit reached — upgrade your plan" and block send
-- In the chat header area: show a small usage badge "12/15 today" with color (green > yellow > red)
-- Gate premium features:
-  - **Build Mode** (autonomous copilot): requires `isPro || isPremium`
-  - **Image analysis**: requires `isPro || isPremium` (free gets 0)
-  - **Voice TTS**: requires `isPro || isPremium`
-  - **Live Voice mode**: requires `isPremium`
-- For locked features: show lock icon overlay on the relevant buttons with tooltip "Upgrade to [tier] to unlock"
-- After each successful message, call `refreshPlan()` to update remaining counts
-
----
-
-## Phase 6: Preview Sandbox UX (Minor)
-
-**File**: `src/components/LivePreview.tsx`
-
-Add error detection in the Sandpack error handler — if the error message contains "Could not connect" or "bundler", show a contextual amber banner: "Preview sandbox may be temporarily unavailable — your app works normally at the published URL" instead of a raw red error. This is a UX improvement only, not a fix for the platform limitation.
-
----
-
-## Feature Gating Matrix
-
-| Feature | Free | Pro | Premium |
-|---------|------|-----|---------|
-| Chat messages/day | 15 | 100 | Unlimited (9999) |
-| Chat messages/month | 100 | 3000 | Unlimited (99999) |
-| Models | Flash, Flash Lite | + Pro, GPT-5-mini | All models |
-| Build Mode | Locked | Yes | Yes |
-| Image analysis | Locked | Yes | Yes |
-| Voice TTS | Locked | Yes | Yes |
-| Live Voice | Locked | Locked | Yes |
-| BYOK | Locked | Yes | Yes |
-
----
-
-## Files Summary
-
-| Phase | Action | File |
-|-------|--------|------|
-| 1 | Migration | `user_plans` + `ai_usage_log` tables + RLS |
-| 2 | Modify | `supabase/functions/codex-chat/index.ts` |
-| 3 | Create | `src/hooks/useUserPlan.ts` |
-| 4 | Modify | `src/components/SettingsPanel.tsx` |
-| 5 | Modify | `src/components/AIChatPanel.tsx` |
-| 6 | Modify | `src/components/LivePreview.tsx` |
-
-## Testing Plan
-
-After implementation:
-1. **Free user**: verify 15/day limit enforced, premium buttons locked, Flash models only
-2. **Managed AI path**: send a message, confirm usage logged, remaining count decrements
-3. **BYOK path**: save an OpenAI key, enable BYOK in plan, verify routing to OpenAI
-4. **Premium gating**: verify Build Mode, Voice, Live Voice show lock icons for free
-5. **Preview sandbox**: trigger the Sandpack error, confirm friendly banner appears
-6. **Published URL**: confirm app works normally at cyberpunk-termux-ide.lovable.app
-
+Approve to begin with Phase 1.
