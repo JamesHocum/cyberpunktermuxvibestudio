@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Cyberpunk Termux Bridge",
+  "version": "0.1.0",
+  "description": "Send selections, prompts, and page context from any AI chat (ChatGPT, Claude, Gemini) directly into Cyberpunk Termux IDE.",
+  "permissions": ["activeTab", "storage", "contextMenus", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Send to Cyberpunk Termux",
+    "default_icon": "icon.png"
+  },
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["*://chat.openai.com/*", "*://chatgpt.com/*", "*://claude.ai/*", "*://gemini.google.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": { "48": "icon.png", "128": "icon.png" }
+}
