@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, FileText, FileDown, Presentation, BookOpen, Rocket, DollarSign } from "lucide-react";
+import { ArrowLeft, FileText, FileDown, Presentation, BookOpen, Rocket, DollarSign, Zap } from "lucide-react";
 
 type Doc = {
   title: string;
@@ -51,6 +51,16 @@ const DOCS: Doc[] = [
       "4-phase plan: Stripe activation, signed native builds (Win/Mac/Mobile), Enterprise SSO (SAML/SCIM), Marketplace revenue.",
     icon: DollarSign,
     files: [{ label: "Download Plan", href: "/docs/02_monetization_plan.md", ext: "MD" }],
+  },
+  {
+    title: "Browser Extension Bridge (v0.1)",
+    description:
+      "Manifest V3 extension that beams selections and prompts from ChatGPT, Claude, Gemini, or any web page straight into the IDE's Bridge Inbox. Phase 1 of the Interoperability Layer.",
+    icon: Zap,
+    files: [
+      { label: "Install Guide", href: "/extension/README.md", ext: "MD" },
+      { label: "Manifest", href: "/extension/manifest.json", ext: "JSON" },
+    ],
   },
 ];
 
