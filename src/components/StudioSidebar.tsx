@@ -15,9 +15,11 @@ import {
   Image,
   Database,
   Camera,
+  Inbox,
   Trash2
 } from "lucide-react";
 import { SnapshotsPanel } from "./SnapshotsPanel";
+import { BridgeInboxPanel } from "./BridgeInboxPanel";
 import { MatrixToolsPanel, ModalType } from "./MatrixToolsPanel";
 import {
   Sidebar,
@@ -300,6 +302,17 @@ export const StudioSidebar = ({
           <SidebarGroupContent>
             <div className="h-64">
               <SnapshotsPanel projectId={currentProjectId} />
+            </div>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="font-cyber neon-green flex items-center gap-2">
+            <Inbox className="h-3 w-3" /> BRIDGE INBOX
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <div className="h-72">
+              <BridgeInboxPanel />
             </div>
           </SidebarGroupContent>
         </SidebarGroup>

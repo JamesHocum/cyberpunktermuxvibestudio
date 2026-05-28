@@ -106,6 +106,48 @@ export type Database = {
           },
         ]
       }
+      extension_context: {
+        Row: {
+          consumed: boolean
+          consumed_at: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          origin_url: string | null
+          page_title: string | null
+          prompt: string | null
+          selection: string | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          consumed?: boolean
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          origin_url?: string | null
+          page_title?: string | null
+          prompt?: string | null
+          selection?: string | null
+          source?: string
+          user_id: string
+        }
+        Update: {
+          consumed?: boolean
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          origin_url?: string | null
+          page_title?: string | null
+          prompt?: string | null
+          selection?: string | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       extensions: {
         Row: {
           author: string | null

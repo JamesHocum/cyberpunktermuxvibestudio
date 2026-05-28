@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cyberpunk Termux Bridge</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      width: 320px;
+      margin: 0;
+      padding: 16px;
+      background: #0a0a0f;
+      color: #39ff14;
+      font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+      font-size: 13px;
+    }
+    h1 { margin: 0 0 8px; font-size: 14px; color: #8b5cf6; letter-spacing: 0.05em; }
+    label { display: block; margin-top: 10px; font-size: 11px; color: #7dd3fc; text-transform: uppercase; }
+    input, textarea {
+      width: 100%; box-sizing: border-box;
+      background: #11111a; color: #e5e7eb; border: 1px solid #1f2937;
+      border-radius: 4px; padding: 6px 8px; font-family: inherit; font-size: 12px;
+      margin-top: 4px;
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    button {
+      width: 100%; margin-top: 12px; padding: 8px;
+      background: linear-gradient(90deg, #39ff14, #8b5cf6); color: #0a0a0f;
+      border: 0; border-radius: 4px; font-weight: 700; cursor: pointer;
+      font-family: inherit; text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status { margin-top: 10px; font-size: 11px; color: #a3a3a3; min-height: 14px; }
+    .ok { color: #39ff14; }
+    .err { color: #ef4444; }
+    a { color: #8b5cf6; }
+  </style>
+</head>
+<body>
+  <h1>// CYBERPUNK TERMUX BRIDGE</h1>
+
+  <label for="endpoint">IDE Endpoint</label>
+  <input id="endpoint" type="text" placeholder="https://cyberpunk-termux-ide.lovable.app" />
+
+  <label for="token">Access Token</label>
+  <input id="token" type="password" placeholder="Paste your token from IDE → Settings → Bridge" />
+
+  <label for="prompt">Prompt</label>
+  <textarea id="prompt" placeholder="Optional instruction to attach…"></textarea>
+
+  <label for="selection">Captured Selection</label>
+  <textarea id="selection" placeholder="Highlight text on a page before opening this popup"></textarea>
+
+  <button id="send">⚡ Send to Cyberpunk Termux</button>
+  <div id="status" class="status"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
