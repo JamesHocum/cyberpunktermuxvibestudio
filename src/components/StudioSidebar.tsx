@@ -20,7 +20,9 @@ import {
 } from "lucide-react";
 import { SnapshotsPanel } from "./SnapshotsPanel";
 import { BridgeInboxPanel } from "./BridgeInboxPanel";
+import { MemoryTimelinePanel } from "./MemoryTimelinePanel";
 import { MatrixToolsPanel, ModalType } from "./MatrixToolsPanel";
+import { Brain } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -312,7 +314,18 @@ export const StudioSidebar = ({
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <div className="h-72">
-              <BridgeInboxPanel />
+              <BridgeInboxPanel projectId={currentProjectId} />
+            </div>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="font-cyber neon-green flex items-center gap-2">
+            <Brain className="h-3 w-3" /> MEMORY TIMELINE
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <div className="h-64">
+              <MemoryTimelinePanel projectId={currentProjectId ?? null} />
             </div>
           </SidebarGroupContent>
         </SidebarGroup>

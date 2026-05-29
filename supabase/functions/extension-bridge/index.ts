@@ -44,13 +44,15 @@ serve(async (req) => {
     if (req.method === "GET") {
       const url = new URL(req.url);
       const unconsumed = url.searchParams.get("unconsumed") === "1";
-      const query = service
+      const includeOutbound = url.searchParams.get("include_outbound") === "1";
+      let query = service
         .from("extension_context")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
-        .limit(50);
-      if (unconsumed) query.eq("consumed", false);
+        .limit(100);
+      if (unconsumed) query = query.eq("consumed", false);
+      if (!includeOutbound) query = query.eq("direction", "inbound");
       const { data, error } = await query;
       if (error) return json({ error: error.message }, 500);
       return json({ items: data ?? [] });
@@ -69,7 +71,7 @@ serve(async (req) => {
       return json({ ok: true });
     }
 
-    // POST — drop new context from the extension
+    // POST — drop new context from the extension OR emit an outbound IDE response
     if (req.method === "POST") {
       const body = await req.json().catch(() => ({}));
       const {
@@ -79,6 +81,9 @@ serve(async (req) => {
         prompt = null,
         metadata = {},
         source = "browser-extension",
+        direction = "inbound",
+        parent_id = null,
+        response = null,
       } = body as Record<string, unknown>;
 
       // Size guards — extension drops should stay small
@@ -95,6 +100,10 @@ serve(async (req) => {
           selection: cap(selection, 20000),
           prompt: cap(prompt, 20000),
           metadata: metadata ?? {},
+          direction: direction === "outbound" ? "outbound" : "inbound",
+          parent_id: parent_id ? String(parent_id) : null,
+          response: cap(response, 40000),
+          response_at: response ? new Date().toISOString() : null,
         })
         .select()
         .single();

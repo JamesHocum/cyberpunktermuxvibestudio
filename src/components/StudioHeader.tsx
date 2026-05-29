@@ -43,6 +43,7 @@ import { PWAInstallPrompt } from './PWAInstallPrompt';
 import { MobileHeaderMenu } from './MobileHeaderMenu';
 import { Badge } from "@/components/ui/badge";
 import { ProjectTimers } from './ProjectTimers';
+import { AdminBadge } from './AdminBadge';
 
 interface StudioHeaderProps {
   onToggleChat: () => void;
@@ -149,6 +150,7 @@ export const StudioHeader = ({
         <h1 className="text-lg md:text-3xl font-extrabold neon-text whitespace-nowrap">
           {isMobile ? 'CYBER·T' : 'CYBERPUNK TERMUX'}
         </h1>
+        <AdminBadge className="ml-1 hidden sm:inline-flex" />
       </div>
       
       {/* Primary Actions - Always visible */}

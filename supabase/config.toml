@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.extension-bridge]
 verify_jwt = false
+
+[functions.extension-link]
+verify_jwt = false

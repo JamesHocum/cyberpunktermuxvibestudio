@@ -383,17 +383,27 @@ serve(async (req) => {
     const userPlan = await getUserPlan(serviceClient, user.id);
     const usage = await getUsageCounts(serviceClient, user.id);
 
-    const dailyRemaining = Math.max(0, userPlan.daily_limit - usage.daily);
-    const monthlyRemaining = Math.max(0, userPlan.monthly_limit - usage.monthly);
+    // Admin RBAC bypass — admins get unlimited limits and access to all models.
+    const { data: isAdminRow } = await serviceClient.rpc('has_role', {
+      _user_id: user.id,
+      _role: 'admin',
+    });
+    const isAdmin = !!isAdminRow;
+    if (isAdmin) {
+      console.log(`[CodexChat] Admin bypass active for ${user.id}`);
+    }
 
-    if (dailyRemaining <= 0) {
+    const dailyRemaining = isAdmin ? Number.POSITIVE_INFINITY : Math.max(0, userPlan.daily_limit - usage.daily);
+    const monthlyRemaining = isAdmin ? Number.POSITIVE_INFINITY : Math.max(0, userPlan.monthly_limit - usage.monthly);
+
+    if (!isAdmin && dailyRemaining <= 0) {
       return new Response(
         JSON.stringify({ error: 'Daily AI usage limit reached. Upgrade your plan for more.', usageExhausted: true }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Plan': userPlan.plan, 'X-Daily-Remaining': '0', 'X-Monthly-Remaining': String(monthlyRemaining) } }
       );
     }
 
-    if (monthlyRemaining <= 0) {
+    if (!isAdmin && monthlyRemaining <= 0) {
       return new Response(
         JSON.stringify({ error: 'Monthly AI usage limit reached. Upgrade your plan for more.', usageExhausted: true }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Plan': userPlan.plan, 'X-Daily-Remaining': String(dailyRemaining), 'X-Monthly-Remaining': '0' } }
@@ -434,8 +444,8 @@ serve(async (req) => {
     const defaultModel = 'google/gemini-3-flash-preview';
     let model = requestedModel && SUPPORTED_MODELS.includes(requestedModel) ? requestedModel : defaultModel;
 
-    // Gate model by plan's allowed_models
-    if (!userPlan.allowed_models.includes(model)) {
+    // Gate model by plan's allowed_models — admins bypass this entirely
+    if (!isAdmin && !userPlan.allowed_models.includes(model)) {
       console.log(`[CodexChat] Model ${model} not in user's allowed list, falling back to default`);
       model = userPlan.allowed_models[0] || defaultModel;
     }

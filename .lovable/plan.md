@@ -1,96 +1,111 @@
-# Phase 5.5 — Three Targeted Additions
+# Phase 2 — Bridge Interop + Admin RBAC
 
-The earlier AI-access architecture (user_plans, ai_usage_log, useUserPlan, plan-aware codex-chat with BYOK) is already shipped. This plan covers the three new pieces you just asked for. Each is independently shippable.
+Five coordinated upgrades to the Browser Extension Bridge, plus an Admin role that bypasses all plan gating.
+
+## 1. One-Click Apply + Build/Debug Pipeline
+
+Turn bridged inbox items into actionable patches.
+
+- Extend `extension_context.metadata` to optionally carry `{ kind: "patch" | "command" | "context", files?: [{path, content}], command?: string, pipeline?: "build"|"preview"|"test"|"debug" }`.
+- New `BridgeInboxPanel` actions on each item:
+  - **Apply to Repo** — when `files[]` present, write through `snapshotEngine` (auto pre-snapshot for undo), then mark consumed.
+  - **Run Pipeline** — dispatches to existing IDE handlers: build (PublishWizard detect), preview (LivePreview refresh), test (TestingSuite), debug (open Terminal + Codex with error context).
+  - **Load into Chat** — current behavior, unchanged.
+- New helper `src/lib/bridgeActions.ts` to route each `kind` → correct IDE subsystem.
+
+## 2. Conversational Memory Snapshots (cross-device continuity)
+
+Persist Codex thread state so linked sessions resume on restart and on a second device.
+
+- New table `agent_memory_snapshots`:
+  - `id, user_id, project_id, session_id, summary text, messages jsonb, model text, persona jsonb, device_label text, created_at`
+  - RLS: user-scoped; GRANT to authenticated + service_role.
+- Auto-snapshot triggers (debounced 30s) inside `AIChatPanel`: on send, on model switch, on tab close (`beforeunload`).
+- On project open, fetch latest snapshot for `(user_id, project_id)` and hydrate messages if local store is empty or older.
+- New `MemoryTimelinePanel` in StudioSidebar listing snapshots with device label + restore button.
+
+## 3. OAuth Handshake for Extension Linking (no pasted tokens)
+
+Replace the current "paste access token" popup flow with a short-lived device-code link.
+
+- New table `extension_link_codes`: `code text pk, user_id uuid, scopes jsonb, claimed_at, expires_at` (5-min TTL).
+- New edge function `extension-link`:
+  - `POST /start` (extension, unauthenticated) → returns `{ code, verification_url }`.
+  - `GET /poll?code=...` → returns `{ access_token, refresh_token }` once user approves in IDE.
+  - `POST /approve` (IDE, authenticated) → mints a scoped Supabase session JWT bound to `extension:bridge` audience.
+- New IDE page `/link-extension?code=XYZ` shows scopes + Approve/Deny.
+- Extension `popup.js` rewrites: click "Link Account" → opens `verification_url` → polls until approved → stores token in `chrome.storage`. Tokens are auto-refreshable; no long-lived secret on disk.
+
+## 4. Two-Way Context Sync (round-trip prompts + results)
+
+Today the bridge is one-way (extension → IDE). Add IDE → extension echo.
+
+- Add columns to `extension_context`: `direction text default 'inbound'`, `parent_id uuid`, `response text`, `response_at timestamptz`.
+- After Codex answers a message that originated from a bridged item, edge function inserts a sibling row with `direction='outbound', parent_id=<original>, response=<assistant text>`.
+- Extension `background.js` opens a `chrome.runtime.connect` long-poll (or Supabase Realtime via REST stream) and surfaces a desktop notification + injects the response next to the original selection on the source page (ChatGPT/Claude/etc.).
+- `BridgeInboxPanel` shows threaded view: original prompt → IDE response, with copy-back button.
+
+## 5. Admin RBAC Bypass (separate from plan tier)
+
+Admin role unlocks every feature regardless of `user_plans.plan`.
+
+- Reuse existing `app_role` enum + `user_roles` table + `has_role()` function — no schema change.
+- New hook `useEffectivePlan()` wrapping `useUserPlan` + `useUserRole`:
+  - If `isAdmin` → returns synthetic plan `{ plan: 'admin', allowed_models: ALL_MODELS, daily_limit: Infinity, monthly_limit: Infinity, byok_enabled: true }`.
+- Replace direct `useUserPlan` calls in `AIChatPanel`, `SettingsPanel`, `LiveVoiceMode`, `VoiceManagementPanel`, `PublishWizard`, `StudioApiKeySelector` with `useEffectivePlan`.
+- Server-side: in `codex-chat`, `elevenlabs-*`, and any model-gating edge functions, check `has_role(user_id, 'admin')` before applying `allowed_models` / daily-limit checks.
+- New `AdminBadge` in `StudioHeader` (visible only to admins) — small "ADMIN" chip; clicking opens `/admin` (already gated by `ProtectedRoute requiredRole="admin"`).
+- Add CLI/SQL note in Docs: how to grant admin via `insert into user_roles(user_id, role) values (..., 'admin')`.
 
 ---
 
-## 1. Smart Publish Wizard
+## Technical Layout
 
-Replace the immediate 10-target grid with a guided 3-step flow. Keep the existing `PublishDialog.tsx` reachable as "Advanced Options".
-
-**New files**
-- `src/lib/detectProjectType.ts` — inspects file map + `package.json` and returns `{ type: 'react-vite' | 'next' | 'pwa' | 'electron' | 'static', recommendedTarget, reason, etaSeconds }`.
-- `src/components/PublishWizard.tsx` — three-step UI:
-  1. Detection card ("Detected: React + Vite — Reason: …")
-  2. Recommendation card with big **Publish Now** button + collapsible **Advanced Options** that mounts the existing `PublishDialog` content.
-  3. Pre-publish summary (Type / Target / Status / ETA) then runs the chosen exporter.
-- `src/components/DeploymentReport.tsx` — post-publish modal showing URL, framework, method used, warnings, and next-step suggestions (custom domain, Stripe, analytics). Persists a row to `project_exports` with `export_type` suffixed `:wizard`.
-
-**Modified**
-- `src/components/StudioHeader.tsx` (and any other Publish trigger) — opens `PublishWizard` instead of `PublishDialog`.
-- `src/components/PublishDialog.tsx` — accepts a `embedded` prop so it can render inside the wizard's Advanced panel without its own dialog chrome.
-
-Brand-aligned styling (neon green / violet, terminal font) reused from existing tokens.
-
----
-
-## 2. Provider Fallback Chain
-
-Centralize model calls behind a router that tries providers in order and falls through on `429`, `402`, `5xx`, or network error.
-
-**New files**
-- `src/lib/providers/index.ts` — `chat({ profile, messages, stream })` interface.
-- `src/lib/providers/lovable.ts` — calls Lovable AI Gateway (current default).
-- `src/lib/providers/openai.ts` — direct OpenAI when BYOK key present.
-- `src/lib/modelRouter.ts` — profile → ordered provider chain:
-  - `Economy` → [Lovable: gemini-2.5-flash-lite]
-  - `Balanced` → [Lovable: gpt-5.5-mini → Lovable: gemini-3-flash-preview]
-  - `Architect` → [OpenAI BYOK gpt-5.5 → Lovable: gpt-5.5 → Lovable: gemini-2.5-pro]
-
-**Modified**
-- `supabase/functions/codex-chat/index.ts` — replaces the inline single-provider fetch with a `tryChain(providers)` helper that returns the first 2xx streaming response. Logs each fallback hop to `ai_usage_log.source` (`managed`, `byok`, `fallback`). Honors plan's `allowed_models` at each hop.
-- `supabase/functions/codex-agent/index.ts` and `lady-violet-chat/index.ts` — same helper, shared via `supabase/functions/_shared/providerChain.ts`.
-
-Errors surface to client only after the full chain exhausts; partial-stream failures abort cleanly without double-sending tokens.
-
----
-
-## 3. Workspace Snapshots
-
-Point-in-time saves of a project's full file tree, restorable with one click.
-
-**Database migration**
 ```text
-workspace_snapshots
-  id uuid pk
-  project_id uuid not null
-  user_id uuid not null
-  label text
-  reason text         -- 'manual' | 'pre-build' | 'pre-restore' | 'auto-daily'
-  file_count int
-  size_bytes int
-  files jsonb         -- { path: { content, file_type } }
-  created_at timestamptz default now()
+DB migrations
+  + agent_memory_snapshots         (table + RLS + GRANTs)
+  + extension_link_codes           (table + RLS + GRANTs)
+  + extension_context              (ALTER: direction, parent_id, response, response_at)
+
+Edge functions
+  + extension-link/index.ts        (start / poll / approve)
+  ~ extension-bridge/index.ts      (emit outbound rows + threaded GET)
+  ~ codex-chat/index.ts            (admin bypass; outbound bridge echo when origin=bridge)
+
+Frontend
+  + src/hooks/useEffectivePlan.ts
+  + src/hooks/useAgentMemory.ts
+  + src/lib/bridgeActions.ts
+  + src/components/MemoryTimelinePanel.tsx
+  + src/components/AdminBadge.tsx
+  + src/pages/LinkExtension.tsx     (/link-extension route)
+  ~ src/components/BridgeInboxPanel.tsx   (Apply/Run/Threaded view)
+  ~ src/components/AIChatPanel.tsx        (auto-snapshot + useEffectivePlan)
+  ~ src/components/SettingsPanel.tsx, LiveVoiceMode.tsx, StudioApiKeySelector.tsx, PublishWizard.tsx
+  ~ src/components/StudioHeader.tsx       (AdminBadge)
+  ~ src/components/StudioSidebar.tsx      (MemoryTimelinePanel)
+  ~ src/App.tsx                            (+ /link-extension)
+
+Extension (public/extension/)
+  ~ popup.html / popup.js          (Link Account flow, drop token paste)
+  ~ background.js                  (poll loop + outbound response handler + notifications)
+  ~ content.js                     (inject IDE response back into source page)
+  ~ manifest.json                  (notifications permission)
 ```
-RLS: user owns row AND owns the parent project (same pattern as `project_files`).
 
-**New files**
-- `src/hooks/useWorkspaceSnapshots.ts` — list, create, restore, delete.
-- `src/components/SnapshotsPanel.tsx` — sidebar tab with timeline list, diff count badge, restore button (confirms first, takes a `pre-restore` snapshot, then writes files via existing `project_files` upsert), and delete.
-- `src/lib/snapshotEngine.ts` — capture (reads project_files), restore (writes back), and prune (keep last 20 + all manual).
+## Build Order
 
-**Modified**
-- `src/components/StudioSidebar.tsx` — add "Snapshots" tab (Camera icon).
-- `src/components/AIChatPanel.tsx` (build flow) — auto-create a `pre-build` snapshot before any Generate/Refactor that will write multiple files.
-- `src/components/StudioHeader.tsx` — quick "📸 Snapshot" button (creates a manual snapshot with optional label).
+1. DB migrations (3 changes) — single migration call.
+2. Admin RBAC bypass (small, unblocks QA of everything else).
+3. OAuth handshake (new edge function + `/link-extension` page + extension popup).
+4. Two-way sync (bridge schema + edge function emit + extension listener).
+5. Memory snapshots (table + hook + panel + autosnapshot hooks).
+6. One-click apply/build actions (bridgeActions + panel buttons).
+7. Smoke test each phase in preview, then publish.
 
-Storage strategy: files stored inline in `jsonb` for simplicity; prune keeps usage bounded. Future migration path to Storage bucket if rows grow large.
+## Out of Scope
 
----
-
-## Out of Scope (this batch)
-
-- Persistent agent sessions, build reports, activity timeline, voice foundation, browser extension API — covered by the earlier vNext plan; will land in a follow-up.
-- Stripe checkout for plan upgrades.
-- Multi-region snapshot storage.
-
----
-
-## Execution Order
-
-1. Workspace Snapshots migration (requires your approval) → snapshot engine → UI panel → pre-build hook.
-2. Provider fallback chain (shared helper + three edge functions).
-3. Smart Publish Wizard (detect → wizard → completion report).
-4. Final report listing files created/modified, migrations, and any remaining issues.
-
-Approve to proceed; I'll start with the snapshots migration and pause for your sign-off there before touching code.
+- Stripe/Paddle plan changes.
+- Mobile extension (Chrome MV3 desktop only for now).
+- Multi-user shared sessions (memory snapshots are per-user).
+- Encrypting snapshot payloads at rest (RLS-only for v1).

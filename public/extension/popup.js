@@ -1,82 +1,143 @@
-// Popup logic — stores endpoint/token in chrome.storage and POSTs to
-// the IDE's extension-bridge edge function.
+// Cyberpunk Termux Bridge popup
+// One-tap device-code OAuth-style link with the IDE — no long-lived token pasting.
+
+const PROJECT_REF = "myzldjuiklczgttasjlx";
+const FN = `https://${PROJECT_REF}.supabase.co/functions/v1`;
 const $ = (id) => document.getElementById(id);
 
-async function init() {
-  const stored = await chrome.storage.local.get(["endpoint", "token"]);
-  $("endpoint").value = stored.endpoint || "https://cyberpunk-termux-ide.lovable.app";
-  $("token").value = stored.token || "";
+let pollTimer = null;
 
-  // Pre-fill from current tab
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab?.id) {
+async function getStored() {
+  return chrome.storage.local.get(["token", "userId"]);
+}
+
+async function renderState() {
+  const { token, userId } = await getStored();
+  if (token) {
+    $("unlinked").classList.add("hidden");
+    $("linked-area").classList.remove("hidden");
+    $("linked-user").textContent = userId ? userId.slice(0, 8) + "…" : "user";
+    // pre-fill selection
     try {
-      const [{ result }] = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: () => ({
-          selection: String(window.getSelection() || ""),
-          title: document.title,
-          url: location.href,
-        }),
-      });
-      if (result?.selection) $("selection").value = result.selection;
-      $("prompt").placeholder = `Optional instruction (page: ${result?.title || "untitled"})`;
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        const [{ result }] = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => ({
+            selection: String(window.getSelection() || ""),
+            title: document.title,
+            url: location.href,
+          }),
+        });
+        if (result?.selection) $("selection").value = result.selection;
+      }
     } catch {}
+  } else {
+    $("unlinked").classList.remove("hidden");
+    $("linked-area").classList.add("hidden");
   }
 }
 
-$("send").addEventListener("click", async () => {
-  const endpoint = $("endpoint").value.trim().replace(/\/$/, "");
-  const token = $("token").value.trim();
-  const prompt = $("prompt").value.trim();
-  const selection = $("selection").value.trim();
-  const status = $("status");
+async function startLink() {
+  $("link-btn").disabled = true;
+  $("status").textContent = "Minting link code…";
+  $("status").className = "status";
+  try {
+    const res = await fetch(`${FN}/extension-link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "start" }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Failed to start link");
+    $("link-code-block").classList.remove("hidden");
+    $("link-code").textContent = data.code;
+    chrome.tabs.create({ url: data.verification_url });
+    pollLink(data.code);
+  } catch (e) {
+    $("status").textContent = `✗ ${e.message}`;
+    $("status").className = "status err";
+    $("link-btn").disabled = false;
+  }
+}
 
-  if (!endpoint || !token) {
-    status.textContent = "Endpoint and token are required.";
-    status.className = "status err";
+function pollLink(code) {
+  let elapsed = 0;
+  pollTimer = setInterval(async () => {
+    elapsed += 2;
+    if (elapsed > 300) {
+      clearInterval(pollTimer);
+      $("status").textContent = "✗ Link request expired";
+      $("status").className = "status err";
+      $("link-btn").disabled = false;
+      return;
+    }
+    try {
+      const res = await fetch(`${FN}/extension-link?action=poll&code=${encodeURIComponent(code)}`);
+      const data = await res.json();
+      if (data.status === "approved") {
+        clearInterval(pollTimer);
+        await chrome.storage.local.set({
+          token: data.access_token,
+          userId: data.user_id,
+        });
+        $("status").textContent = "✓ Linked!";
+        $("status").className = "status ok";
+        await renderState();
+      }
+    } catch {}
+  }, 2000);
+}
+
+async function unlink() {
+  if (pollTimer) clearInterval(pollTimer);
+  await chrome.storage.local.remove(["token", "userId"]);
+  $("link-btn").disabled = false;
+  $("link-code-block").classList.add("hidden");
+  $("status").textContent = "Unlinked";
+  await renderState();
+}
+
+async function send() {
+  const { token } = await getStored();
+  if (!token) {
+    $("status").textContent = "Not linked yet";
+    $("status").className = "status err";
     return;
   }
-
-  await chrome.storage.local.set({ endpoint, token });
-
   $("send").disabled = true;
-  status.textContent = "Beaming context…";
-  status.className = "status";
-
+  $("status").textContent = "Beaming context…";
+  $("status").className = "status";
   try {
-    // Use the Supabase project's functions endpoint directly
-    const projectRef = "myzldjuiklczgttasjlx";
-    const url = `https://${projectRef}.supabase.co/functions/v1/extension-bridge`;
-
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-    const res = await fetch(url, {
+    const res = await fetch(`${FN}/extension-bridge`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-        "x-cyberpunk-extension": "0.1.0",
+        Authorization: `Bearer ${token}`,
+        "x-cyberpunk-extension": "0.2.0",
       },
       body: JSON.stringify({
         origin_url: tab?.url || null,
         page_title: tab?.title || null,
-        selection,
-        prompt,
-        metadata: { extension_version: "0.1.0" },
+        selection: $("selection").value.trim(),
+        prompt: $("prompt").value.trim(),
+        metadata: { extension_version: "0.2.0", via: "popup" },
       }),
     });
-
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    status.textContent = "✓ Sent. Open the IDE chat to see it.";
-    status.className = "status ok";
+    $("status").textContent = "✓ Sent. Open the IDE to see it.";
+    $("status").className = "status ok";
   } catch (e) {
-    status.textContent = `✗ ${e instanceof Error ? e.message : "Failed"}`;
-    status.className = "status err";
+    $("status").textContent = `✗ ${e.message}`;
+    $("status").className = "status err";
   } finally {
     $("send").disabled = false;
   }
-});
+}
 
-init();
+$("link-btn").addEventListener("click", startLink);
+$("unlink").addEventListener("click", unlink);
+$("send").addEventListener("click", send);
+renderState();
