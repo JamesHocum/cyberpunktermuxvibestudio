@@ -11,6 +11,7 @@ import GitHubCallback from "./pages/GitHubCallback";
 import NotFound from "./pages/NotFound";
 import Projects from "./pages/Projects";
 import Docs from "./pages/Docs";
+import LinkExtension from "./pages/LinkExtension";
 
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ProjectProvider } from "./contexts/ProjectContext";
@@ -47,6 +48,7 @@ const App = () => {
                 }
               />
               <Route path="/docs" element={<Docs />} />
+              <Route path="/link-extension" element={<LinkExtension />} />
               <Route
                 path="/"
                 element={<Landing />}

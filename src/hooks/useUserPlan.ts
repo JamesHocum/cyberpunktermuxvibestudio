@@ -1,6 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
+
+const ALL_MODELS = [
+  'google/gemini-3-flash-preview',
+  'google/gemini-3.1-flash-lite-preview',
+  'google/gemini-3.5-flash',
+  'google/gemini-3.1-pro-preview',
+  'google/gemini-2.5-pro',
+  'google/gemini-2.5-flash',
+  'google/gemini-2.5-flash-lite',
+  'openai/gpt-5',
+  'openai/gpt-5-mini',
+  'openai/gpt-5-nano',
+  'openai/gpt-5.2',
+  'openai/gpt-5.4',
+  'openai/gpt-5.4-mini',
+  'openai/gpt-5.4-pro',
+  'openai/gpt-5.5',
+  'openai/gpt-5.5-pro',
+];
 
 export type PlanTier = 'free' | 'pro' | 'premium';
 
@@ -22,6 +42,7 @@ const FREE_DEFAULTS: UserPlan = {
 
 export function useUserPlan() {
   const { user } = useAuth();
+  const { isAdmin, isLoading: roleLoading } = useUserRole();
   const [plan, setPlan] = useState<UserPlan>(FREE_DEFAULTS);
   const [dailyUsed, setDailyUsed] = useState(0);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
@@ -92,19 +113,37 @@ export function useUserPlan() {
     fetchPlan();
   }, [fetchPlan]);
 
-  const dailyRemaining = Math.max(0, plan.dailyLimit - dailyUsed);
-  const monthlyRemaining = Math.max(0, plan.monthlyLimit - monthlyUsed);
+  const admin = isAdmin();
+
+  // Admin role bypasses all plan gating — unlocks every feature, model, and limit.
+  const effective: UserPlan = admin
+    ? {
+        plan: 'premium',
+        dailyLimit: Number.POSITIVE_INFINITY,
+        monthlyLimit: Number.POSITIVE_INFINITY,
+        allowedModels: ALL_MODELS,
+        byokEnabled: true,
+      }
+    : plan;
+
+  const dailyRemaining = admin
+    ? Number.POSITIVE_INFINITY
+    : Math.max(0, effective.dailyLimit - dailyUsed);
+  const monthlyRemaining = admin
+    ? Number.POSITIVE_INFINITY
+    : Math.max(0, effective.monthlyLimit - monthlyUsed);
 
   return {
-    ...plan,
-    dailyUsed,
-    monthlyUsed,
+    ...effective,
+    dailyUsed: admin ? 0 : dailyUsed,
+    monthlyUsed: admin ? 0 : monthlyUsed,
     dailyRemaining,
     monthlyRemaining,
-    isFree: plan.plan === 'free',
-    isPro: plan.plan === 'pro',
-    isPremium: plan.plan === 'premium',
-    isLoading,
+    isFree: !admin && plan.plan === 'free',
+    isPro: !admin && plan.plan === 'pro',
+    isPremium: admin || plan.plan === 'premium',
+    isAdmin: admin,
+    isLoading: isLoading || roleLoading,
     refreshPlan: fetchPlan,
   };
 }

@@ -12,6 +12,10 @@ export interface BridgeInboxItem {
   metadata: Record<string, unknown>;
   consumed: boolean;
   created_at: string;
+  direction?: 'inbound' | 'outbound';
+  parent_id?: string | null;
+  response?: string | null;
+  response_at?: string | null;
 }
 
 export function useExtensionInbox(pollMs = 15000) {
@@ -29,8 +33,15 @@ export function useExtensionInbox(pollMs = 15000) {
         .eq("user_id", user.id)
         .eq("consumed", false)
         .order("created_at", { ascending: false })
-        .limit(20);
-      if (!error && data) setItems(data as BridgeInboxItem[]);
+        .limit(50);
+      if (!error && data) {
+        // Only show inbound items in the inbox; outbound rows are threaded into their parent.
+        setItems(
+          (data as BridgeInboxItem[]).filter(
+            (i) => !i.direction || i.direction === "inbound",
+          ),
+        );
+      }
     } finally {
       setLoading(false);
     }
