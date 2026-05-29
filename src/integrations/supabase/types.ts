@@ -41,6 +41,45 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_memory_snapshots: {
+        Row: {
+          created_at: string
+          device_label: string | null
+          id: string
+          messages: Json
+          model: string | null
+          persona: Json
+          project_id: string
+          session_id: string
+          summary: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_label?: string | null
+          id?: string
+          messages?: Json
+          model?: string | null
+          persona?: Json
+          project_id: string
+          session_id?: string
+          summary?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_label?: string | null
+          id?: string
+          messages?: Json
+          model?: string | null
+          persona?: Json
+          project_id?: string
+          session_id?: string
+          summary?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_usage_log: {
         Row: {
           created_at: string
@@ -111,11 +150,15 @@ export type Database = {
           consumed: boolean
           consumed_at: string | null
           created_at: string
+          direction: string
           id: string
           metadata: Json
           origin_url: string | null
           page_title: string | null
+          parent_id: string | null
           prompt: string | null
+          response: string | null
+          response_at: string | null
           selection: string | null
           source: string
           user_id: string
@@ -124,11 +167,15 @@ export type Database = {
           consumed?: boolean
           consumed_at?: string | null
           created_at?: string
+          direction?: string
           id?: string
           metadata?: Json
           origin_url?: string | null
           page_title?: string | null
+          parent_id?: string | null
           prompt?: string | null
+          response?: string | null
+          response_at?: string | null
           selection?: string | null
           source?: string
           user_id: string
@@ -137,14 +184,48 @@ export type Database = {
           consumed?: boolean
           consumed_at?: string | null
           created_at?: string
+          direction?: string
           id?: string
           metadata?: Json
           origin_url?: string | null
           page_title?: string | null
+          parent_id?: string | null
           prompt?: string | null
+          response?: string | null
+          response_at?: string | null
           selection?: string | null
           source?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      extension_link_codes: {
+        Row: {
+          approved_token: string | null
+          claimed_at: string | null
+          code: string
+          created_at: string
+          expires_at: string
+          scopes: Json
+          user_id: string | null
+        }
+        Insert: {
+          approved_token?: string | null
+          claimed_at?: string | null
+          code: string
+          created_at?: string
+          expires_at?: string
+          scopes?: Json
+          user_id?: string | null
+        }
+        Update: {
+          approved_token?: string | null
+          claimed_at?: string | null
+          code?: string
+          created_at?: string
+          expires_at?: string
+          scopes?: Json
+          user_id?: string | null
         }
         Relationships: []
       }
