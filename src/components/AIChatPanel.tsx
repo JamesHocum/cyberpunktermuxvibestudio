@@ -26,6 +26,7 @@ import { needsChunking, chunkPrompt, wrapChunk } from "@/lib/promptChunker";
 import LargePromptOverlay from "./LargePromptOverlay";
 import { emitActivity } from "@/lib/projectTimers";
 import { LiveVoiceMode } from "./LiveVoiceMode";
+import { VerificationReportButton } from "./VerificationReportButton";
 
 interface Message {
   id: string;
@@ -190,6 +191,24 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const sendMessageRef = useRef<() => void>(() => {});
+
+  // Demo Mode — listen for auto-prompts from DemoModeOverlay
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.prompt) return;
+      setInput(detail.prompt);
+      setTimeout(() => sendMessageRef.current?.(), 200);
+    };
+    window.addEventListener("cyberpunk:demo-prompt", handler);
+    return () => window.removeEventListener("cyberpunk:demo-prompt", handler);
+  }, []);
+
+  // Keep sendMessage ref fresh for the demo prompt listener
+  useEffect(() => {
+    sendMessageRef.current = () => { void sendMessage(); };
+  });
 
   // Attachments hook
   const {
@@ -1035,6 +1054,18 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
                         <Button variant="ghost" size="sm" className="h-6 px-2 neon-green hover:neon-glow">
                           <ThumbsDown className="h-3 w-3" />
                         </Button>
+                        <VerificationReportButton
+                          input={{
+                            messageId: message.id,
+                            prompt: messages[messages.findIndex(m => m.id === message.id) - 1]?.content ?? "",
+                            response: message.content,
+                            model: loadPersonaSettings()?.model,
+                            action: message.action,
+                            timestamp: message.timestamp,
+                            projectName: currentProjectId,
+                            userEmail: user?.email,
+                          }}
+                        />
                       </div>
                     )}
                   </div>

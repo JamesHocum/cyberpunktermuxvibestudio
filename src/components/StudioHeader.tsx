@@ -24,7 +24,8 @@ import {
   CheckCircle,
   XCircle,
   Smartphone,
-  Upload
+  Upload,
+  Wand2
 } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import { useGitHub } from '@/hooks/useGitHub';
@@ -44,6 +45,7 @@ import { MobileHeaderMenu } from './MobileHeaderMenu';
 import { Badge } from "@/components/ui/badge";
 import { ProjectTimers } from './ProjectTimers';
 import { AdminBadge } from './AdminBadge';
+import { DemoModeOverlay } from './DemoModeOverlay';
 
 interface StudioHeaderProps {
   onToggleChat: () => void;
@@ -105,6 +107,7 @@ export const StudioHeader = ({
   const isMobile = useIsMobile();
   const { canInstall, isInstalled, isStandalone } = usePWA();
   const [showPWAPrompt, setShowPWAPrompt] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
   const { ref: scrollRef, isDragging, handlers: dragHandlers } = useDragScroll<HTMLDivElement>();
   const { 
     connected: githubConnected, 
@@ -264,9 +267,22 @@ export const StudioHeader = ({
             size="sm"
             onClick={(e) => { handleClick(e); onToggleChat(); }}
             className="neon-green flex-shrink-0"
+            data-demo="toggle-chat"
           >
             <MessageSquare className="h-4 w-4 mr-2" />
             AI Assistant
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => { handleClick(e); setShowDemo(true); }}
+            className="neon-purple flex-shrink-0 pulse-glow"
+            data-demo="demo-mode"
+            title="Auto-run a guided pipeline walkthrough"
+          >
+            <Wand2 className="h-4 w-4 mr-2" />
+            Demo Mode
           </Button>
           
           <Button 
@@ -284,6 +300,7 @@ export const StudioHeader = ({
             size="sm"
             onClick={(e) => { handleClick(e); onTogglePreview(); }}
             className="neon-green flex-shrink-0"
+            data-demo="toggle-preview"
           >
             <Eye className="h-4 w-4 mr-2" />
             Preview
@@ -410,6 +427,7 @@ export const StudioHeader = ({
             size="sm"
             onClick={(e) => { handleClick(e); onTogglePublish?.(); }}
             className="neon-green flex-shrink-0 pulse-glow"
+            data-demo="publish"
           >
             <Upload className="h-4 w-4 mr-2" />
             Publish
@@ -453,6 +471,9 @@ export const StudioHeader = ({
 
       {/* PWA Install Dialog */}
       <PWAInstallPrompt open={showPWAPrompt} onOpenChange={setShowPWAPrompt} />
+
+      {/* Demo Mode walkthrough */}
+      <DemoModeOverlay open={showDemo} onClose={() => setShowDemo(false)} />
     </header>
   );
 };
