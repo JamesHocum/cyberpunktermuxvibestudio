@@ -191,6 +191,19 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const sendMessageRef = useRef<() => void>(() => {});
+
+  // Demo Mode — listen for auto-prompts from DemoModeOverlay
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.prompt) return;
+      setInput(detail.prompt);
+      setTimeout(() => sendMessageRef.current?.(), 200);
+    };
+    window.addEventListener("cyberpunk:demo-prompt", handler);
+    return () => window.removeEventListener("cyberpunk:demo-prompt", handler);
+  }, []);
 
   // Attachments hook
   const {
