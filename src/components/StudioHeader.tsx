@@ -267,9 +267,22 @@ export const StudioHeader = ({
             size="sm"
             onClick={(e) => { handleClick(e); onToggleChat(); }}
             className="neon-green flex-shrink-0"
+            data-demo="toggle-chat"
           >
             <MessageSquare className="h-4 w-4 mr-2" />
             AI Assistant
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => { handleClick(e); setShowDemo(true); }}
+            className="neon-purple flex-shrink-0 pulse-glow"
+            data-demo="demo-mode"
+            title="Auto-run a guided pipeline walkthrough"
+          >
+            <Wand2 className="h-4 w-4 mr-2" />
+            Demo Mode
           </Button>
           
           <Button 
@@ -287,6 +300,7 @@ export const StudioHeader = ({
             size="sm"
             onClick={(e) => { handleClick(e); onTogglePreview(); }}
             className="neon-green flex-shrink-0"
+            data-demo="toggle-preview"
           >
             <Eye className="h-4 w-4 mr-2" />
             Preview
@@ -413,6 +427,7 @@ export const StudioHeader = ({
             size="sm"
             onClick={(e) => { handleClick(e); onTogglePublish?.(); }}
             className="neon-green flex-shrink-0 pulse-glow"
+            data-demo="publish"
           >
             <Upload className="h-4 w-4 mr-2" />
             Publish
