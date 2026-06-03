@@ -24,7 +24,8 @@ import {
   CheckCircle,
   XCircle,
   Smartphone,
-  Upload
+  Upload,
+  Wand2
 } from "lucide-react";
 import { useAuth } from '@/hooks/useAuth';
 import { useGitHub } from '@/hooks/useGitHub';
@@ -44,6 +45,7 @@ import { MobileHeaderMenu } from './MobileHeaderMenu';
 import { Badge } from "@/components/ui/badge";
 import { ProjectTimers } from './ProjectTimers';
 import { AdminBadge } from './AdminBadge';
+import { DemoModeOverlay } from './DemoModeOverlay';
 
 interface StudioHeaderProps {
   onToggleChat: () => void;
@@ -105,6 +107,7 @@ export const StudioHeader = ({
   const isMobile = useIsMobile();
   const { canInstall, isInstalled, isStandalone } = usePWA();
   const [showPWAPrompt, setShowPWAPrompt] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
   const { ref: scrollRef, isDragging, handlers: dragHandlers } = useDragScroll<HTMLDivElement>();
   const { 
     connected: githubConnected, 
