@@ -205,6 +205,11 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
     return () => window.removeEventListener("cyberpunk:demo-prompt", handler);
   }, []);
 
+  // Keep sendMessage ref fresh for the demo prompt listener
+  useEffect(() => {
+    sendMessageRef.current = () => { void sendMessage(); };
+  });
+
   // Attachments hook
   const {
     attachments,
