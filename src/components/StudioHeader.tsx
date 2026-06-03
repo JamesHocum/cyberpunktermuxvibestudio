@@ -471,6 +471,9 @@ export const StudioHeader = ({
 
       {/* PWA Install Dialog */}
       <PWAInstallPrompt open={showPWAPrompt} onOpenChange={setShowPWAPrompt} />
+
+      {/* Demo Mode walkthrough */}
+      <DemoModeOverlay open={showDemo} onClose={() => setShowDemo(false)} />
     </header>
   );
 };
