@@ -28,34 +28,33 @@ export async function applyPatch(opts: {
   label?: string;
 }): Promise<{ written: number }> {
   if (!opts.files?.length) return { written: 0 };
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  const userId = auth.user?.id;
+  if (!userId) throw new Error('Not authenticated');
+
   await createSnapshot({
     projectId: opts.projectId,
     reason: 'pre-restore',
     label: opts.label || 'Pre-bridge-apply',
   });
 
-  const { data: auth } = await supabase.auth.getUser();
-  const userId = auth.user?.id;
-  if (!userId) throw new Error('Not authenticated');
-
-  // Upsert each file: delete-then-insert by (project_id, path)
-  for (const f of opts.files) {
-    await supabase
-      .from('project_files')
-      .delete()
-      .eq('project_id', opts.projectId)
-      .eq('path', f.path);
-    await supabase.from('project_files').insert({
+  // Confirmed UNIQUE(project_id, path): one statement is atomic for the whole patch.
+  const { data, error } = await supabase.from('project_files').upsert(
+    opts.files.map((f) => ({
       project_id: opts.projectId,
       user_id: userId,
       path: f.path,
       content: f.content,
       file_type: f.file_type ?? guessFileType(f.path),
       is_folder: false,
-    });
-  }
+    })),
+    { onConflict: 'project_id,path' },
+  ).select('path');
+  if (error) throw error;
+  if (data?.length !== opts.files.length) throw new Error('Patch write could not be confirmed');
 
-  return { written: opts.files.length };
+  return { written: data.length };
 }
 
 function guessFileType(path: string): string {
