@@ -5,13 +5,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
+export interface MemoryMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date | string;
+}
+
 export interface MemorySnapshot {
   id: string;
   project_id: string;
   user_id: string;
   session_id: string;
   summary: string | null;
-  messages: any[];
+  messages: MemoryMessage[];
   model: string | null;
   persona: Record<string, unknown>;
   device_label: string | null;
@@ -73,7 +80,7 @@ export function useAgentMemory(projectId: string | null, sessionId: string = 'de
   }, [user?.id, projectId, scope]);
 
   const saveSnapshot = useCallback(
-    async (payload: { messages: any[]; model?: string; persona?: Record<string, unknown>; summary?: string }) => {
+    async (payload: { messages: MemoryMessage[]; model?: string; persona?: Record<string, unknown>; summary?: string }) => {
       if (!user?.id || !projectId) throw new Error('Open a project and sign in to save conversation memory');
       const { data, error } = await supabase
         .from('agent_memory_snapshots')
@@ -81,9 +88,9 @@ export function useAgentMemory(projectId: string | null, sessionId: string = 'de
           user_id: user.id,
           project_id: projectId,
           session_id: sessionId,
-          messages: payload.messages as any,
+          messages: JSON.parse(JSON.stringify(payload.messages)),
           model: payload.model ?? null,
-          persona: (payload.persona ?? {}) as any,
+          persona: JSON.parse(JSON.stringify(payload.persona ?? {})),
           summary: payload.summary ?? `${payload.messages.length} messages`,
           device_label: deviceLabel(),
         })
@@ -103,7 +110,7 @@ export function useAgentMemory(projectId: string | null, sessionId: string = 'de
 
   // Debounced auto-save: call this on every chat change.
   const queueAutoSave = useCallback(
-    (payload: { messages: any[]; model?: string; persona?: Record<string, unknown> }) => {
+    (payload: { messages: MemoryMessage[]; model?: string; persona?: Record<string, unknown> }) => {
       if (!user?.id || !projectId || !payload.messages.length) return;
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
       // Capture this project's save callback, not whichever project is active later.

@@ -666,7 +666,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
-      let assistantMessage: Message = {
+      const assistantMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
         content: "",
