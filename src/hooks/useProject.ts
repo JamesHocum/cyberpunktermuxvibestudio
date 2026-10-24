@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -55,6 +55,7 @@ const DEFAULT_PROJECT: FileNode = {
 };
 
 export const useProject = () => {
+  const loadGeneration = useRef(0);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [fileTree, setFileTree] = useState<FileNode>(DEFAULT_PROJECT);
   const [fileContents, setFileContents] = useState<Record<string, string>>({});
@@ -98,34 +99,47 @@ export const useProject = () => {
 
   // Load a specific project
   const loadProject = useCallback(async (projectId: string) => {
+    const generation = ++loadGeneration.current;
     setIsLoading(true);
     try {
+      const { data: auth, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      const userId = auth.user?.id;
+      if (!userId) throw new Error('Not authenticated');
       // Load project
       const { data: project, error: projectError } = await supabase
         .from('projects')
         .select('*')
         .eq('id', projectId)
+        .eq('user_id', userId)
         .single();
 
       if (projectError) throw projectError;
 
       // Load file tree
-      const { data: treeData } = await supabase
+      const { data: treeData, error: treeError } = await supabase
         .from('file_tree')
         .select('tree_structure')
         .eq('project_id', projectId)
-        .single();
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (treeError) throw treeError;
 
       // Load files
-      const { data: files } = await supabase
+      const { data: files, error: filesError } = await supabase
         .from('project_files')
         .select('*')
-        .eq('project_id', projectId);
+        .eq('project_id', projectId)
+        .eq('user_id', userId);
+      if (filesError) throw filesError;
+      if (generation !== loadGeneration.current) return;
 
       setCurrentProject(project as Project);
       
       if (treeData?.tree_structure) {
         setFileTree(treeData.tree_structure as unknown as FileNode);
+      } else {
+        setFileTree({ ...DEFAULT_PROJECT, name: project.name, children: [] });
       }
 
       // Build file contents map
@@ -139,10 +153,11 @@ export const useProject = () => {
       addToHistory('save', undefined, `Loaded project: ${project.name}`);
       toast.success(`Project "${project.name}" loaded`);
     } catch (error) {
+      if (generation !== loadGeneration.current) return;
       console.error('Error loading project:', error);
       toast.error('Failed to load project');
     } finally {
-      setIsLoading(false);
+      if (generation === loadGeneration.current) setIsLoading(false);
     }
   }, [addToHistory]);
 
@@ -361,6 +376,7 @@ export const useProject = () => {
 
   // Clear/New project (local only)
   const clearProject = useCallback(() => {
+    ++loadGeneration.current;
     setCurrentProject(null);
     setFileTree(DEFAULT_PROJECT);
     setFileContents({});

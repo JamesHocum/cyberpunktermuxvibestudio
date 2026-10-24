@@ -1,6 +1,6 @@
-# Cyberpunk Termux Bridge — Browser Extension (v0.1)
+# Cyberpunk Termux Bridge — Browser Extension (v0.2.0)
 
-Phase 1 of the **Browser Extension Interoperability Layer**.
+Authenticated browser-extension bridge with two-way context delivery.
 
 The bridge lets you push selections, prompts, and page context from any AI chat
 (ChatGPT, Claude, Gemini) — or any web page — directly into the Cyberpunk
@@ -16,31 +16,33 @@ Termux IDE so the conversation continues where the build happens.
 ## Configure
 
 1. Open the extension popup.
-2. Endpoint defaults to the published IDE. Override if you self-host.
-3. Paste your access token from **IDE → Settings → Bridge Token** (a Supabase
-   session token — never your password).
+2. Click **Link**, then sign in to the IDE tab and approve the displayed code.
+3. Return to the popup to send context. Do not paste tokens or passwords.
+
+The current link uses your existing, expiring IDE session, not an independently
+scoped OAuth credential. Relink when it expires. Endpoints are fixed in the
+extension source; the popup does not offer an endpoint override.
 
 ## Use
 
-- Highlight text on any AI chat page → a floating **⚡ Send to Cyberpunk
+- Highlight text on ChatGPT, Claude, or Gemini → a floating **⚡ Send to Cyberpunk
   Termux** button appears → one click drops it into the IDE inbox.
 - Or right-click anywhere → **⚡ Send to Cyberpunk Termux**.
 - Or open the popup, paste a custom prompt + selection, hit Send.
 
-Drops appear in the IDE chat panel as **Bridge Inbox** items. Open one to load
-its prompt + selection straight into the composer.
+Drops appear in the IDE sidebar's **Bridge Inbox**. File patches can be applied
+to the selected project. Composer and pipeline integration remain dependent on
+the host wiring; sending context does not automatically execute code.
 
 ## Design principles
 
 - **User-owned context.** Nothing leaves your browser unless you click Send.
 - **Explicit consent.** No background scraping, no telemetry.
-- **Authenticated.** Every drop is scoped to your Supabase user via RLS.
+- **Authenticated.** Every drop is scoped to your IDE user.
 - **Minimal surface.** Manifest V3, no remote code, no external dependencies.
 
-## Roadmap (Phase 2+)
+## Remaining integration work
 
-- OAuth handshake instead of pasted tokens
-- Two-way sync: IDE → extension for "Continue this in ChatGPT"
-- Per-tab session memory snapshots
+- Scoped, independently revocable extension credentials
+- Composer and execution-pipeline wiring
 - Auto-detect ChatGPT/Claude message boundaries for clean conversation imports
-- One-click "Apply to repo" from drop

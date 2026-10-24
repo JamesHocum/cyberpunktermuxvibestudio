@@ -23,7 +23,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     return;
   }
   try {
-    await fetch(`${FN}/extension-bridge`, {
+    const res = await fetch(`${FN}/extension-bridge`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -38,6 +38,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         metadata: { via: "context-menu" },
       }),
     });
+    if (!res.ok) throw new Error(`Context send failed (HTTP ${res.status})`);
     chrome.notifications?.create({
       type: "basic",
       iconUrl: "icon.png",
