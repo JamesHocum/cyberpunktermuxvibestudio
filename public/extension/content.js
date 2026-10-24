@@ -38,7 +38,7 @@
     if (!selection) return;
     const { token } = await chrome.storage.local.get(["token"]);
     if (!token) {
-      alert("Open the Cyberpunk Termux Bridge popup and paste your access token first.");
+      alert("Open the Cyberpunk Termux Bridge popup and link your IDE account first.");
       return;
     }
     const projectRef = "myzldjuiklczgttasjlx";
@@ -50,7 +50,7 @@
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
-          "x-cyberpunk-extension": "0.1.0",
+          "x-cyberpunk-extension": "0.2.0",
         },
         body: JSON.stringify({
           origin_url: location.href,

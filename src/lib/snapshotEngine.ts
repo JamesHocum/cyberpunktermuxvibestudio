@@ -20,11 +20,12 @@ export interface Snapshot {
 
 const MAX_AUTO_SNAPSHOTS = 20;
 
-async function readProjectFiles(projectId: string): Promise<SnapshotFiles> {
+async function readProjectFiles(projectId: string, userId: string): Promise<SnapshotFiles> {
   const { data, error } = await supabase
     .from("project_files")
     .select("path, content, file_type, is_folder")
-    .eq("project_id", projectId);
+    .eq("project_id", projectId)
+    .eq("user_id", userId);
   if (error) throw error;
   const map: SnapshotFiles = {};
   for (const row of data || []) {
@@ -45,11 +46,12 @@ export async function createSnapshot(opts: {
   reason: SnapshotReason;
   label?: string;
 }): Promise<Snapshot> {
-  const { data: auth } = await supabase.auth.getUser();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
   const userId = auth.user?.id;
   if (!userId) throw new Error("Not authenticated");
 
-  const files = await readProjectFiles(opts.projectId);
+  const files = await readProjectFiles(opts.projectId, userId);
   const file_count = Object.keys(files).length;
   const size_bytes = byteSize(files);
 

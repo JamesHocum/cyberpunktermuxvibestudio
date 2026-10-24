@@ -29,6 +29,7 @@ import { ModalType } from "./MatrixToolsPanel";
 import { detectEntryFile } from "@/lib/fileDetection";
 import { Button } from "@/components/ui/button";
 import { Maximize2 } from "lucide-react";
+import type { MemorySnapshot } from "@/hooks/useAgentMemory";
 export const StudioLayout = () => {
   const navigate = useNavigate();
   const {
@@ -87,6 +88,7 @@ export const StudioLayout = () => {
   }, [currentProject?.id, fileKeys.length]);
   const [showEditor, setShowEditor] = useState(true);
   const [showChat, setShowChat] = useState(false);
+  const [memoryToRestore, setMemoryToRestore] = useState<MemorySnapshot | null>(null);
   const [showTerminal, setShowTerminal] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [showApiConfig, setShowApiConfig] = useState(false);
@@ -199,6 +201,11 @@ export const StudioLayout = () => {
             currentProjectId={currentProject?.id}
             fileContents={fileContents}
             onDownload={() => setShowDownloader(true)}
+            onRestoreMemory={(snapshot) => {
+              if (snapshot.project_id !== currentProject?.id) return;
+              setMemoryToRestore(snapshot);
+              setShowChat(true);
+            }}
           />
           
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -314,6 +321,8 @@ export const StudioLayout = () => {
                     <AIChatPanel 
                       onProjectCreated={loadProject}
                       currentProjectId={currentProject?.id}
+                      memoryToRestore={memoryToRestore}
+                      onMemoryRestored={() => setMemoryToRestore(null)}
                       fileContents={fileContents}
                       onCreateFile={(parentPath, name, isFolder) => createFile(parentPath || fileTree.name, name, isFolder)}
                       onUpdateFileContent={updateFileContent}
