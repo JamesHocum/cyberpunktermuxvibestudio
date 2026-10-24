@@ -106,7 +106,7 @@ Prerequisites: **Node 18+**, **npm** (or **bun**).
 git clone <your-fork-url>
 cd cyberpunk-termux
 npm install
-npm run dev          # http://localhost:5173
+npm run dev          # http://localhost:8080 (configured in vite.config.ts)
 ```
 
 `.env` is auto-managed by Lovable Cloud. If running detached, supply:
@@ -120,11 +120,13 @@ VITE_DEV_AUTH_BYPASS=true   # optional, local-only auth skip
 ### Option D — Build native desktop apps
 ```bash
 npm run build
-npm run package:win     # Windows NSIS + portable
-npm run package:mac     # macOS DMG (requires macOS host)
-npm run package:linux   # AppImage / deb / rpm
+npm run electron:build:win     # Windows NSIS + portable
+npm run electron:build:mac     # macOS DMG + ZIP (requires macOS host)
+npm run electron:build:linux   # AppImage / deb / rpm
 ```
-Tag a release (`git tag v1.0.0 && git push --tags`) and the GitHub Actions workflow (`.github/workflows/build-electron.yml`) builds all three platforms automatically.
+Run packaging on the appropriate host with its native packaging tools and signing credentials. Packaging scripts do not rebuild the web app; run `npm run build` first. For local Electron development, keep `npm run dev` running on port 8080 and launch `npx electron .` in another terminal.
+
+The existing tag-triggered workflow (`.github/workflows/build-electron.yml`) is not yet a verified cross-platform release pipeline: its jobs all run on Ubuntu, and its upload path targets `dist` rather than the configured `release` folder. Do not rely on it for signed native releases.
 
 ---
 

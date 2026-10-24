@@ -27,6 +27,7 @@ import LargePromptOverlay from "./LargePromptOverlay";
 import { emitActivity } from "@/lib/projectTimers";
 import { LiveVoiceMode } from "./LiveVoiceMode";
 import { VerificationReportButton } from "./VerificationReportButton";
+import { useAgentMemory, type MemorySnapshot } from "@/hooks/useAgentMemory";
 
 interface Message {
   id: string;
@@ -48,6 +49,8 @@ interface AIChatPanelProps {
   isMaximized?: boolean;
   onToggleMaximize?: () => void;
   onMinimize?: () => void;
+  memoryToRestore?: MemorySnapshot | null;
+  onMemoryRestored?: () => void;
 }
 
 // Collapsible wrapper for long messages (>2000 chars)
@@ -167,11 +170,17 @@ const getPlaceholder = (action: CodexAction): string => {
   }
 };
 
-export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents = {}, onCreateFile, onUpdateFileContent, onSelectFile, onDeploy, isMaximized, onToggleMaximize, onMinimize }: AIChatPanelProps) => {
+export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents = {}, onCreateFile, onUpdateFileContent, onSelectFile, onDeploy, isMaximized, onToggleMaximize, onMinimize, memoryToRestore, onMemoryRestored }: AIChatPanelProps) => {
   const { session, user, isAuthenticated, isDevBypass } = useAuth();
   const userPlan = useUserPlan();
   const [activeTab, setActiveTab] = useState<string>("chat");
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
+  const { queueAutoSave, flushAutoSave } = useAgentMemory(currentProjectId ?? null);
+  const chatScope = `${user?.id ?? ''}:${currentProjectId ?? ''}`;
+  const chatScopeRef = useRef(chatScope);
+  chatScopeRef.current = chatScope;
+  const historyRequestRef = useRef(0);
+  const [loadedChatScope, setLoadedChatScope] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isCloning, setIsCloning] = useState(false);
@@ -292,6 +301,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
 
   // Load chat history from database
   const loadChatHistory = useCallback(async () => {
+    const request = ++historyRequestRef.current;
     if (!user?.id) return;
     // If no project is selected, don't load orphaned messages
     if (!currentProjectId) {
@@ -310,6 +320,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
         .limit(100);
 
       if (error) throw error;
+      if (chatScopeRef.current !== chatScope || request !== historyRequestRef.current) return;
 
       if (data && data.length > 0) {
         const loadedMessages: Message[] = data.map((msg) => ({
@@ -321,18 +332,23 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
         }));
         setMessages([WELCOME_MESSAGE, ...loadedMessages]);
       }
+      setLoadedChatScope(chatScope);
     } catch (err) {
+      if (chatScopeRef.current !== chatScope || request !== historyRequestRef.current) return;
       console.error('[Chat] Failed to load history:', err);
+      toast.error('Could not load conversation history');
     } finally {
-      setIsLoadingHistory(false);
+      if (chatScopeRef.current === chatScope && request === historyRequestRef.current) setIsLoadingHistory(false);
     }
-  }, [user?.id, currentProjectId]);
+  }, [user?.id, currentProjectId, chatScope]);
 
   // Reset messages when project changes
   useEffect(() => {
     setMessages([WELCOME_MESSAGE]);
     setApplyHistory({});
-  }, [currentProjectId]);
+    setLoadedChatScope(null);
+    return () => { ++historyRequestRef.current; };
+  }, [chatScope]);
 
   // Load history on mount and when project changes
   useEffect(() => {
@@ -341,28 +357,65 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
     }
   }, [isAuthenticated, isDevBypass, loadChatHistory]);
 
+  useEffect(() => {
+    if (loadedChatScope !== chatScope || isTyping || isCloning || isDevBypass) return;
+    const conversation = messages.filter((message) => message.id !== 'welcome');
+    if (conversation.length) queueAutoSave({
+      messages: conversation,
+      model: loadPersonaSettings().model,
+      persona: { ...loadPersonaSettings() },
+    });
+  }, [messages, loadedChatScope, chatScope, isTyping, isCloning, isDevBypass, queueAutoSave]);
+
+  useEffect(() => {
+    if (!memoryToRestore || memoryToRestore.project_id !== currentProjectId || memoryToRestore.user_id !== user?.id) return;
+    if (isTyping || isCloning) {
+      toast.error('Wait for the current response before restoring memory');
+      onMemoryRestored?.();
+      return;
+    }
+    const restored = memoryToRestore.messages.map((message) => ({
+      ...message, timestamp: new Date(message.timestamp),
+    })) as Message[];
+    if (restored.some((message) => !['user', 'assistant'].includes(message.role) || typeof message.content !== 'string' || Number.isNaN(message.timestamp.getTime()))) {
+      toast.error('Snapshot contains invalid conversation messages');
+      onMemoryRestored?.();
+      return;
+    }
+    ++historyRequestRef.current;
+    setIsLoadingHistory(false);
+    setLoadedChatScope(chatScope);
+    setMessages([WELCOME_MESSAGE, ...restored]);
+    setApplyHistory({});
+    toast.success('Conversation restored');
+    onMemoryRestored?.();
+  }, [memoryToRestore, currentProjectId, user?.id, chatScope, isTyping, isCloning, onMemoryRestored]);
+
   // Save message to database
   const saveMessage = useCallback(async (message: Message) => {
-    if (!user?.id || isDevBypass) return;
+    if (!user?.id || !currentProjectId || isDevBypass) return;
 
     try {
-      await supabase.from('chat_messages').insert({
+      const { error } = await supabase.from('chat_messages').insert({
         user_id: user.id,
         project_id: currentProjectId || null,
         role: message.role,
         content: message.content,
         attachments: message.attachments?.length ? JSON.parse(JSON.stringify(message.attachments)) : null
       });
+      if (error) throw error;
     } catch (err) {
       console.error('[Chat] Failed to save message:', err);
+      toast.error('Message could not be saved to conversation history');
     }
   }, [user?.id, currentProjectId, isDevBypass]);
 
   // Clear chat history
   const clearHistory = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id || !currentProjectId) return;
 
     try {
+      await flushAutoSave();
       const { error } = await supabase
         .from('chat_messages')
         .delete()
@@ -377,7 +430,7 @@ export const AIChatPanel = ({ onProjectCreated, currentProjectId, fileContents =
       console.error('[Chat] Failed to clear history:', err);
       toast.error('Failed to clear history');
     }
-  }, [user?.id, currentProjectId]);
+  }, [user?.id, currentProjectId, flushAutoSave]);
 
   // Handle GitHub clone action
   const handleGitHubClone = async (repoUrl: string): Promise<{ success: boolean; projectId?: string; message: string }> => {

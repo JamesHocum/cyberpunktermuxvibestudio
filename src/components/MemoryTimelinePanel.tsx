@@ -88,10 +88,15 @@ export const MemoryTimelinePanel: React.FC<MemoryTimelinePanelProps> = ({
                   <Button
                     size="sm"
                     className="h-7 px-3 bg-matrix-green/20 hover:bg-matrix-green/30 text-matrix-green border border-matrix-green/40 text-xs"
+                    disabled={!onRestore}
                     onClick={async () => {
-                      const full = await restoreSnapshot(s.id);
-                      if (full && onRestore) onRestore(full);
-                      toast.success('Conversation restored');
+                      try {
+                        const full = await restoreSnapshot(s.id);
+                        if (!full || !onRestore) throw new Error('Conversation could not be restored');
+                        onRestore(full);
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : 'Restore failed');
+                      }
                     }}
                   >
                     <RotateCcw className="h-3 w-3 mr-1" /> Restore
@@ -100,7 +105,7 @@ export const MemoryTimelinePanel: React.FC<MemoryTimelinePanelProps> = ({
                     size="sm"
                     variant="ghost"
                     className="h-7 px-2 text-muted-foreground hover:text-destructive"
-                    onClick={() => deleteSnapshot(s.id)}
+                    onClick={() => deleteSnapshot(s.id).catch((error) => toast.error(error?.message || 'Delete failed'))}
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>

@@ -21,6 +21,7 @@ import {
 import { SnapshotsPanel } from "./SnapshotsPanel";
 import { BridgeInboxPanel } from "./BridgeInboxPanel";
 import { MemoryTimelinePanel } from "./MemoryTimelinePanel";
+import type { MemorySnapshot } from "@/hooks/useAgentMemory";
 import { MatrixToolsPanel, ModalType } from "./MatrixToolsPanel";
 import { Brain } from "lucide-react";
 import {
@@ -49,6 +50,7 @@ interface StudioSidebarProps {
   currentProjectId?: string;
   fileContents?: Record<string, string>;
   onDownload?: () => void;
+  onRestoreMemory?: (snapshot: MemorySnapshot) => void;
 }
 
 const getCyberFileIcon = (extension?: string) => {
@@ -88,7 +90,8 @@ export const StudioSidebar = ({
   currentProjectName,
   currentProjectId,
   fileContents = {},
-  onDownload
+  onDownload,
+  onRestoreMemory
 }: StudioSidebarProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [openModal, setOpenModal] = useState<ModalType>(null);
@@ -325,7 +328,7 @@ export const StudioSidebar = ({
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <div className="h-64">
-              <MemoryTimelinePanel projectId={currentProjectId ?? null} />
+              <MemoryTimelinePanel projectId={currentProjectId ?? null} onRestore={onRestoreMemory} />
             </div>
           </SidebarGroupContent>
         </SidebarGroup>
