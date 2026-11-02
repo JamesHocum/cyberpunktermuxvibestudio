@@ -1,111 +1,49 @@
-# Phase 2 — Bridge Interop + Admin RBAC
+# Cyberpunk Termux IDE — Current-State Assessment and Next Milestone
 
-Five coordinated upgrades to the Browser Extension Bridge, plus an Admin role that bypasses all plan gating.
+Read-only assessment. "Verified" = confirmed by a file/schema read this turn. "Reported" = claimed in earlier turns, not re-checked now.
 
-## 1. One-Click Apply + Build/Debug Pipeline
+## 1. Genuinely working (verified in code)
+- Core IDE shell: Landing, Auth (email/password), Projects, Index (IDE), Docs, GitHub/OAuth callbacks, Link Extension pages exist.
+- Database: projects, project_files, file_tree, chat_messages, profiles, user_roles, user_plans, ai_usage_log, user_api_keys, project_exports, extensions, extension_context, extension_link_codes, agent_memory_snapshots, workspace_snapshots, admin_audit_log (22 migrations).
+- Backend functions present: codex-chat, codex-agent, lady-violet-chat, git-sync, github-clone, github-oauth, analyze-project, project-watcher, extension-bridge, extension-link, ElevenLabs voice (tts/clone/conversation), HuggingFace, API-key saving, roles.
+- Bridge patch writes now use a single upsert on (project_id, path) with checked results (repaired last turn).
+- Memory timeline, workspace snapshots, Publish Wizard, Demo Mode, Verification PDF components exist.
 
-Turn bridged inbox items into actionable patches.
+## 2. Partial, mocked or demo-only
+- Verification PDF: scores are deterministic heuristics, not real consensus/hallucination detection.
+- Demo Mode: scripted walkthrough, not a real pipeline run.
+- Tiered plans/BYOK: tables and gating exist; no Stripe/payment wiring.
+- Extension link flow: hands the user's current session token to the extension rather than a scoped, revocable token (security caveat).
+- Voice foundation (speechToText/textToSpeech/voiceRouter modules) and "GPT-5.5" provider profiles: not confirmed this turn; treat as unverified.
 
-- Extend `extension_context.metadata` to optionally carry `{ kind: "patch" | "command" | "context", files?: [{path, content}], command?: string, pipeline?: "build"|"preview"|"test"|"debug" }`.
-- New `BridgeInboxPanel` actions on each item:
-  - **Apply to Repo** — when `files[]` present, write through `snapshotEngine` (auto pre-snapshot for undo), then mark consumed.
-  - **Run Pipeline** — dispatches to existing IDE handlers: build (PublishWizard detect), preview (LivePreview refresh), test (TestingSuite), debug (open Terminal + Codex with error context).
-  - **Load into Chat** — current behavior, unchanged.
-- New helper `src/lib/bridgeActions.ts` to route each `kind` → correct IDE subsystem.
+## 3. Most important broken/unfinished workflows
+- Preview has a typecheck error: `src/lib/bridgeActions.test.ts` imports `bun:test` with no type declarations, and package.json has no test script. This blocks a clean build signal.
+- vNext items not in the database: no `agent_sessions`, `agent_messages`, `build_reports`, or activity-timeline tables. Build History / persistent Activity Timeline are therefore not persisted.
+- Founder Mode (bypass plans/quotas/gates, persistent StudioShell layout) was planned but no implementation found.
+- Autonomous build loop (plan → generate → build → fix → preview) and expanded model dropdown with fallback were planned, not confirmed implemented.
+- Roadmap reliability items are still unchecked; end-to-end memory restore and bridge apply have not been browser-tested.
 
-## 2. Conversational Memory Snapshots (cross-device continuity)
+## 4. Architecture and dependency risks
+- `AIChatPanel.tsx` is 1,324 lines doing chat, gating, memory, attachments, verification — high regression risk for any edit.
+- Overlapping gating paths (`useUserPlan`, `useEffectivePlan`, `useUserRole`) — future Founder Mode must toggle one place.
+- Session-token sharing to extension (see above).
+- Many edge functions with external providers (ElevenLabs, HuggingFace, GitHub) depend on secrets; failures are silent unless surfaced.
+- Single backend instance serves preview and published app — schema changes affect live users immediately.
 
-Persist Codex thread state so linked sessions resume on restart and on a second device.
+## 5. Smallest high-value next milestone
+"Green baseline": make the build clean and prove core flows work.
+1. Fix the `bun:test` typecheck error (exclude test files from the app typecheck or add bun types already shipped; no new paid deps) and add a `test` script.
+2. Run the existing bridge test.
+3. Browser-check: landing loads, sign in, open project, send one chat message, memory snapshot save/restore, bridge apply.
+4. Tick roadmap items and report results.
 
-- New table `agent_memory_snapshots`:
-  - `id, user_id, project_id, session_id, summary text, messages jsonb, model text, persona jsonb, device_label text, created_at`
-  - RLS: user-scoped; GRANT to authenticated + service_role.
-- Auto-snapshot triggers (debounced 30s) inside `AIChatPanel`: on send, on model switch, on tab close (`beforeunload`).
-- On project open, fetch latest snapshot for `(user_id, project_id)` and hydrate messages if local store is empty or older.
-- New `MemoryTimelinePanel` in StudioSidebar listing snapshots with device label + restore button.
+## 6. Credit-conscious sequence
+1. Green baseline (above) — small, unblocks everything.
+2. Founder Mode flag: one central bypass in `useEffectivePlan` + server check in codex-chat. Reversible, no schema change.
+3. Build reports + activity timeline: one migration (build_reports, agent_activity) and a read-only Build History panel; write a report at the end of each Generate.
+4. Persistent agent sessions (agent_sessions/agent_messages) or reuse chat_messages — decide after step 3 to avoid duplicate storage.
+5. Model dropdown + cheap-model fallback in codex-chat.
+6. Replace extension token sharing with scoped token.
+7. Later: split AIChatPanel, Stripe, signed Android builds.
 
-## 3. OAuth Handshake for Extension Linking (no pasted tokens)
-
-Replace the current "paste access token" popup flow with a short-lived device-code link.
-
-- New table `extension_link_codes`: `code text pk, user_id uuid, scopes jsonb, claimed_at, expires_at` (5-min TTL).
-- New edge function `extension-link`:
-  - `POST /start` (extension, unauthenticated) → returns `{ code, verification_url }`.
-  - `GET /poll?code=...` → returns `{ access_token, refresh_token }` once user approves in IDE.
-  - `POST /approve` (IDE, authenticated) → mints a scoped Supabase session JWT bound to `extension:bridge` audience.
-- New IDE page `/link-extension?code=XYZ` shows scopes + Approve/Deny.
-- Extension `popup.js` rewrites: click "Link Account" → opens `verification_url` → polls until approved → stores token in `chrome.storage`. Tokens are auto-refreshable; no long-lived secret on disk.
-
-## 4. Two-Way Context Sync (round-trip prompts + results)
-
-Today the bridge is one-way (extension → IDE). Add IDE → extension echo.
-
-- Add columns to `extension_context`: `direction text default 'inbound'`, `parent_id uuid`, `response text`, `response_at timestamptz`.
-- After Codex answers a message that originated from a bridged item, edge function inserts a sibling row with `direction='outbound', parent_id=<original>, response=<assistant text>`.
-- Extension `background.js` opens a `chrome.runtime.connect` long-poll (or Supabase Realtime via REST stream) and surfaces a desktop notification + injects the response next to the original selection on the source page (ChatGPT/Claude/etc.).
-- `BridgeInboxPanel` shows threaded view: original prompt → IDE response, with copy-back button.
-
-## 5. Admin RBAC Bypass (separate from plan tier)
-
-Admin role unlocks every feature regardless of `user_plans.plan`.
-
-- Reuse existing `app_role` enum + `user_roles` table + `has_role()` function — no schema change.
-- New hook `useEffectivePlan()` wrapping `useUserPlan` + `useUserRole`:
-  - If `isAdmin` → returns synthetic plan `{ plan: 'admin', allowed_models: ALL_MODELS, daily_limit: Infinity, monthly_limit: Infinity, byok_enabled: true }`.
-- Replace direct `useUserPlan` calls in `AIChatPanel`, `SettingsPanel`, `LiveVoiceMode`, `VoiceManagementPanel`, `PublishWizard`, `StudioApiKeySelector` with `useEffectivePlan`.
-- Server-side: in `codex-chat`, `elevenlabs-*`, and any model-gating edge functions, check `has_role(user_id, 'admin')` before applying `allowed_models` / daily-limit checks.
-- New `AdminBadge` in `StudioHeader` (visible only to admins) — small "ADMIN" chip; clicking opens `/admin` (already gated by `ProtectedRoute requiredRole="admin"`).
-- Add CLI/SQL note in Docs: how to grant admin via `insert into user_roles(user_id, role) values (..., 'admin')`.
-
----
-
-## Technical Layout
-
-```text
-DB migrations
-  + agent_memory_snapshots         (table + RLS + GRANTs)
-  + extension_link_codes           (table + RLS + GRANTs)
-  + extension_context              (ALTER: direction, parent_id, response, response_at)
-
-Edge functions
-  + extension-link/index.ts        (start / poll / approve)
-  ~ extension-bridge/index.ts      (emit outbound rows + threaded GET)
-  ~ codex-chat/index.ts            (admin bypass; outbound bridge echo when origin=bridge)
-
-Frontend
-  + src/hooks/useEffectivePlan.ts
-  + src/hooks/useAgentMemory.ts
-  + src/lib/bridgeActions.ts
-  + src/components/MemoryTimelinePanel.tsx
-  + src/components/AdminBadge.tsx
-  + src/pages/LinkExtension.tsx     (/link-extension route)
-  ~ src/components/BridgeInboxPanel.tsx   (Apply/Run/Threaded view)
-  ~ src/components/AIChatPanel.tsx        (auto-snapshot + useEffectivePlan)
-  ~ src/components/SettingsPanel.tsx, LiveVoiceMode.tsx, StudioApiKeySelector.tsx, PublishWizard.tsx
-  ~ src/components/StudioHeader.tsx       (AdminBadge)
-  ~ src/components/StudioSidebar.tsx      (MemoryTimelinePanel)
-  ~ src/App.tsx                            (+ /link-extension)
-
-Extension (public/extension/)
-  ~ popup.html / popup.js          (Link Account flow, drop token paste)
-  ~ background.js                  (poll loop + outbound response handler + notifications)
-  ~ content.js                     (inject IDE response back into source page)
-  ~ manifest.json                  (notifications permission)
-```
-
-## Build Order
-
-1. DB migrations (3 changes) — single migration call.
-2. Admin RBAC bypass (small, unblocks QA of everything else).
-3. OAuth handshake (new edge function + `/link-extension` page + extension popup).
-4. Two-way sync (bridge schema + edge function emit + extension listener).
-5. Memory snapshots (table + hook + panel + autosnapshot hooks).
-6. One-click apply/build actions (bridgeActions + panel buttons).
-7. Smoke test each phase in preview, then publish.
-
-## Out of Scope
-
-- Stripe/Paddle plan changes.
-- Mobile extension (Chrome MV3 desktop only for now).
-- Multi-user shared sessions (memory snapshots are per-user).
-- Encrypting snapshot payloads at rest (RLS-only for v1).
+Each step is independently shippable and verified in the preview before the next.
